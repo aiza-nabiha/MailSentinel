@@ -1,0 +1,589 @@
+Delivered-To: asmikhatter2007@gmail.com
+Received: by 2002:a05:6504:538b:b0:308:da7f:9152 with SMTP id el11csp5851337ltb;
+        Tue, 25 Aug 2026 10:06:34 -0700 (PDT)
+X-Received: by 2002:a05:620a:6084:b0:937:7c76:8000 with SMTP id af79cd13be357-9377c7684a5mr311086785a.1.1787677593805;
+        Tue, 25 Aug 2026 10:06:33 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787677593; cv=none;
+        d=google.com; s=arc-20260327;
+        b=lMqPK9+9vySX7hJNouIAVNcanTxUTp0+2D4sTV0gC8KGZhDohQAallBxPKu7EkpskA
+         hkIrOsmuyUzfQv5LxjwDpYn9kVC/uE8LnBZxPUB7rSJu7EZDnOshpK2tkOU103EFCvmA
+         Yo3DfzDvBp7RlEDOEH99zYk6vIC1nvlau2o79YzAngrrX4JG3aPBfXStv3PI3YbE4zSb
+         0tQuiGBqY55hsTr4TLS0EZzNur5yV9IbGxaDzxGQKLv8aBGUF8KiPMAV8NqFBA3euCQ6
+         6isLzSW3gc5F4Ay0yBBk/j0MKvuNtA7IFZzy7I70Lb2p7mlus4KzU6kArpntKp0o7RFP
+         0/zw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=feedback-id:list-unsubscribe-post:precedence:form-sub:mime-version
+         :subject:message-id:to:reply-to:from:date:list-unsubscribe
+         :dkim-signature:dkim-signature;
+        bh=wFdcvogU3OxFFwXwauvxtSQk42BYuSmsRr9hrbOjfXQ=;
+        fh=xJjjk8stHcyDpH0V2Ghz+kOBTlHVptc9rAwLvMaYnCk=;
+        b=cQbbcjMZpZKy65o9uoiGcIbIbTBBS5rT6OcmTv/dv635nAKe1YB/Bqgd43oF2KTVZe
+         3jqzi6gDiL8MN82Uc0jNKvsoKvPs1G+PxiGP/66de6wGwpC6cYnfSQX7ceHgVL6vMci+
+         1ejjrRYnJdOCV7eCR11dpii5Xfksa1nVEtaXvCklN6j1FyeHxO6a/m/iu3n4ZS9XejQQ
+         uzrJwMmqBWMZoGlX3DpM4jp6pfMVJHjjigGBy3w56xOUMmwjdujbQ4z8DOO6tk8iX9eW
+         91uZ4WFkIW1OdXX7doL52EK9U6mmZnmSiq4CWuXeRJyZUTRxcSX2gAlQYuR+VfmSSd+Z
+         nqGw==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@bf51x.hubspotemail.net header.s=hs2 header.b=wFVlC+R4;
+       dkim=pass header.i=@tigergraph.com header.s=hs2 header.b=ZYFPLIgW;
+       spf=pass (google.com: domain of 1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net designates 143.244.89.51 as permitted sender) smtp.mailfrom="1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net";
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=tigergraph.com
+Return-Path: <1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net>
+Received: from bd77f69.bf51x.hubspotemail.net (bd77f69.bf51x.hubspotemail.net. [143.244.89.51])
+        by mx.google.com with ESMTPS id af79cd13be357-9377e68a955si24806385a.315.2026.08.25.10.06.33
+        for <asmikhatter2007@gmail.com>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 25 Aug 2026 10:06:33 -0700 (PDT)
+Received-SPF: pass (google.com: domain of 1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net designates 143.244.89.51 as permitted sender) client-ip=143.244.89.51;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@bf51x.hubspotemail.net header.s=hs2 header.b=wFVlC+R4;
+       dkim=pass header.i=@tigergraph.com header.s=hs2 header.b=ZYFPLIgW;
+       spf=pass (google.com: domain of 1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net designates 143.244.89.51 as permitted sender) smtp.mailfrom="1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net";
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=tigergraph.com
+Received: by 172.16.139.55 with SMTP id a0b9znrox27ui25xrchl0u582xztweatky55xmmy8o0;
+        Tue, 25 Aug 2026 17:06:33 GMT
+DKIM-Signature: v=1; s=hs2; d=bf51x.hubspotemail.net; 
+        i=@bf51x.hubspotemail.net; 
+        h=sender:from:from:reply-to:to:to:cc:cc:subject:subject:list-unsubscribe:list-id:form-sub:feedback-id:list-unsubscribe-post; 
+        a=rsa-sha256; c=relaxed/relaxed; 
+        bh=wFdcvogU3OxFFwXwauvxtSQk42BYuSmsRr9hrbOjfXQ=; 
+        b=wFVlC+R4Pyj5WRCZOxJK1gSYjpr4TF1X+NlckTAjpeKVcvOfOr+8tsJixgQeNY
+         mejvuv/kUJg8j0oWsMDzoxi2X1vlS41lAwSSM9VAmCy83ySVzrb9rPhg/JhCn6D
+         OLuYOx63VosI/9JMGkeHbQcY0H5TaSW5nV3UjQ1/vof31KidCER83GS/W4missc
+         PsKqLrisezyqdJIdmlltdDpuGNxOmk0hDL9ae0eFKeQvyYZgqwSpx6fIsRbhO4c
+         YcR7tIruqr+Z1PyzNFcPAoTFPoMnxC6CC6RDG8qP7QKou6TQktw+JfqSzS7SuQd
+         GV58kYGt1y6LsNPeDx2wTuwL3uPA==; q=dns/txt; t=1787677434; 
+        x=1787940234;
+DKIM-Signature: v=1; s=hs2; d=tigergraph.com; i=@tigergraph.com; 
+        h=sender:from:from:reply-to:to:to:cc:cc:subject:subject:list-unsubscribe:list-id:form-sub:feedback-id:list-unsubscribe-post; 
+        a=rsa-sha256; c=relaxed/relaxed; 
+        bh=wFdcvogU3OxFFwXwauvxtSQk42BYuSmsRr9hrbOjfXQ=; 
+        b=ZYFPLIgWMxWMm7ShXk7Icers7HQ7pUw8P3YpHYtWgjtTXEYw4Xshgfil17RMRx
+         nEqJVzFGET7Sdxk/S0DBRS/b3sxgsDC6BMfTrvXGKqWB9UgSTEnsokjp2ENl/t2
+         hvJ2H1nlj4vZJh6z8LHmSquI01xiR2YpKttQW4jYWUcJFFu9B8/eT1ynt150CKs
+         55lT67tQ57C9l+3xlGsCMn7VVpwqAEHHDUOfLR/6PiYeZzFGi8jMnhYlAkvYQ8+
+         eMzwEDrJR0mCmfK27oYMno/ByapoHecvVcUP5fKXSD4WOLVn9Jc1tK38uHt0+gT
+         YoQYVOZ4zO6a2jldm+UmmM17nRIA==; q=dns/txt; t=1787677434; 
+        x=1787940234;
+Return-Path: <1axbtywqsqfqqy1sf9cm6qlzlvi4ymbzgcfv0b-asmikhatter2007=gmail.com@bf51x.hubspotemail.net>
+X-HS-Cid: 1axe1xa2nuk9z5nz3l7zx3g2cnok9kl95q2fuz
+List-Unsubscribe: <mailto:1axc4lviav11qc2r8w16rz1onlmjji4wmu59cb-asmikhatter2007=gmail.com@bf51x.hubspotemail.net?subject=unsubscribe>, <https://info.tigergraph.com/hs/subscription-preferences/v2/unsubscribe-all?data=aM2L-Qv4SM5zW6ktb_J6sl-tVW2bhwKK3jyctjW34ksZ75ykg1JN8NX6X3Qs-2gN5ZCtDPGHqvmW8VDr_r1tmRTYW6s2mVB4kfyZkN7BJ2Mtwq_xsW3YMgFz4xzDtLW42G_8Z5cxrRTW39H6yd148WpZN6yzx4R1pfN71>
+Date: Tue, 25 Aug 2026 10:06:33 -0700
+From: TigerGraph Team <tigergraphteam@tigergraph.com>
+Reply-To: tigergraphteam@tigergraph.com
+To: asmikhatter2007@gmail.com
+Message-ID: <1787677434249.becc4475-d249-4060-afad-0eefb3add44a@bf51x.hubspotemail.net>
+Subject: Webinar: 80.7% Fewer Tokens: What 300+ GraphRAG Applications
+ Revealed
+MIME-Version: 1.0
+Content-Type: multipart/alternative; 
+	boundary="----=_Part_387318_1485878770.1787677434356"
+Form-Sub: v=1; ip=none
+Precedence: bulk
+X-Report-Abuse-To: abuse@hubspot.com (see
+ https://policy.hubspot.com/abuse-complaints)
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Feedback-ID: aecqg28:aihgc1yr:aib1s:HubSpot
+
+------=_Part_387318_1485878770.1787677434356
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Hi Asmi,
+
+Tomorrow, TigerGraph will reveal what more than 300 independently developed=
+ enterprise AI applications taught us about GraphRAG.
+
+The results were striking. GraphRAG reduced token consumption by an average=
+ of 80.7% and by as much as 94.6% while improving accuracy by 35%.
+
+But the benchmark also revealed something more important: where GraphRAG wi=
+ns, where it does not, and why.
+
+Join us (https://info.tigergraph.com/e3t/Ctc/5B+113/cv71j04/VWRxbs4jts08W3x=
+NzBn8MZmy2W2K0rfL5T7wlDN50kgMT5m_5PW50kH_H6lZ3kKN2yPd6YNxpKGW4LxlKY90rmbgN8=
+KFg1077kQSN6fj_72XDN0xW5B2Tbm8-TkyFW3qcPPB4mW9_8W7LpYnF7lCG3tW843bm67FsV-1W=
+2C_RS12b-fLtVbCgbQ7b0zR3W86d02k4mNVcNW34G_H-31qK_RW7lL2jj7r8HXVVTsnH43ZGGqR=
+W8kCDGC72JSP2W4dSG524qPjH4W3rXwXw3BFFg9W71nPTG4WCpVDW5wL3FH2_PJP-W5F_8qh4pK=
+d85VM8Q4p88VBYhW39dfPq3ygTnZW86qjpD9kg1gsW6N8Bcj3l7VGxN9bDHDbPxBtPW2m3StD1Q=
+pHMpW4skGl456yY5SN2jlXGdj344CW8xktkJ8b-Q8QW7XgSWN1HHvsgW5Y9hgL83YmSkW1zkfj8=
+56bwn2dBB-NY04 ) for an upcoming live webinar: 80.7% Fewer Tokens: What 300=
++ GraphRAG Applications Revealed
+
+Date: Wednesday, August 26th Time: 10:00 AM PT / 1:00 PM ET
+
+You will learn:
+
+- Why text-based retrieval creates redundant context
+- Where connected evidence delivers the greatest gains
+- How graph traversals become concise evidence packages
+- Why retrieval architecture improves efficiency and accuracy
+- When GraphRAG or Vector RAG is the right choice
+
+This is not another theoretical comparison of retrieval technologies. It is=
+ a practical look at what hundreds of real GraphRAG applications revealed.
+
+Join us tomorrow.
+
+Save your spot here (https://info.tigergraph.com/e3t/Ctc/5B+113/cv71j04/VWR=
+xbs4jts08W3xNzBn8MZmy2W2K0rfL5T7wlDN50kgPY3prCCW95jsWP6lZ3mRW3BDYRX8Zxc0sW6=
+n1GHt95jv9bW4WhmSP8FvkpNW5_rJBR1srRCkW30Qf3p7jVMMcW3zDnLP1g8W1jW5PZSkD620ls=
+hW7jWM1p3y3TB7W62MZp26wdwx7VmsGPT1QCVM8W1nq2vL7Tdsl7W2jZfk92xhbPpW7mV3q02X9=
+_yZW2g7fCS6W03V7W7wFQvh3jprtzW3Wn3Km8fhFqKW6K8Cgz5RW6SWN9bC0-R6PFNnW9gLY0-7=
+ChxKjW36thQb3zZFTZN52r9Hk3SV8cN4x8Wzt9h6fBW2L_Xbk1q6DKjW11wzQ24MvcKVW6q03Fw=
+8nfw6fW3JL5lm8zSW7vW7TqF8n8_wYBGW8-yWVj7KtvNhW2tm3NJ1ftPyMW1GNYS38ZfLP7f9cW=
+PVz04 ) .
+
+Regards,
+
+TigerGraph Team
+
+Register Here
+(https://info.tigergraph.com/e3t/Ctc/5B+113/cv71j04/VWRxbs4jts08W3xNzBn8MZm=
+y2W2K0rfL5T7wlDN50kgMT5m_5PW50kH_H6lZ3kKN2yPd6YNxpKGW4LxlKY90rmbgN8KFg1077k=
+QSN6fj_72XDN0xW5B2Tbm8-TkyFW3qcPPB4mW9_8W7LpYnF7lCG3tW843bm67FsV-1W2C_RS12b=
+-fLtVbCgbQ7b0zR3W86d02k4mNVcNW34G_H-31qK_RW7lL2jj7r8HXVVTsnH43ZGGqRW8kCDGC7=
+2JSP2W4dSG524qPjH4W3rXwXw3BFFg9W71nPTG4WCpVDW5wL3FH2_PJP-W5F_8qh4pKd85VM8Q4=
+p88VBYhW39dfPq3ygTnZW86qjpD9kg1gsW6N8Bcj3l7VGxN9bDHDbPxBtPW2m3StD1QpHMpW4sk=
+Gl456yY5SN2jlXGdj344CW8xktkJ8b-Q8QW7XgSWN1HHvsgW5Y9hgL83YmSkW1zkfj856bwn2dB=
+B-NY04 )
+
+TigerGraph, 680 N McCarthy Blvd Ste 240, Milpitas, California 95035, United=
+ States
+
+Unsubscribe (https://info.tigergraph.com/hs/preferences-center/en/direct?da=
+ta=3DW2nXS-N30h-MTW1QcJ3z4hmWcMW2w16Xz3H6x2LW4mCXpQ3QBNqgW23qKGR3M5HgqW234k=
+j23JTwmsW2-DDLk49NN6tW45mhr41Lxj3DW3yZy5W2MMHKWW3BNKcK2p6cB4W30JbBD4cgtVzW1=
+Lhp9r4pkFMQW1Bg4b43VxptFW2xJS8Z2WP11yW2Krvf345kg7nW216HN_43pDwLW4mC2wf2xBxx=
+6W4kf40r4kFlpsW2zKPP32r2lr2W2nYLzG1Q5Sz0W38yMcH2r5C5DW2sZ7vH2CDfY1W4hKc4F3F=
+9xXqW49v0JP21bphQW23qDpq3j88hzW21nPLp2D02qJW3j6SC_4hLWhZW4ms94G3JTWwCW25g-M=
+Z3QLflfW4tdgB72sVRRtW3yRWMG38tBFlW2p4cdf2nTxQFW2WR0vz3BWp2pW1BFYL821jFvJW1Q=
+lM5b1Np1rhW30rrsf3NGml2W2Hzjym38fTLSW2HGgpD2TNlqcW3d3Zbt1NnCrdW3Y3mjj47xGKg=
+W1Lh0Dv2Rvxc0W4txx2R3_Rw1hW4hPSc74rk0ZvW3M40hf1ScrgbW2sVld91SqKLKW3dtzjM2Fp=
+phvW3zbQzB2CGg3SW4kltF31N5FpYW3VWt002nSHQwW1QtNTq41G7wCW1BvFcx2-kwhmW3F4zJZ=
+2Tt4NbW4mFw9M3BMXhrW2Kr0V738zzLhW2Rj9ZL3z1dzhW3byzyy2WNZl5W38sPKP3F4BpNW3gr=
+NQh41C9R7W32wVVP3T3P3Gf2PV86k04&_hsenc=3Dp2ANqtz-9Er8J9hngrqehmsSgB0EkEgE3X=
+2lj74a_NtX1CgjhY2OfRdwkHe-BImt7RJg08x7qJiHlF7NZYdVY3eGnXblsiSO1ndwiPWJmipgV=
+fiaZRgoFec2c&_hsmi=3D433470113 )
+Manage preferences (https://info.tigergraph.com/hs/preferences-center/en/pa=
+ge?data=3DW2nXS-N30h-MTW1QcJ3z4hmWcMW2w16Xz3H6x2LW4mCXpQ3QBNqgW23qKGR3M5Hgq=
+W234kj23JTwmsW2-DDLk49NN6tW45mhr41Lxj3DW3yZy5W2MMHKWW3BNKcK2p6cB4W30JbBD4cg=
+tVzW1Lhp9r4pkFMQW1Bg4b43VxptFW2xJS8Z2WP11yW2Krvf345kg7nW216HN_43pDwLW4mC2wf=
+2xBxx6W4kf40r4kFlpsW2zKPP32r2lr2W2nYLzG1Q5Sz0W38yMcH2r5C5DW2sZ7vH2CDfY1W4hK=
+c4F3F9xXqW49v0JP21bphQW23qDpq3j88hzW21nPLp2D02qJW3j6SC_4hLWhZW4ms94G3JTWwCW=
+25g-MZ3QLflfW4tdgB72sVRRtW3yRWMG38tBFlW2p4cdf2nTxQFW2WR0vz3BWp2pW1BFYL821jF=
+vJW1QlM5b1Np1rhW30rrsf3NGml2W2Hzjym38fTLSW2HGgpD2TNlqcW3d3Zbt1NnCrdW3Y3mjj4=
+7xGKgW1Lh0Dv2Rvxc0W4txx2R3_Rw1hW4hPSc74rk0ZvW3M40hf1ScrgbW2sVld91SqKLKW3dtz=
+jM2FpphvW3zbQzB2CGg3SW4kltF31N5FpYW3VWt002nSHQwW1QtNTq41G7wCW1BvFcx2-kwhmW3=
+F4zJZ2Tt4NbW4mFw9M3BMXhrW2Kr0V738zzLhW2Rj9ZL3z1dzhW3byzyy2WNZl5W38sPKP3F4Bp=
+NW3grNQh41C9R7W32wVVP3T3P3Gf2PV86k04&_hsenc=3Dp2ANqtz-9Er8J9hngrqehmsSgB0Ek=
+EgE3X2lj74a_NtX1CgjhY2OfRdwkHe-BImt7RJg08x7qJiHlF7NZYdVY3eGnXblsiSO1ndwiPWJ=
+mipgVfiaZRgoFec2c&_hsmi=3D433470113 )
+------=_Part_387318_1485878770.1787677434356
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www=
+.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns=3D"http://www.w3=
+.org/1999/xhtml" xmlns:o=3D"urn:schemas-microsoft-com:office:office" xmlns:=
+v=3D"urn:schemas-microsoft-com:vml" lang=3D"en"><head>
+    <title>Webinar: 80.7% Fewer Tokens: What 300+ GraphRAG Applications Rev=
+ealed</title>
+    <meta property=3D"og:title" content=3D"Webinar: 80.7% Fewer Tokens: Wha=
+t 300+ GraphRAG Applications Revealed">
+    <meta name=3D"twitter:title" content=3D"Webinar: 80.7% Fewer Tokens: Wh=
+at 300+ GraphRAG Applications Revealed">
+   =20
+   =20
+   =20
+<meta name=3D"x-apple-disable-message-reformatting">
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3DUTF-8">
+<meta http-equiv=3D"X-UA-Compatible" content=3D"IE=3Dedge">
+<meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-scale=3D1.=
+0">
+<style>
+a.cta_button{-moz-box-sizing:content-box !important;-webkit-box-sizing:cont=
+ent-box !important;box-sizing:content-box !important;vertical-align:middle}=
+.hs-breadcrumb-menu{list-style-type:none;margin:0px 0px 0px 0px;padding:0px=
+ 0px 0px 0px}.hs-breadcrumb-menu-item{float:left;padding:10px 0px 10px 10px=
+}.hs-breadcrumb-menu-divider:before{content:'=E2=80=BA';padding-left:10px}.=
+hs-featured-image-link{border:0}.hs-featured-image{float:right;margin:0 0 2=
+0px 20px;max-width:50%}@media (max-width: 568px){.hs-featured-image{float:n=
+one;margin:0;width:100%;max-width:100%}}.hs-screen-reader-text{clip:rect(1p=
+x, 1px, 1px, 1px);height:1px;overflow:hidden;position:absolute !important;w=
+idth:1px}
+</style>
+<!-- $$__SECOND_PASS_CSS_HEAD__$$ -->
+    <!--[if gte mso 9]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+    <w:WordDocument xmlns:w=3D"urn:schemas-microsoft-com:office:word">
+      <w:DontUseAdvancedTypographyReadingMail/>
+    </w:WordDocument>
+  </xml>
+ =20
+  <style>
+    ul > li {
+      text-indent: -1em;
+    }
+  </style>
+<![endif]-->
+<!--[if mso]>
+<style type=3D"text/css">
+ body, td {font-family: Arial, Helvetica, sans-serif;}
+ .hse-body-wrapper-table {background-color: #f2f2f2;}
+</style>
+<![endif]-->
+<!--[if mso | IE]>
+  <style type=3D"text/css">
+    .hse-column-container { border: none !important; padding: 0 !important;=
+ }
+  </style>
+<![endif]-->
+   =20
+     =20
+ =20
+ =20
+   =20
+  <meta name=3D"generator" content=3D"HubSpot"><meta property=3D"og:url" co=
+ntent=3D"https://info.tigergraph.com/-temporary-slug-cdee2d43-3769-4d98-8ea=
+b-f99822d22cec"><meta name=3D"robots" content=3D"noindex,follow"><!--[if !(=
+(mso)|(IE))]><!-- --><style type=3D"text/css">@media only screen and (max-w=
+idth:639px){img.stretch-on-mobile,.hs_rss_email_entries_table img,.hs-stret=
+ch-cta .hs-cta-img{height:auto !important;width:100% !important}
+.display_block_on_small_screens{display:block}.hs_padded{padding-left:20px =
+!important;padding-right:20px !important}
+.hs-hm,table.hs-hm{display:none}.hs-hd{display:block !important}table.hs-hd=
+{display:table !important}
+}@media only screen and (max-width:639px){.hse-border-m{border-left:1px sol=
+id #ccc !important;border-right:1px solid #ccc !important;box-sizing:border=
+-box}
+.hse-border-bottom-m{border-bottom:1px solid #ccc !important}.hse-border-to=
+p-m{border-top:1px solid #ccc !important}
+.hse-border-top-hm{border-top:none !important}.hse-border-bottom-hm{border-=
+bottom:none !important}
+}.moz-text-html .hse-column-container{max-width:600px !important;width:600p=
+x !important}
+.moz-text-html .hse-column{display:table-cell;vertical-align:top}.moz-text-=
+html .hse-section .hse-size-12{max-width:600px !important;width:600px !impo=
+rtant}
+@media only screen and (min-width:640px){.hse-column-container{max-width:60=
+0px !important;width:600px !important}
+.hse-column{display:table-cell;vertical-align:top}.hse-section .hse-size-12=
+{max-width:600px !important;width:600px !important}
+}@media only screen and (max-width:639px){.hse-body-wrapper-td{padding-top:=
+20px !important}
+#section-0 .hse-column-container{background-color:#fff !important} }@media =
+only screen and (max-width:639px){.hse-body-wrapper-td{padding-bottom:20px =
+!important}
+#section-3 .hse-column-container{background-color:transparent !important}#s=
+ection-3 .hse-column-container{background-color:transparent !important}
+}</style><!--<![endif]--><style type=3D"text/css">#hs_body #hs_cos_wrapper_=
+main a[x-apple-data-detectors]{color:inherit !important;text-decoration:non=
+e !important;font-size:inherit !important;font-family:inherit !important;fo=
+nt-weight:inherit !important;line-height:inherit !important}
+a{text-decoration:underline}p{margin:0}body{-ms-text-size-adjust:100%;-webk=
+it-text-size-adjust:100%;-webkit-font-smoothing:antialiased;moz-osx-font-sm=
+oothing:grayscale}
+table{border-spacing:0;mso-table-lspace:0;mso-table-rspace:0}table,td{borde=
+r-collapse:collapse}
+img{-ms-interpolation-mode:bicubic}p,a,li,td,blockquote{mso-line-height-rul=
+e:exactly}
+.ShadowHTML p,.sh-modified-inline p{margin:0}</style></head>
+  <body id=3D"hs_body" bgcolor=3D"#f2f2f2" style=3D"margin:0 !important; pa=
+dding:0 !important; font-family:Arial, sans-serif; font-size:15px; color:#4=
+24242; word-break:break-word">
+   =20
+   =20
+<!--[if gte mso 9]>
+<v:background xmlns:v=3D"urn:schemas-microsoft-com:vml" fill=3D"t">
+    <v:fill type=3D"tile" size=3D"100%,100%" color=3D"#ffffff"/>
+</v:background>
+<![endif]-->
+    <div class=3D"hse-body-background" lang=3D"en" style=3D"background-colo=
+r:#f2f2f2" bgcolor=3D"#f2f2f2">
+      <table role=3D"presentation" class=3D"hse-body-wrapper-table" cellpad=
+ding=3D"0" cellspacing=3D"0" style=3D"margin:0; padding:0; width:100% !impo=
+rtant; min-width:320px !important; height:100% !important" width=3D"100%" h=
+eight=3D"100%">
+        <tbody><tr>
+          <td class=3D"hse-body-wrapper-td" valign=3D"top" style=3D"font-fa=
+mily:Arial, sans-serif; font-size:15px; color:#424242; word-break:break-wor=
+d; padding-top:20px; padding-bottom:20px">
+            <div id=3D"hs_cos_wrapper_main" class=3D"hs_cos_wrapper hs_cos_=
+wrapper_widget hs_cos_wrapper_type_dnd_area" style=3D"color: inherit; font-=
+size: inherit; line-height: inherit;" data-hs-cos-general-type=3D"widget" d=
+ata-hs-cos-type=3D"dnd_area">  <div id=3D"section-0" class=3D"hse-section h=
+se-section-first" style=3D"padding-left:10px; padding-right:10px">
+   =20
+   =20
+      <div class=3D"hse-column-container hse-border-bottom hse-border hse-b=
+order-top hse-border-bottom-m hse-border-m hse-border-top-m" style=3D"min-w=
+idth:280px; max-width:600px; margin:0 auto; border-left:1px solid #cccccc; =
+border-right:1px solid #cccccc; box-sizing:border-box; border-bottom:1px so=
+lid #cccccc; border-top:1px solid #cccccc; background-color:#FFFFFF" bgcolo=
+r=3D"#FFFFFF">
+   =20
+    <!--[if (mso)|(IE)]>
+      <table align=3D"center" style=3D"width:600px;border-bottom:1px solid =
+#cccccc;border-left:1px solid #cccccc;border-right:1px solid #cccccc;border=
+-top:1px solid #cccccc" cellpadding=3D"0" cellspacing=3D"0" role=3D"present=
+ation" class=3D"hse-border-bottom hse-border hse-border-top hse-border-bott=
+om-m hse-border-m hse-border-top-m" width=3D"600" bgcolor=3D"#FFFFFF">
+      <tr style=3D"background-color:#FFFFFF;">
+    <![endif]-->
+    <!--[if (mso)|(IE)]>
+  <td valign=3D"top" style=3D"width:598px;">
+<![endif]-->
+<!--[if gte mso 9]>
+  <table role=3D"presentation" width=3D"598" cellpadding=3D"0" cellspacing=
+=3D"0" style=3D"width:598px">
+<![endif]-->
+<div id=3D"column-0-0" class=3D"hse-column hse-size-12">
+  <div id=3D"hs_cos_wrapper_module-0-0-0" class=3D"hs_cos_wrapper hs_cos_wr=
+apper_widget hs_cos_wrapper_type_module" style=3D"color: inherit; font-size=
+: inherit; line-height: inherit;" data-hs-cos-general-type=3D"widget" data-=
+hs-cos-type=3D"module"><table class=3D"hse-image-wrapper" role=3D"presentat=
+ion" width=3D"100%" cellpadding=3D"0" cellspacing=3D"0">
+  <tbody>
+    <tr>
+      <td class=3D"hs_padded" align=3D"left" valign=3D"top" style=3D"font-f=
+amily:Arial, sans-serif; color:#424242; word-break:break-word; text-align:l=
+eft; padding:10px 20px; font-size:0px">
+        <img alt=3D"80.7% Fewer Tokens_ What 300+ GraphRAG Applications Rev=
+ealed" src=3D"https://info.tigergraph.com/hs-fs/hubfs/80.7%25%20Fewer%20Tok=
+ens_%20What%20300+%20GraphRAG%20Applications%20Revealed.jpg?width=3D1116&am=
+p;upscale=3Dtrue&amp;name=3D80.7%25%20Fewer%20Tokens_%20What%20300+%20Graph=
+RAG%20Applications%20Revealed.jpg" style=3D"outline:none; text-decoration:n=
+one; max-width:100%; font-size:16px" width=3D"558" align=3D"middle">
+      </td>
+    </tr>
+  </tbody>
+</table></div>
+  <table role=3D"presentation" cellpadding=3D"0" cellspacing=3D"0" width=3D=
+"100%" class=3D"" style=3D""><tbody><tr><td class=3D"hs_padded" style=3D"fo=
+nt-family:Arial, sans-serif; font-size:15px; color:#424242; word-break:brea=
+k-word; padding:10px 20px"><div id=3D"hs_cos_wrapper_module-0-0-1" class=3D=
+"hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" style=3D"=
+color: inherit; font-size: inherit; line-height: inherit;" data-hs-cos-gene=
+ral-type=3D"widget" data-hs-cos-type=3D"module"><div id=3D"hs_cos_wrapper_m=
+odule-0-0-1_" class=3D"hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_=
+type_rich_text" style=3D"color: inherit; font-size: inherit; line-height: i=
+nherit;" data-hs-cos-general-type=3D"widget" data-hs-cos-type=3D"rich_text"=
+><div style=3D"text-align:left; font-size:12px; line-height:125%" align=3D"=
+left">
+<p style=3D"font-size:14px; line-height:125%">Hi Asmi,</p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">Tomorrow, Tig=
+erGraph will reveal what more than 300 independently developed enterprise A=
+I applications taught us about GraphRAG.</span></p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">The results w=
+ere striking. GraphRAG reduced token consumption by an average of 80.7% and=
+ by as much as 94.6% while improving accuracy by 35%.</span></p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">But the bench=
+mark also revealed something more important: where GraphRAG wins, where it =
+does not, and why.</span></p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:1.39"><span style=3D"font-size: 14px;"><a href=3D"h=
+ttps://info.tigergraph.com/e3t/Ctc/5B+113/cv71j04/VWRxbs4jts08W3xNzBn8MZmy2=
+W2K0rfL5T7wlDN50kgN85nR3bW5BWr2F6lZ3kxW2PbGcZ1SQLSwMhcnH6Z3f4vW310JCg1Swh6c=
+W6Kj9BX3fJ8n-W81516j16LThRW397-5f18FFpnVPjCr95XRKCZN58HcXWzdmYQW18KfZp5_Sbd=
+gW6Yj6ny7PG2lBN8YySGPBhFztW8TJ61j6-NLvtW2Tj1RV4xjV86W4v0yRg93FPxYW8-KF6j7dY=
+ZJGN194-kd97ryVW93dPsw4P96HmW1_mkrN6_JN9DW3TDc4S4_WBHDW3gPP1p4gvlvtW8H_Kkz6=
+BgQsRW6rmMpG64KW12W8gp9kD1XLYHrW1j2dbX3RgYtnW6g_42P91JvHpW3wscpR5R937fW1fK1=
+8y6HpH7hW6tK2y36-kgvYW99wF6c9d-NLYW16GTkv7VgjW2W2VSk4H4dXY05W5vxBb11PkmqVW6=
+hWZgl2sjpX7W5_zj3S80MMQsdl87zj04" style=3D"color:#00a4bd" data-hs-link-id=
+=3D"0" data-hs-link-id-v2=3D"XocftVVB" target=3D"_blank"><strong>Join us</s=
+trong></a><span style=3D"color: #0070c0; white-space-collapse: preserve;"> =
+</span>for an upcoming live webinar: <strong>80.7% Fewer Tokens: What 300+ =
+GraphRAG Applications Revealed</strong></span></p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;"><strong>Date:=
+</strong> Wednesday, August 26<sup>th</sup><span style=3D"white-space-colla=
+pse: preserve;"> </span><strong>Time:</strong> 10:00 AM PT / 1:00 PM ET</sp=
+an></p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">You will lear=
+n:</span></p>
+<ul style=3D"line-height:175%">
+<li><span style=3D"font-size: 14px;">Why text-based retrieval creates redun=
+dant context</span></li>
+<li><span style=3D"font-size: 14px;">Where connected evidence delivers the =
+greatest gains</span></li>
+<li><span style=3D"font-size: 14px;">How graph traversals become concise ev=
+idence packages</span></li>
+<li><span style=3D"font-size: 14px;">Why retrieval architecture improves ef=
+ficiency and accuracy</span></li>
+<li><span style=3D"font-size: 14px;">When GraphRAG or Vector RAG is the rig=
+ht choice</span></li>
+</ul>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">This is not a=
+nother theoretical comparison of retrieval technologies. It is a practical =
+look at what hundreds of real GraphRAG applications revealed.</span></p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">Join us tomor=
+row.</span></p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:1.2"><span style=3D"font-size: 14px;">Save your spo=
+t <a href=3D"https://info.tigergraph.com/e3t/Ctc/5B+113/cv71j04/VWRxbs4jts0=
+8W3xNzBn8MZmy2W2K0rfL5T7wlDN50kgMT5nR3bW50kH_H6lZ3mcW2xK5p_3j-V_3W7Tl6f_3MH=
+n3HW4PGVFz8Pc80MW6RcQ_r1h6FcHW3m93sJ3szT0nW4k3mPN9j_7NSVNH75r57dBgkW2j-Qpy3=
+Tr6DNW3G8zM26X5h36W6JMPpT2fbgGXVlLgLL5vRRPpW1-jHd14hr9-fW1cybFf4Dfc_VW13tz7=
+H6S_pL-V1kVhW6d6NnmW1X08-X7_YBShVf3Gfr75sKmYW17MJ711ghqwlW8GvQ7h195f0jW51yW=
+T-7MyJXsW8vzDP96LWqJrVxQCh169scldW15Sx3L1LVD_MW5wGp142_y6xvW7KxbQh5jgWb9W3P=
+ygMz5brWYHVKWNq42q3-SFW5w-x9Q8hYQv8W6QQvxF81QQLbW5LPgnQ6nK8GSW7wlC3Z2TW92GW=
+1zmQxS6jK60ZdnjlWs04" style=3D"color:#00a4bd" data-hs-link-id=3D"0" data-hs=
+-link-id-v2=3D"zyiIyq2e" target=3D"_blank"><strong>here</strong></a><strong=
+><span style=3D"color: #0070c0;">.</span></strong></span></p>
+<p style=3D"line-height:100%; font-size:14px">&nbsp;</p>
+<p style=3D"line-height:125%; font-size:14px"><span style=3D"color: #000000=
+;">Regards,</span></p>
+<p style=3D"line-height:125%; font-size:14px"><span style=3D"color: #000000=
+;"><br></span><span style=3D"color: #000000;">TigerGraph Team</span></p>
+</div></div></div></td></tr></tbody></table>
+  <table role=3D"presentation" cellpadding=3D"0" cellspacing=3D"0" width=3D=
+"100%" class=3D"" style=3D""><tbody><tr><td class=3D"hs_padded" style=3D"fo=
+nt-family:Arial, sans-serif; font-size:15px; color:#424242; word-break:brea=
+k-word; padding:10px 20px"><div id=3D"hs_cos_wrapper_module_17792044547392"=
+ class=3D"hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" =
+style=3D"color: inherit; font-size: inherit; line-height: inherit;" data-hs=
+-cos-general-type=3D"widget" data-hs-cos-type=3D"module"><table align=3D"ce=
+nter" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" role=3D"presentation=
+" style=3D"border-collapse:separate!important">
+    <tbody><tr>
+      <td align=3D"center" valign=3D"middle" bgcolor=3D"#FF9902" style=3D"f=
+ont-family:Arial, sans-serif; font-size:15px; color:#424242; word-break:bre=
+ak-word; border-radius:8px; cursor:auto; background-color:#FF9902; mso-padd=
+ing-alt:12px 18px">
+        <a href=3D"https://info.tigergraph.com/e3t/Ctc/5B+113/cv71j04/VWRxb=
+s4jts08W3xNzBn8MZmy2W2K0rfL5T7wlDN50kgN85nR3bW5BWr2F6lZ3lVW2hkXB41DKsQsVpsD=
+vR4jd6GdW5Y3h-63BKgXsN7Rb-PMFR5HhN2vmVN4v4jyHW3-jHRg2HtGnNW8xvrby5lsC47W48r=
+Jdk2HcSG9W2DMq021f8sX1VrtjR57r7CQMVVlqd47zP3JVW7RdLd92QljTgW18GCdv9lnPKsW8p=
+7QbD72Y5PKW1FzmyP593q77W29Fm3999ChB6W8GGjjt8CSkjNW376-Yb4PCcjRW86klww6FpNKZ=
+W3P4f7W3XzJScW1sLlXz2W0G7BW1qQSz279VyR6W4dD2t61XjqLVW26LSwK1GMJmPW3bM85L296=
+X1JW6Rn_w47Ws8YBV3Ncf97TL839W7nBmC37VCK4jW41hZ2d8ktLLrW1QHhHr2sjpN7VdTXlX7Q=
+ysb6VlLL6f4Vn2G4W72hvDm7NV-fdW3PNzsb5PrPPrf9bfCyP04" target=3D"_blank" styl=
+e=3D"color:#00a4bd; font-size:16px; font-family:arial, helvetica, sans-seri=
+f; Margin:0; text-transform:none; letter-spacing:0px; text-decoration:none;=
+ padding:12px 18px; display:block" data-hs-link-id=3D"1" data-hs-link-id-v2=
+=3D"MKBou/nj">
+          <strong style=3D"color:#ffffff;font-weight:normal;text-decoration=
+:none;font-style:normal;">Register Here</strong>
+        </a>
+      </td>
+    </tr>
+  </tbody></table></div></td></tr></tbody></table>
+</div>
+<!--[if gte mso 9]></table><![endif]-->
+<!--[if (mso)|(IE)]></td><![endif]-->
+    <!--[if (mso)|(IE)]></tr></table><![endif]-->
+    </div>
+  =20
+  </div>
+  <div id=3D"section-3" class=3D"hse-section hse-section-last" style=3D"pad=
+ding-left:10px; padding-right:10px">
+   =20
+   =20
+      <div class=3D"hse-column-container" style=3D"min-width:280px; max-wid=
+th:600px; margin:0 auto; padding-bottom:10px; padding-top:10px">
+   =20
+    <!--[if (mso)|(IE)]>
+      <table align=3D"center" style=3D"width:600px;" cellpadding=3D"0" cell=
+spacing=3D"0" role=3D"presentation">
+      <tr>
+    <![endif]-->
+    <!--[if (mso)|(IE)]>
+  <td valign=3D"top" style=3D"width:598px;padding-bottom:10px; padding-top:=
+10px;">
+<![endif]-->
+<!--[if gte mso 9]>
+  <table role=3D"presentation" width=3D"598" cellpadding=3D"0" cellspacing=
+=3D"0" style=3D"width:598px">
+<![endif]-->
+<div id=3D"column-3-0" class=3D"hse-column hse-size-12">
+  <div id=3D"hs_cos_wrapper_module-3-0-0" class=3D"hs_cos_wrapper hs_cos_wr=
+apper_widget hs_cos_wrapper_type_module" style=3D"color: inherit; font-size=
+: inherit; line-height: inherit;" data-hs-cos-general-type=3D"widget" data-=
+hs-cos-type=3D"module"><table role=3D"presentation" class=3D"hse-footer hse=
+-secondary" width=3D"100%" cellpadding=3D"0" cellspacing=3D"0" style=3D"fon=
+t-family:Arial, sans-serif; font-size:12px; line-height:135%; color:#23496d=
+; margin-bottom:0; padding:0">
+  <tbody>
+    <tr>
+      <td align=3D"center" valign=3D"top" style=3D"font-family:Arial, sans-=
+serif; font-size:15px; color:#424242; word-break:break-word; text-align:cen=
+ter; margin-bottom:0; line-height:135%; padding:10px 20px">
+        <p style=3D"font-family:arial, helvetica, sans-serif;font-size:12px=
+;font-weight:normal;text-decoration:none;font-style:normal;color:#23496d">
+          TigerGraph, 680 N McCarthy Blvd Ste 240, Milpitas, California 950=
+35, United States
+        </p>
+        <p>
+          <a data-unsubscribe=3D"true" href=3D"https://info.tigergraph.com/=
+hs/preferences-center/en/direct?data=3DW2nXS-N30h-MTW1QcJ3z4hmWcMW2w16Xz3H6=
+x2LW4mCXpQ3QBNqgW23qKGR3M5HgqW234kj23JTwmsW2-DDLk49NN6tW45mhr41Lxj3DW3yZy5W=
+2MMHKWW3BNKcK2p6cB4W30JbBD4cgtVzW1Lhp9r4pkFMQW1Bg4b43VxptFW2xJS8Z2WP11yW2Kr=
+vf345kg7nW216HN_43pDwLW4mC2wf2xBxx6W4kf40r4kFlpsW2zKPP32r2lr2W2nYLzG1Q5Sz0W=
+38yMcH2r5C5DW2sZ7vH2CDfY1W4hKc4F3F9xXqW49v0JP21bphQW23qDpq3j88hzW21nPLp2D02=
+qJW3j6SC_4hLWhZW4ms94G3JTWwCW25g-MZ3QLflfW4tdgB72sVRRtW3yRWMG38tBFlW2p4cdf2=
+nTxQFW2WR0vz3BWp2pW1BFYL821jFvJW1QlM5b1Np1rhW30rrsf3NGml2W2Hzjym38fTLSW2HGg=
+pD2TNlqcW3d3Zbt1NnCrdW3Y3mjj47xGKgW1Lh0Dv2Rvxc0W4txx2R3_Rw1hW4hPSc74rk0ZvW3=
+M40hf1ScrgbW2sVld91SqKLKW3dtzjM2FpphvW3zbQzB2CGg3SW4kltF31N5FpYW3VWt002nSHQ=
+wW1QtNTq41G7wCW1BvFcx2-kwhmW3F4zJZ2Tt4NbW4mFw9M3BMXhrW2Kr0V738zzLhW2Rj9ZL3z=
+1dzhW3byzyy2WNZl5W38sPKP3F4BpNW3grNQh41C9R7W32wVVP3T3P3Gf2PV86k04&amp;utm_c=
+ampaign=3D51135660-Hackathon%20Webinar%20Results&amp;utm_source=3Dhs_automa=
+tion&amp;utm_medium=3Demail&amp;utm_content=3D433470113&amp;_hsenc=3Dp2ANqt=
+z-8jTevWube3mps_CgAktSMM1w5KiecB91D7ZXC8zfbLcymLv4BEvIvQjVcJcne0SybhxWxQ4bF=
+-_Ac0e0h0o57YB7WJPr8WhT1IlnIb4gWWUKyArYo&amp;_hsmi=3D433470113" style=3D"fo=
+nt-family:helvetica; font-size:12px; color:#00a4bd; font-weight:normal; tex=
+t-decoration:underline; font-style:normal" data-hs-link-id=3D"0" data-hs-li=
+nk-id-v2=3D"SFRZzEXk" target=3D"_blank">Unsubscribe</a>
+          <a data-unsubscribe=3D"true" href=3D"https://info.tigergraph.com/=
+hs/preferences-center/en/page?data=3DW2nXS-N30h-MTW1QcJ3z4hmWcMW2w16Xz3H6x2=
+LW4mCXpQ3QBNqgW23qKGR3M5HgqW234kj23JTwmsW2-DDLk49NN6tW45mhr41Lxj3DW3yZy5W2M=
+MHKWW3BNKcK2p6cB4W30JbBD4cgtVzW1Lhp9r4pkFMQW1Bg4b43VxptFW2xJS8Z2WP11yW2Krvf=
+345kg7nW216HN_43pDwLW4mC2wf2xBxx6W4kf40r4kFlpsW2zKPP32r2lr2W2nYLzG1Q5Sz0W38=
+yMcH2r5C5DW2sZ7vH2CDfY1W4hKc4F3F9xXqW49v0JP21bphQW23qDpq3j88hzW21nPLp2D02qJ=
+W3j6SC_4hLWhZW4ms94G3JTWwCW25g-MZ3QLflfW4tdgB72sVRRtW3yRWMG38tBFlW2p4cdf2nT=
+xQFW2WR0vz3BWp2pW1BFYL821jFvJW1QlM5b1Np1rhW30rrsf3NGml2W2Hzjym38fTLSW2HGgpD=
+2TNlqcW3d3Zbt1NnCrdW3Y3mjj47xGKgW1Lh0Dv2Rvxc0W4txx2R3_Rw1hW4hPSc74rk0ZvW3M4=
+0hf1ScrgbW2sVld91SqKLKW3dtzjM2FpphvW3zbQzB2CGg3SW4kltF31N5FpYW3VWt002nSHQwW=
+1QtNTq41G7wCW1BvFcx2-kwhmW3F4zJZ2Tt4NbW4mFw9M3BMXhrW2Kr0V738zzLhW2Rj9ZL3z1d=
+zhW3byzyy2WNZl5W38sPKP3F4BpNW3grNQh41C9R7W32wVVP3T3P3Gf2PV86k04&amp;utm_cam=
+paign=3D51135660-Hackathon%20Webinar%20Results&amp;utm_source=3Dhs_automati=
+on&amp;utm_medium=3Demail&amp;utm_content=3D433470113&amp;_hsenc=3Dp2ANqtz-=
+8jTevWube3mps_CgAktSMM1w5KiecB91D7ZXC8zfbLcymLv4BEvIvQjVcJcne0SybhxWxQ4bF-_=
+Ac0e0h0o57YB7WJPr8WhT1IlnIb4gWWUKyArYo&amp;_hsmi=3D433470113" style=3D"font=
+-family:helvetica; font-size:12px; color:#00a4bd; font-weight:normal; text-=
+decoration:underline; font-style:normal" data-hs-link-id=3D"0" data-hs-link=
+-id-v2=3D"qjPJqCop" target=3D"_blank">Manage preferences</a>
+        </p>
+      </td>
+    </tr>
+  </tbody>
+</table></div>
+</div>
+<!--[if gte mso 9]></table><![endif]-->
+<!--[if (mso)|(IE)]></td><![endif]-->
+    <!--[if (mso)|(IE)]></tr></table><![endif]-->
+    </div>
+  =20
+  </div></div>
+          </td>
+        </tr>
+      </tbody></table>
+    </div>
+ =20
+<img src=3D"https://info.tigergraph.com/e3t/Cto/5B+113/cv71j04/VWRxbs4jts08=
+W3xNzBn8MZmy2W2K0rfL5T7wlDW50kgxS3DdvXS112" alt=3D"" width=3D"1" height=3D"=
+1" border=3D"0" style=3D"display:none!important;min-height:1px!important;wi=
+dth:1px!important;border-width:0!important;margin-top:0!important;margin-bo=
+ttom:0!important;margin-right:0!important;margin-left:0!important;padding-t=
+op:0!important;padding-bottom:0!important;padding-right:0!important;padding=
+-left:0!important"></body></html>
+------=_Part_387318_1485878770.1787677434356--
+
