@@ -26,7 +26,7 @@ def extract_public_hops(data):
     hops = data.get("hops", [])
     public_hops = []
 
-    for hop in hops:
+    for index, hop in enumerate(hops, start=1):
         ip = hop.get("ip")
         hostname = hop.get("hostname")
 
@@ -34,7 +34,12 @@ def extract_public_hops(data):
             continue
 
         if is_public_ip(ip):
-            public_hops.append(hop)
+            public_hops.append({
+                "hop_index": index,
+                "ip": ip,
+                "hostname": hostname,
+                "evidence": hop.get("evidence", {})
+            })
 
     return public_hops
 
@@ -122,6 +127,7 @@ def assess_hop_reliability(hop):
         reliability = "SUSPICIOUS"
 
     return {
+        "hop_index": hop.get("hop_index"),
         "ip": ip,
         "hostname": hostname,
         "score": score,
@@ -155,6 +161,7 @@ def find_earliest_reliable_node(data):
     for hop in assessed_hops:
         if hop["reliability"] in ["TRUSTED", "LIKELY_TRUSTED"]:
             return {
+                "hop_index": hop["hop_index"],
                 "ip": hop["ip"],
                 "hostname": hop["hostname"],
                 "confidence": hop["score"] / 100,
