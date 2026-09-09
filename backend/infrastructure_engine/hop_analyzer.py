@@ -171,11 +171,25 @@ if __name__ == "__main__":
     mock_data = {
         "hops": [
             {
-                "ip": "192.168.1.10",
-                "hostname": "internal.local"
+                "ip": "8.8.8.10",
+                "hostname": "suspicious1.example",
+                "evidence": {
+                    "dns_consistent": False,
+                    "authentication_consistent": False,
+                    "known_infrastructure": False
+                }
             },
             {
-                "ip": "8.8.8.8",
+                "ip": "8.8.8.20",
+                "hostname": "suspicious2.example",
+                "evidence": {
+                    "dns_consistent": False,
+                    "authentication_consistent": False,
+                    "known_infrastructure": False
+                }
+            },
+            {
+                "ip": "8.8.8.30",
                 "hostname": "relay.example.net",
                 "evidence": {
                     "dns_consistent": True,
@@ -184,16 +198,12 @@ if __name__ == "__main__":
                 }
             },
             {
-                "ip": "127.0.0.1",
-                "hostname": "localhost"
-            },
-            {
-                "ip": "1.1.1.1",
+                "ip": "8.8.8.40",
                 "hostname": "mail.example.com",
                 "evidence": {
-                    "dns_consistent": False,
-                    "authentication_consistent": False,
-                    "known_infrastructure": False
+                    "dns_consistent": True,
+                    "authentication_consistent": True,
+                    "known_infrastructure": True
                 }
             }
         ]
