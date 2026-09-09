@@ -1,5 +1,5 @@
 import json
-import re
+from datetime import datetime, timezone
 
 
 DNS_FILE = "dns_results.json"
@@ -8,287 +8,282 @@ OUTPUT_FILE = "infrastructure_results.json"
 
 
 # ============================================================
-# Provider Detection Rules
-# ============================================================
-
-MX_PROVIDERS = {
-    "google": [
-        "google.com",
-        "googlemail.com",
-        "aspmx.l.google.com"
-    ],
-    "microsoft": [
-        "outlook.com",
-        "protection.outlook.com",
-        "mail.protection.outlook.com"
-    ],
-    "zoho": [
-        "zoho.com",
-        "zoho.eu"
-    ],
-    "proton": [
-        "protonmail.ch",
-        "protonmail.com"
-    ]
-}
-
-
-CNAME_PROVIDERS = {
-    "hubspot": [
-        "hubspot.net",
-        "hubspot.com"
-    ],
-    "cloudflare": [
-        "cloudflare.net",
-        "cloudflare.com"
-    ],
-    "aws_cloudfront": [
-        "cloudfront.net"
-    ],
-    "amazon": [
-        "amazonaws.com"
-    ],
-    "vercel": [
-        "vercel.app"
-    ],
-    "netlify": [
-        "netlify.app",
-        "netlify.com"
-    ]
-}
-
-
-TXT_PROVIDERS = {
-    "google": [
-        "google-site-verification",
-        "include:_spf.google.com"
-    ],
-    "microsoft": [
-        "MS=",
-        "spf.protection.outlook.com"
-    ],
-    "atlassian": [
-        "atlassian-domain-verification"
-    ],
-    "anthropic": [
-        "anthropic-domain-verification"
-    ],
-    "box": [
-        "box-domain-verification"
-    ],
-    "cisco": [
-        "ciscocidomainverification"
-    ],
-    "apple": [
-        "apple-domain-verification"
-    ],
-    "hubspot": [
-        "hubspotemail.net",
-        "hubspot"
-    ],
-    "virtru": [
-        "virtru-site-verify"
-    ]
-}
-
-
-# ============================================================
 # Utility Functions
 # ============================================================
 
-def clean_hostname(value):
+def clean_value(value):
     """
-    Remove DNS trailing dot and surrounding whitespace/quotes.
-    """
-
-    return value.strip().strip('"').rstrip(".").lower()
-
-
-def detect_provider(value, rules):
-    """
-    Detect providers from a DNS value.
-    Returns a list because one record can indicate
-    more than one provider.
+    Clean DNS values for consistent storage.
     """
 
-    value = value.lower()
+    if not isinstance(value, str):
+        return value
 
-    detected = []
+    return value.strip().strip('"').rstrip(".")
 
-    for provider, patterns in rules.items():
 
-        for pattern in patterns:
+def get_observed_time():
+    """
+    Return the time at which the investigation was performed.
+    """
 
-            if pattern.lower() in value:
-                detected.append(provider)
-                break
-
-    return detected
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ============================================================
-# Analyze DNS
+# Parse MX Records
 # ============================================================
 
-def analyze_dns(dns_results):
+def parse_mx_records(records):
+    """
+    Convert MX records such as:
 
-    analysis = {}
+        1 aspmx.l.google.com.
 
-    for entry in dns_results:
+    into structured data.
+    """
 
-        domain = entry["domain"]
+    result = []
 
-        records = entry.get("records", {})
+    for record in records:
 
-        domain_analysis = {
+        parts = record.strip().rstrip(".").split()
 
-            "domain": domain,
+        if len(parts) >= 2:
 
-            "ip_addresses": {
-                "ipv4": records.get("A", []),
-                "ipv6": records.get("AAAA", [])
-            },
+            try:
+                priority = int(parts[0])
+            except ValueError:
+                priority = None
 
-            "email_providers": [],
+            mail_server = parts[1].rstrip(".")
 
-            "hosting_and_infrastructure": [],
+            result.append({
+                "priority": priority,
+                "host": mail_server
+            })
 
-            "third_party_services": [],
+        else:
 
-            "nameservers": [],
+            result.append({
+                "priority": None,
+                "host": record.rstrip(".")
+            })
 
-            "cname_relationships": [],
+    return result
 
-            "spf": [],
 
-            "other_txt": []
+# ============================================================
+# Parse SOA Records
+# ============================================================
+
+def parse_soa_record(record):
+    """
+    Convert an SOA record into structured fields.
+
+    Example:
+
+    ns55.domaincontrol.com.
+    dns.jomax.net.
+    2026082500
+    28800
+    7200
+    604800
+    600
+    """
+
+    parts = record.strip().rstrip(".").split()
+
+    if len(parts) < 7:
+        return {
+            "raw": record
         }
 
-        # ----------------------------------------------------
-        # A / AAAA
-        # ----------------------------------------------------
+    try:
+        serial = int(parts[2])
+    except ValueError:
+        serial = parts[2]
 
-        # Already stored above.
-        # These are useful later for IP intelligence.
+    try:
+        refresh = int(parts[3])
+    except ValueError:
+        refresh = parts[3]
+
+    try:
+        retry = int(parts[4])
+    except ValueError:
+        retry = parts[4]
+
+    try:
+        expire = int(parts[5])
+    except ValueError:
+        expire = parts[5]
+
+    try:
+        minimum_ttl = int(parts[6])
+    except ValueError:
+        minimum_ttl = parts[6]
+
+    return {
+        "primary_nameserver": clean_value(parts[0]),
+        "responsible_mailbox": clean_value(parts[1]),
+        "serial": serial,
+        "refresh": refresh,
+        "retry": retry,
+        "expire": expire,
+        "minimum_ttl": minimum_ttl
+    }
 
 
-        # ----------------------------------------------------
-        # MX
-        # ----------------------------------------------------
+# ============================================================
+# DNS Evidence Analyzer
+# ============================================================
 
-        mx_records = records.get("MX", [])
+def analyze_dns_entry(entry, observed_at):
 
-        for mx in mx_records:
+    domain = entry.get("domain")
 
-            providers = detect_provider(
-                mx,
-                MX_PROVIDERS
-            )
+    records = entry.get(
+        "records",
+        {}
+    )
 
-            for provider in providers:
+    analysis = {
 
-                if provider not in domain_analysis["email_providers"]:
-                    domain_analysis["email_providers"].append(
-                        provider
-                    )
+        "domain": domain,
+
+        "observed_at": observed_at,
+
+        "ip_addresses": {
+            "ipv4": records.get("A", []),
+            "ipv6": records.get("AAAA", [])
+        },
+
+        "mail_servers": parse_mx_records(
+            records.get("MX", [])
+        ),
+
+        "name_servers": [
+            clean_value(value)
+            for value in records.get("NS", [])
+        ],
+
+        "canonical_names": [
+            clean_value(value)
+            for value in records.get("CNAME", [])
+        ],
+
+        "txt_records": [
+            clean_value(value)
+            for value in records.get("TXT", [])
+        ],
+
+        "srv_records": [
+            clean_value(value)
+            for value in records.get("SRV", [])
+        ],
+
+        "caa_records": [
+            clean_value(value)
+            for value in records.get("CAA", [])
+        ],
+
+        "soa": [],
+
+        "relationships": []
+    }
 
 
-        # ----------------------------------------------------
-        # CNAME
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # SOA
+    # --------------------------------------------------------
 
-        cname_records = records.get("CNAME", [])
+    for soa in records.get("SOA", []):
 
-        for cname in cname_records:
+        analysis["soa"].append(
+            parse_soa_record(soa)
+        )
 
-            target = clean_hostname(cname)
 
-            providers = detect_provider(
-                target,
-                CNAME_PROVIDERS
-            )
+    # --------------------------------------------------------
+    # Domain → IP relationships
+    # --------------------------------------------------------
 
-            relationship = {
+    for ip in analysis["ip_addresses"]["ipv4"]:
+
+        analysis["relationships"].append({
+            "source": domain,
+            "relationship": "RESOLVES_TO",
+            "target": ip,
+            "evidence": "DNS A record"
+        })
+
+
+    for ip in analysis["ip_addresses"]["ipv6"]:
+
+        analysis["relationships"].append({
+            "source": domain,
+            "relationship": "RESOLVES_TO",
+            "target": ip,
+            "evidence": "DNS AAAA record"
+        })
+
+
+    # --------------------------------------------------------
+    # Domain → CNAME relationships
+    # --------------------------------------------------------
+
+    for cname in analysis["canonical_names"]:
+
+        analysis["relationships"].append({
+            "source": domain,
+            "relationship": "CNAME",
+            "target": cname,
+            "evidence": "DNS CNAME record"
+        })
+
+
+    # --------------------------------------------------------
+    # Domain → Mail Server relationships
+    # --------------------------------------------------------
+
+    for mail_server in analysis["mail_servers"]:
+
+        host = mail_server.get("host")
+
+        if host:
+
+            analysis["relationships"].append({
                 "source": domain,
-                "type": "CNAME",
-                "target": target,
-                "detected_providers": providers
-            }
-
-            domain_analysis["cname_relationships"].append(
-                relationship
-            )
-
-            for provider in providers:
-
-                if provider not in domain_analysis["hosting_and_infrastructure"]:
-                    domain_analysis["hosting_and_infrastructure"].append(
-                        provider
-                    )
+                "relationship": "MAIL_SERVER",
+                "target": host,
+                "priority": mail_server.get("priority"),
+                "evidence": "DNS MX record"
+            })
 
 
-        # ----------------------------------------------------
-        # NS
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Domain → Nameserver relationships
+    # --------------------------------------------------------
 
-        nameservers = records.get("NS", [])
+    for nameserver in analysis["name_servers"]:
 
-        domain_analysis["nameservers"] = [
-            clean_hostname(ns)
-            for ns in nameservers
-        ]
-
-
-        # ----------------------------------------------------
-        # TXT
-        # ----------------------------------------------------
-
-        txt_records = records.get("TXT", [])
-
-        for txt in txt_records:
-
-            cleaned_txt = txt.strip().strip('"')
-
-            # SPF
-            if cleaned_txt.lower().startswith("v=spf1"):
-
-                domain_analysis["spf"].append(
-                    cleaned_txt
-                )
-
-            # Provider detection
-            providers = detect_provider(
-                cleaned_txt,
-                TXT_PROVIDERS
-            )
-
-            if providers:
-
-                for provider in providers:
-
-                    if provider not in domain_analysis["third_party_services"]:
-                        domain_analysis["third_party_services"].append(
-                            provider
-                        )
-
-            else:
-
-                domain_analysis["other_txt"].append(
-                    cleaned_txt
-                )
-
-
-        analysis[domain] = domain_analysis
+        analysis["relationships"].append({
+            "source": domain,
+            "relationship": "NAMESERVER",
+            "target": nameserver,
+            "evidence": "DNS NS record"
+        })
 
 
     return analysis
 
 
 # ============================================================
-# Add WHOIS / RDAP Information
+# WHOIS / RDAP Integration
 # ============================================================
 
-def merge_whois_information(
+def attach_registration_data(
     infrastructure,
     whois_results
 ):
@@ -297,12 +292,25 @@ def merge_whois_information(
 
         domain = whois.get("domain")
 
+        if not domain:
+            continue
+
         if domain not in infrastructure:
             continue
 
         infrastructure[domain]["registration"] = {
 
-            "registrar": whois.get("registrar"),
+            "status": whois.get(
+                "status"
+            ),
+
+            "source": whois.get(
+                "source"
+            ),
+
+            "registrar": whois.get(
+                "registrar"
+            ),
 
             "creation_date": whois.get(
                 "creation_date"
@@ -323,96 +331,172 @@ def merge_whois_information(
             "domain_status": whois.get(
                 "domain_status",
                 []
+            ),
+
+            "name_servers": whois.get(
+                "name_servers",
+                []
             )
         }
 
 
 # ============================================================
-# Build Infrastructure Relationships
+# Build Global Relationship Graph
 # ============================================================
 
-def build_relationships(infrastructure):
+def build_relationship_graph(infrastructure):
 
     relationships = []
 
     for domain, data in infrastructure.items():
 
-        # ----------------------------------------------------
-        # CNAME relationships
-        # ----------------------------------------------------
-
-        for cname in data.get(
-            "cname_relationships",
+        for relationship in data.get(
+            "relationships",
             []
         ):
 
-            relationships.append({
-                "source": cname["source"],
-                "relationship": "CNAME",
-                "target": cname["target"]
-            })
-
-
-        # ----------------------------------------------------
-        # Email provider relationships
-        # ----------------------------------------------------
-
-        for provider in data.get(
-            "email_providers",
-            []
-        ):
-
-            relationships.append({
-                "source": domain,
-                "relationship": "EMAIL_PROVIDER",
-                "target": provider
-            })
-
-
-        # ----------------------------------------------------
-        # Third-party service relationships
-        # ----------------------------------------------------
-
-        for provider in data.get(
-            "third_party_services",
-            []
-        ):
-
-            relationships.append({
-                "source": domain,
-                "relationship": "USES_SERVICE",
-                "target": provider
-            })
-
-
-        # ----------------------------------------------------
-        # Hosting relationships
-        # ----------------------------------------------------
-
-        for provider in data.get(
-            "hosting_and_infrastructure",
-            []
-        ):
-
-            relationships.append({
-                "source": domain,
-                "relationship": "HOSTED_OR_DEPLOYED_ON",
-                "target": provider
-            })
+            relationships.append(
+                relationship
+            )
 
 
     return relationships
 
 
 # ============================================================
-# Main Analyzer
+# Build Entity Inventory
+# ============================================================
+
+def build_entities(
+    infrastructure,
+    relationships
+):
+
+    entities = {}
+
+    def add_entity(
+        value,
+        entity_type,
+        source
+    ):
+
+        if not value:
+            return
+
+        key = f"{entity_type}:{value}"
+
+        if key not in entities:
+
+            entities[key] = {
+                "value": value,
+                "type": entity_type,
+                "sources": []
+            }
+
+        if source not in entities[key]["sources"]:
+
+            entities[key]["sources"].append(
+                source
+            )
+
+
+    # --------------------------------------------------------
+    # Domains and their observed infrastructure
+    # --------------------------------------------------------
+
+    for domain, data in infrastructure.items():
+
+        add_entity(
+            domain,
+            "domain",
+            "DNS"
+        )
+
+        for ip in data["ip_addresses"]["ipv4"]:
+
+            add_entity(
+                ip,
+                "ipv4",
+                "DNS A"
+            )
+
+        for ip in data["ip_addresses"]["ipv6"]:
+
+            add_entity(
+                ip,
+                "ipv6",
+                "DNS AAAA"
+            )
+
+        for cname in data["canonical_names"]:
+
+            add_entity(
+                cname,
+                "hostname",
+                "DNS CNAME"
+            )
+
+        for mail in data["mail_servers"]:
+
+            add_entity(
+                mail["host"],
+                "mail_server",
+                "DNS MX"
+            )
+
+        for ns in data["name_servers"]:
+
+            add_entity(
+                ns,
+                "nameserver",
+                "DNS NS"
+            )
+
+
+        # ----------------------------------------------------
+        # Registration entities
+        # ----------------------------------------------------
+
+        registration = data.get(
+            "registration"
+        )
+
+        if registration:
+
+            registrar = registration.get(
+                "registrar"
+            )
+
+            if registrar:
+
+                add_entity(
+                    registrar,
+                    "registrar",
+                    "RDAP"
+                )
+
+
+    # --------------------------------------------------------
+    # Return clean list
+    # --------------------------------------------------------
+
+    return list(
+        entities.values()
+    )
+
+
+# ============================================================
+# Main
 # ============================================================
 
 def analyze_infrastructure():
 
     print("\n" + "=" * 60)
-    print("INFRASTRUCTURE INTELLIGENCE ANALYZER")
+    print("INFRASTRUCTURE EVIDENCE ANALYZER")
     print("=" * 60)
+
+
+    observed_at = get_observed_time()
 
 
     # ========================================================
@@ -434,7 +518,7 @@ def analyze_infrastructure():
     # Load WHOIS
     # ========================================================
 
-    print("[*] Loading WHOIS/RDAP results...")
+    print("[*] Loading RDAP results...")
 
     with open(
         WHOIS_FILE,
@@ -449,20 +533,31 @@ def analyze_infrastructure():
     # Analyze DNS
     # ========================================================
 
-    print("[*] Analyzing DNS infrastructure...")
+    print("[*] Building infrastructure evidence...")
 
-    infrastructure = analyze_dns(
-        dns_results
-    )
+    infrastructure = {}
+
+
+    for entry in dns_results:
+
+        domain = entry.get("domain")
+
+        if not domain:
+            continue
+
+        infrastructure[domain] = analyze_dns_entry(
+            entry,
+            observed_at
+        )
 
 
     # ========================================================
-    # Merge WHOIS
+    # Attach RDAP
     # ========================================================
 
-    print("[*] Adding domain registration intelligence...")
+    print("[*] Attaching registration intelligence...")
 
-    merge_whois_information(
+    attach_registration_data(
         infrastructure,
         whois_results
     )
@@ -472,23 +567,40 @@ def analyze_infrastructure():
     # Build relationships
     # ========================================================
 
-    print("[*] Building infrastructure relationships...")
-
-    relationships = build_relationships(
+    relationships = build_relationship_graph(
         infrastructure
     )
 
 
     # ========================================================
-    # Final output
+    # Build entities
     # ========================================================
 
-    final_result = {
+    entities = build_entities(
+        infrastructure,
+        relationships
+    )
 
-        "domains": infrastructure,
 
-        "relationships": relationships
+    # ========================================================
+    # Final Result
+    # ========================================================
 
+    result = {
+
+        "investigation": {
+            "observed_at": observed_at,
+
+            "dns_source": DNS_FILE,
+
+            "rdap_source": WHOIS_FILE
+        },
+
+        "entities": entities,
+
+        "relationships": relationships,
+
+        "domains": infrastructure
     }
 
 
@@ -503,113 +615,40 @@ def analyze_infrastructure():
     ) as f:
 
         json.dump(
-            final_result,
+            result,
             f,
             indent=4
         )
 
 
+    # ========================================================
+    # Summary
+    # ========================================================
+
     print("\n[+] Infrastructure analysis completed")
 
     print(
-        f"[+] Results saved to: {OUTPUT_FILE}"
+        f"[+] Entities discovered: "
+        f"{len(entities)}"
+    )
+
+    print(
+        f"[+] Relationships discovered: "
+        f"{len(relationships)}"
+    )
+
+    print(
+        f"[+] Results saved to: "
+        f"{OUTPUT_FILE}"
     )
 
 
     # ========================================================
-    # Console Summary
+    # Relationship Preview
     # ========================================================
 
     print("\n" + "=" * 60)
-    print("INFRASTRUCTURE SUMMARY")
-    print("=" * 60)
-
-
-    for domain, data in infrastructure.items():
-
-        print(f"\nDomain: {domain}")
-
-
-        if data["ip_addresses"]["ipv4"]:
-
-            print("\nIPv4:")
-
-            for ip in data["ip_addresses"]["ipv4"]:
-                print(f"  {ip}")
-
-
-        if data["ip_addresses"]["ipv6"]:
-
-            print("\nIPv6:")
-
-            for ip in data["ip_addresses"]["ipv6"]:
-                print(f"  {ip}")
-
-
-        if data["email_providers"]:
-
-            print("\nEmail Providers:")
-
-            for provider in data["email_providers"]:
-                print(f"  {provider}")
-
-
-        if data["hosting_and_infrastructure"]:
-
-            print("\nHosting / Infrastructure:")
-
-            for provider in data["hosting_and_infrastructure"]:
-                print(f"  {provider}")
-
-
-        if data["third_party_services"]:
-
-            print("\nThird-Party Services:")
-
-            for provider in data["third_party_services"]:
-                print(f"  {provider}")
-
-
-        if data["cname_relationships"]:
-
-            print("\nCNAME Relationships:")
-
-            for relationship in data["cname_relationships"]:
-
-                print(
-                    f"  {relationship['source']} "
-                    f"→ {relationship['target']}"
-                )
-
-
-        registration = data.get(
-            "registration"
-        )
-
-        if registration:
-
-            print("\nRegistration:")
-
-            print(
-                f"  Registrar: "
-                f"{registration['registrar']}"
-            )
-
-            print(
-                f"  Creation: "
-                f"{registration['creation_date']}"
-            )
-
-            if registration["domain_age"]:
-
-                print(
-                    f"  Age: "
-                    f"{registration['domain_age']['years']} years"
-                )
-
-
-    print("\n" + "=" * 60)
-    print("RELATIONSHIPS")
+    print("OBSERVED RELATIONSHIPS")
     print("=" * 60)
 
     for relationship in relationships:
@@ -619,6 +658,9 @@ def analyze_infrastructure():
             f"--[{relationship['relationship']}]--> "
             f"{relationship['target']}"
         )
+
+
+    return result
 
 
 # ============================================================
