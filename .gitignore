@@ -1,0 +1,23 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+
+# Generated investigation results
+dns_results.json
+whois_results.json
+infrastructure_results.json
+ip_intelligence_results.json
+threat_intelligence_results.json
+final_investigation.json
+
+*.eml
