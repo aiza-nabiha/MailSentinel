@@ -186,4 +186,6 @@ final_investigation.json
 *.emldata/train_data.csv
 data/test.csv
 data/indian_email_dataset_500k.csv
-data/test_data.csv
+data/test_data.csv*.zip
+data/*.csv
+data/*.zip
