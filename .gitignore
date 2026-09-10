@@ -20,4 +20,4 @@ ip_intelligence_results.json
 threat_intelligence_results.json
 final_investigation.json
 
-*.eml
+*.emldata/train_data.csv
