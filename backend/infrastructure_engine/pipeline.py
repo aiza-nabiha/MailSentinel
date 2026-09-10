@@ -6,6 +6,8 @@ from dns_lookup import investigate_email
 from infrastructure_analyzer import analyze_infrastructure
 from ip_intelligence import investigate_ips
 from threat_intelligence import investigate_threats
+from domain_reputation import investigate_domain_reputation
+from tls_lookup import extract_tls
 
 
 def run_pipeline(eml_path):
@@ -23,6 +25,10 @@ def run_pipeline(eml_path):
         ↓
         Threat Intelligence
         ↓
+        Domain Reputation
+        ↓
+        TLS Certificate Analysis
+        ↓
         Final Investigation Artifact
     """
 
@@ -37,7 +43,7 @@ def run_pipeline(eml_path):
     # ==========================================================
 
     print("\n" + "-" * 70)
-    print("[1/4] Domain, DNS & RDAP Investigation")
+    print("[1/6] Domain, DNS & RDAP Investigation")
     print("-" * 70)
 
     email_result = investigate_email(eml_path)
@@ -49,7 +55,7 @@ def run_pipeline(eml_path):
     # ==========================================================
 
     print("\n" + "-" * 70)
-    print("[2/4] Infrastructure Analysis")
+    print("[2/6] Infrastructure Analysis")
     print("-" * 70)
 
     infrastructure_result = analyze_infrastructure()
@@ -61,7 +67,7 @@ def run_pipeline(eml_path):
     # ==========================================================
 
     print("\n" + "-" * 70)
-    print("[3/4] IP Intelligence")
+    print("[3/6] IP Intelligence")
     print("-" * 70)
 
     ip_result = investigate_ips(
@@ -75,7 +81,7 @@ def run_pipeline(eml_path):
     # ==========================================================
 
     print("\n" + "-" * 70)
-    print("[4/4] Threat Intelligence")
+    print("[4/6] Threat Intelligence")
     print("-" * 70)
 
     threat_result = investigate_threats(
@@ -83,6 +89,35 @@ def run_pipeline(eml_path):
     )
 
     print("\n[+] Threat intelligence completed")
+
+    # ==========================================================
+    # 5. DOMAIN REPUTATION
+    # ==========================================================
+
+    print("\n" + "-" * 70)
+    print("[5/6] Domain Reputation")
+    print("-" * 70)
+
+    domain_reputation_result = investigate_domain_reputation(
+        "dns_results.json"
+    )
+
+    print("\n[+] Domain reputation completed")
+
+    # ==========================================================
+    # 6. TLS CERTIFICATE ANALYSIS
+    # ==========================================================
+
+    print("\n" + "-" * 70)
+    print("[6/6] TLS Certificate Analysis")
+    print("-" * 70)
+
+    tls_results = [
+        extract_tls(domain)
+        for domain in email_result.get("domains", [])
+    ]
+
+    print("\n[+] TLS certificate analysis completed")
 
     # ==========================================================
     # BUILD FINAL INVESTIGATION ARTIFACT
@@ -121,7 +156,14 @@ def run_pipeline(eml_path):
         "threat_intelligence": threat_result.get(
             "ips",
             []
-        )
+        ),
+
+        "domain_reputation": domain_reputation_result.get(
+            "domains",
+            []
+        ),
+
+        "tls_certificates": tls_results
     }
 
     # ==========================================================
