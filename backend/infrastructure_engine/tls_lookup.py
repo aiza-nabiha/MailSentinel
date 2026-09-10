@@ -100,42 +100,75 @@ def _days_until(date_str):
 
 
 # ==================================================================
-# REUSE TRACKING ACROSS DOMAINS
+# PERSISTENCE + REUSE TRACKING ACROSS DOMAINS
 # ==================================================================
 
-def _load_seen_fingerprints():
+def _load_all_results():
     """
-    Load fingerprint -> [domains] mappings from previous runs, so we
-    can flag when today's domain shares a cert with one seen before
-    (even in an earlier investigation, not just this batch).
+    Load every previously saved TLS result (across all past runs),
+    as a plain list of result dicts.
     """
 
     if not os.path.exists(TLS_RESULTS_FILE):
-        return {}
+        return []
 
     with open(TLS_RESULTS_FILE, "r", encoding="utf-8") as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError:
-            return {}
+            return []
 
-    seen = {}
+    return data.get("domains", [])
 
-    for entry in data.get("domains", []):
+
+def _symmetrize_cert_sharing(all_results):
+    """
+    Recompute cert_shared_with for EVERY saved domain based on the
+    full current set of fingerprints, so the relationship is always
+    bidirectional -- if B shares a cert with A, A also shows B.
+    This is recalculated fresh every time, so nothing goes stale.
+    """
+
+    fp_to_domains = {}
+
+    for entry in all_results:
         fp = entry.get("fingerprint_sha256")
         if fp:
-            seen.setdefault(fp, []).append(entry["domain"])
+            fp_to_domains.setdefault(fp, []).append(entry["domain"])
 
-    return seen
+    for entry in all_results:
+        fp = entry.get("fingerprint_sha256")
+        if fp:
+            entry["cert_shared_with"] = [
+                d for d in fp_to_domains.get(fp, [])
+                if d != entry["domain"]
+            ]
+
+    return all_results
 
 
-def _save_result(new_entry, all_results):
+def _save_result(new_entry):
     """
-    Append this domain's result and persist, so future runs can
-    detect cert reuse against it too.
+    Insert or update this domain's result in the persisted file.
+    If the domain was already checked before, REPLACE its old
+    record instead of appending a duplicate. Then re-symmetrize
+    cert_shared_with across everything before writing.
     """
 
-    all_results.append(new_entry)
+    all_results = _load_all_results()
+
+    # replace existing entry for this domain if present, else append
+    replaced = False
+    for i, entry in enumerate(all_results):
+        if entry.get("domain") == new_entry["domain"]:
+            all_results[i] = new_entry
+            replaced = True
+            break
+
+    if not replaced:
+        all_results.append(new_entry)
+
+    all_results = _symmetrize_cert_sharing(all_results)
 
     output = {
         "investigation": {
@@ -147,6 +180,14 @@ def _save_result(new_entry, all_results):
     with open(TLS_RESULTS_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=4)
 
+    # return this domain's freshly-symmetrized entry so the caller
+    # gets the correct cert_shared_with value immediately
+    for entry in all_results:
+        if entry["domain"] == new_entry["domain"]:
+            return entry
+
+    return new_entry
+
 
 # ==================================================================
 # MAIN ENTRY POINT
@@ -157,7 +198,8 @@ def extract_tls(domain, port=DEFAULT_PORT):
     Fetch and analyze a domain's TLS certificate: issuer, validity
     window, which other domains it covers (SANs), and whether its
     exact fingerprint has been seen on a different domain before
-    (a reuse/shared-infrastructure signal).
+    (a reuse/shared-infrastructure signal, tracked across ALL past
+    runs, not just this batch).
     """
 
     domain = domain.strip().lower()
@@ -193,30 +235,11 @@ def extract_tls(domain, port=DEFAULT_PORT):
 
         result["san_domains"] = _get_san_domains(cert_dict)
         result["fingerprint_sha256"] = _fingerprint(cert_der)
-
-        # ---- check for reuse against previously seen domains ----
-        seen_fingerprints = _load_seen_fingerprints()
-
-        matching_domains = [
-            d for d in seen_fingerprints.get(
-                result["fingerprint_sha256"], []
-            )
-            if d != domain
-        ]
-
-        result["cert_shared_with"] = matching_domains
         result["status"] = "success"
 
-        # persist so the *next* domain checked can see this one too
-        existing = []
-        if os.path.exists(TLS_RESULTS_FILE):
-            with open(TLS_RESULTS_FILE, "r", encoding="utf-8") as f:
-                try:
-                    existing = json.load(f).get("domains", [])
-                except json.JSONDecodeError:
-                    existing = []
-
-        _save_result(result, existing)
+        # persist (adds/replaces this domain) and get back the
+        # correctly symmetrized cert_shared_with for THIS domain
+        result = _save_result(result)
 
     except socket.timeout:
         result["error"] = "Connection timed out"
