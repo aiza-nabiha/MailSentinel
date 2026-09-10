@@ -20,4 +20,7 @@ ip_intelligence_results.json
 threat_intelligence_results.json
 final_investigation.json
 
-*.eml
+*.emldata/train_data.csv
+data/test.csv
+data/indian_email_dataset_500k.csv
+data/test_data.csv
