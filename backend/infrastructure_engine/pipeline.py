@@ -1,189 +1,152 @@
+"""
+Pipeline: takes a single .eml file and runs it through every
+Person 3 module, producing ONE combined JSON object per email.
+This is the file Person 4 (correlation engine) and Person 5
+(dashboard) should consume -- they should never need to open
+dns_results.json, whois_results.json, tls_results.json, etc.
+separately.
+"""
+
 import json
-import sys
 from datetime import datetime, timezone
 
-from dns_lookup import investigate_email
-from infrastructure_analyzer import analyze_infrastructure
-from ip_intelligence import investigate_ips
-from threat_intelligence import investigate_threats
+from domain_extract import extract_domains
+from whois_lookup import extract_whois
+from dns_lookup import get_dns_records, get_registrable_domain
+from domain_reputation import check_domain_reputation
+from tls_lookup import extract_tls
+from risk_scorer import compute_risk
 
+
+# ==================================================================
+# PER-DOMAIN INVESTIGATION
+# ==================================================================
+
+def investigate_domain(domain):
+    """
+    Runs every lookup for a single domain and returns one combined
+    dict. Risk is NOT computed here -- it needs to see ALL domains
+    at once (for the infrastructure-reuse check), so that happens
+    in a second pass after every domain has been looked up.
+    """
+
+    domain_record = {
+        "domain": domain,
+        "whois": {},
+        "dns": {},
+        "tls": {},
+        "reputation": {},
+    }
+
+    # ---- DNS (run on the exact domain/subdomain as extracted) ----
+    try:
+        domain_record["dns"] = get_dns_records(domain) or {}
+    except Exception as e:
+        domain_record["dns"] = {"error": str(e)}
+
+    # ---- WHOIS/RDAP (must run on the REGISTRABLE domain --
+    #      subdomains like info.tigergraph.com will fail RDAP) ----
+    try:
+        registrable = get_registrable_domain(domain) or domain
+        domain_record["whois"] = extract_whois(registrable) or {}
+    except Exception as e:
+        domain_record["whois"] = {"error": str(e)}
+
+    # ---- TLS (run on the exact domain as extracted) ----
+    try:
+        domain_record["tls"] = extract_tls(domain) or {}
+    except Exception as e:
+        domain_record["tls"] = {"error": str(e)}
+
+    # ---- Reputation (checks the domain directly, no IP needed) ----
+    try:
+        domain_record["reputation"] = check_domain_reputation(domain) or {}
+    except Exception as e:
+        domain_record["reputation"] = {"error": str(e)}
+
+    return domain_record
+
+
+# ==================================================================
+# FULL EMAIL PIPELINE
+# ==================================================================
 
 def run_pipeline(eml_path):
     """
-    Run the complete email investigation pipeline.
-
-    Flow:
-        EML
-        ↓
-        Domain + DNS + RDAP
-        ↓
-        Infrastructure Analysis
-        ↓
-        IP Intelligence
-        ↓
-        Threat Intelligence
-        ↓
-        Final Investigation Artifact
+    Main entry point: give it an .eml file path, get back ONE
+    combined investigation object covering every domain found in
+    that email, fully enriched and risk-scored.
     """
 
-    print("\n" + "=" * 70)
-    print("        DIGITAL SAFETY COPILOT - INVESTIGATION PIPELINE")
-    print("=" * 70)
+    # ---- Step 1: extract every domain from the email ----
+    domains = extract_domains(eml_path)
 
-    print(f"\n[+] Input email: {eml_path}")
+    if not domains:
+        return {
+            "eml_path": eml_path,
+            "observed_at": datetime.now(timezone.utc).isoformat(),
+            "domains": {},
+            "warning": "No domains extracted from this email"
+        }
 
-    # ==========================================================
-    # 1. DOMAIN + DNS + RDAP
-    # ==========================================================
+    # ---- Step 2: investigate each domain independently ----
+    all_domains_data = {}
+    for domain in domains:
+        print(f"[*] Investigating {domain}...")
+        all_domains_data[domain] = investigate_domain(domain)
 
-    print("\n" + "-" * 70)
-    print("[1/4] Domain, DNS & RDAP Investigation")
-    print("-" * 70)
-
-    email_result = investigate_email(eml_path)
-
-    print("\n[+] Domain, DNS and RDAP investigation completed")
-
-    # ==========================================================
-    # 2. INFRASTRUCTURE ANALYSIS
-    # ==========================================================
-
-    print("\n" + "-" * 70)
-    print("[2/4] Infrastructure Analysis")
-    print("-" * 70)
-
-    infrastructure_result = analyze_infrastructure()
-
-    print("\n[+] Infrastructure analysis completed")
-
-    # ==========================================================
-    # 3. IP INTELLIGENCE
-    # ==========================================================
-
-    print("\n" + "-" * 70)
-    print("[3/4] IP Intelligence")
-    print("-" * 70)
-
-    ip_result = investigate_ips(
-        "infrastructure_results.json"
-    )
-
-    print("\n[+] IP intelligence completed")
-
-    # ==========================================================
-    # 4. THREAT INTELLIGENCE
-    # ==========================================================
-
-    print("\n" + "-" * 70)
-    print("[4/4] Threat Intelligence")
-    print("-" * 70)
-
-    threat_result = investigate_threats(
-        "infrastructure_results.json"
-    )
-
-    print("\n[+] Threat intelligence completed")
-
-    # ==========================================================
-    # BUILD FINAL INVESTIGATION ARTIFACT
-    # ==========================================================
-
-    print("\n" + "-" * 70)
-    print("Building final investigation artifact")
-    print("-" * 70)
-
-    final_result = {
-        "investigation": {
-            "observed_at": datetime.now(
-                timezone.utc
-            ).isoformat(),
-
-            "source": eml_path
-        },
-
-        "domains": email_result.get(
-            "domains",
-            []
-        ),
-
-        "registrable_domains": email_result.get(
-            "registrable_domains",
-            []
-        ),
-
-        "infrastructure": infrastructure_result,
-
-        "ip_intelligence": ip_result.get(
-            "ips",
-            []
-        ),
-
-        "threat_intelligence": threat_result.get(
-            "ips",
-            []
+    # ---- Step 3: compute risk for each domain, now that ALL
+    #      domains are known (needed for infrastructure-reuse check) ----
+    for domain in domains:
+        risk_result = compute_risk(
+            domain,
+            all_domains_data[domain],
+            all_domains_in_investigation=all_domains_data
         )
+        all_domains_data[domain]["risk"] = risk_result
+
+    # ---- Step 4: figure out the overall email-level verdict ----
+    highest_risk_domain = max(
+        all_domains_data.items(),
+        key=lambda item: item[1]["risk"]["risk_score"]
+    )
+
+    overall_result = {
+        "eml_path": eml_path,
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "domains_analyzed": len(domains),
+        "domains": all_domains_data,
+        "overall_verdict": {
+            "highest_risk_domain": highest_risk_domain[0],
+            "highest_risk_score": highest_risk_domain[1]["risk"]["risk_score"],
+            "highest_risk_level": highest_risk_domain[1]["risk"]["risk_level"],
+        }
     }
 
-    # ==========================================================
-    # SAVE FINAL RESULT
-    # ==========================================================
-
-    output_file = "final_investigation.json"
-
-    with open(
-        output_file,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        json.dump(
-            final_result,
-            f,
-            indent=4
-        )
-
-    print("\n[+] Final investigation saved to:")
-    print(f"    {output_file}")
-
-    print("\n" + "=" * 70)
-    print("              INVESTIGATION COMPLETE")
-    print("=" * 70)
-
-    return final_result
+    return overall_result
 
 
-# ==============================================================
-# MAIN
-# ==============================================================
+# ==================================================================
+# SAVE + STANDALONE TESTING
+# ==================================================================
+
+def save_pipeline_result(result, output_path="pipeline_output.json"):
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=4, default=str)
+    print(f"\n[+] Saved combined result to {output_path}")
+
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
+    eml_file = input("Enter path to .eml file: ").strip()
 
-        print("\nUsage:")
-        print("  python pipeline.py <email_file>")
+    print(f"\nRunning full pipeline on: {eml_file}\n")
 
-        print("\nExample:")
-        print("  python pipeline.py example.eml")
+    result = run_pipeline(eml_file)
 
-        sys.exit(1)
+    print("\n" + "=" * 60)
+    print("OVERALL VERDICT")
+    print("=" * 60)
+    print(json.dumps(result["overall_verdict"], indent=2))
 
-    email_file = sys.argv[1]
-
-    try:
-
-        run_pipeline(email_file)
-
-    except FileNotFoundError as e:
-
-        print("\n[ERROR] File not found:")
-        print(f"        {e}")
-
-        sys.exit(1)
-
-    except Exception as e:
-
-        print("\n[ERROR] Pipeline failed:")
-        print(f"        {e}")
-
-        sys.exit(1)
+    save_pipeline_result(result)
