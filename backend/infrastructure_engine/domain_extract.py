@@ -5,6 +5,18 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 
+# NOTE: We deliberately do NOT filter out major platforms
+# (facebook.com, google.com, etc.) here. Real phishing campaigns
+# abuse legitimate platforms' open redirects and tracking links,
+# so excluding them by name risks missing genuine abuse. Instead,
+# "noise" domains are naturally deprioritized downstream, at the
+# risk-scoring stage -- an old, well-reputed, properly-certified
+# domain will score as low-risk on its own evidence (WHOIS age,
+# TLS issuer trust, reputation feeds), with no exclusion list
+# needed. This trades a few extra API calls per email for not
+# silently missing a real signal.
+
+
 class LinkExtractor(HTMLParser):
 
     def __init__(self):
@@ -48,6 +60,19 @@ def extract_domains(eml_path):
     reply_to = msg.get("Reply-To", "")
 
     match = re.search(r'@([\w.-]+)', reply_to)
+
+    if match:
+        domains.add(match.group(1).lower())
+
+
+    # ---------------------------------
+    # 2b. Return-Path domain (often reveals real sending infra,
+    # even when From/Reply-To show a different brand)
+    # ---------------------------------
+
+    return_path = msg.get("Return-Path", "")
+
+    match = re.search(r'@([\w.-]+)', return_path)
 
     if match:
         domains.add(match.group(1).lower())
