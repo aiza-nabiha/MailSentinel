@@ -1,0 +1,9 @@
+From: "Paytm Security" <alerts@paytm-kyc321.xyz>
+To: victim4@example.com
+Subject: Your wallet will be deactivated
+Date: Mon, 04 Sep 2026 14:00:00 +0530
+Message-ID: <camp-a-4@paytm-kyc321.xyz>
+Received: from bulk-mailer-node7.cheaphost.net (bulk-mailer-node7.cheaphost.net [185.220.101.14]) by mail.example.com; Mon, 04 Sep 2026 14:00:00 +0530
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=alerts@paytm-kyc321.xyz; dkim=fail header.i=@paytm-kyc321.xyz; dmarc=fail header.from=paytm-kyc321.xyz p=reject
+
+Dear Customer, complete your pending KYC now, click here to avoid wallet deactivation.

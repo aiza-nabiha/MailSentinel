@@ -1,0 +1,9 @@
+From: "ICICI Security" <alerts@icici-alert789.xyz>
+To: victim3@example.com
+Subject: Unusual login detected on your account
+Date: Mon, 03 Sep 2026 13:00:00 +0530
+Message-ID: <camp-a-3@icici-alert789.xyz>
+Received: from bulk-mailer-node7.cheaphost.net (bulk-mailer-node7.cheaphost.net [185.220.101.13]) by mail.example.com; Mon, 03 Sep 2026 13:00:00 +0530
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=alerts@icici-alert789.xyz; dkim=fail header.i=@icici-alert789.xyz; dmarc=fail header.from=icici-alert789.xyz p=reject
+
+Dear Customer, we detected a login from a new device, click here to secure your account.

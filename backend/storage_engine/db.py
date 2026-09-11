@@ -28,9 +28,25 @@ def get_connection(db_path=None):
 
 
 def next_email_id(conn):
-    """Assigns email_XXXX sequentially based on current row count."""
+    """Assigns email_XXXX sequentially based on current row count.
+    NOTE: does not check for duplicates -- use get_or_create_email_id
+    instead when ingesting from a file path, to avoid double-counting
+    the same .eml as two different emails."""
     row = conn.execute("SELECT COUNT(*) FROM emails").fetchone()
     return f"email_{row[0] + 1:04d}"
+
+
+def get_or_create_email_id(conn, raw_eml_path):
+    """Returns the existing email_id for this exact file path if it was
+    already ingested/integrated before, otherwise assigns a new one.
+    Prevents the same .eml file from being stored as two separate emails
+    when ingest.py and integrate.py both process it."""
+    row = conn.execute(
+        "SELECT email_id FROM emails WHERE raw_eml_path = ?", (str(raw_eml_path),)
+    ).fetchone()
+    if row:
+        return row[0], True  # (email_id, already_existed)
+    return next_email_id(conn), False
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ import email
 from email import policy
 import os
 
-from db import get_connection, next_email_id
+from db import get_connection, get_or_create_email_id
 
 
 def parse_basic_headers(filepath):
@@ -45,7 +45,11 @@ def ingest_dir(eml_dir, db_path=None):
             print(f"  [skip] {fname}: {e}")
             continue
 
-        email_id = next_email_id(conn)
+        email_id, already_existed = get_or_create_email_id(conn, filepath)
+        if already_existed:
+            print(f"  [skip] {fname} already ingested as {email_id}")
+            continue
+
         conn.execute(
             """INSERT INTO emails (email_id, raw_eml_path, subject, from_header, to_header, date_header)
                VALUES (?, ?, ?, ?, ?, ?)""",

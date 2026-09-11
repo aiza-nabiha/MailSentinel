@@ -23,7 +23,7 @@ def _score_domain_age(whois_data):
     years ago is not.
     """
 
-    age_days = whois_data.get("domain_age", {}).get("days")
+    age_days = (whois_data.get("domain_age") or {}).get("days")
 
     if age_days is None:
         # Unknown age (WHOIS lookup failed/privacy-protected)
