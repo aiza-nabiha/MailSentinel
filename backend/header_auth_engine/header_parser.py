@@ -2,7 +2,7 @@ from email import policy
 from email.parser import BytesParser
 import re
 import json
-from received_parser import parse_received_chain
+from .received_parser import parse_received_chain
 
 def parse_email(eml_path):
     with open(eml_path, "rb") as file:
