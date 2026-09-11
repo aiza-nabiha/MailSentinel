@@ -187,3 +187,14 @@ data/**/*.zip
 **/ip_intelligence_results.json
 **/threat_intelligence_results.json
 **/final_investigation.json
+
+# Database files (generic - catches phishing.db etc.)
+*.db
+
+# Large phishing dataset (outside data/ folder, not caught by existing CSV rules)
+backend/storage_engine/phishtank_feed.csv
+
+# Additional cache/result files not caught above
+**/tls_results.json
+**/ip_intelligence_cache.json
+**/pipeline_output.json
