@@ -8,7 +8,19 @@ separately.
 """
 
 import json
+import re
 from datetime import datetime, timezone
+import sys
+import os
+
+BACKEND_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")
+)
+
+sys.path.insert(0, BACKEND_PATH)
+
+from header_auth_engine.received_parser import parse_received_chain
+from ip_intelligence import investigate_reliable_hop
 
 from domain_extract import extract_domains
 from whois_lookup import extract_whois
@@ -81,6 +93,39 @@ def run_pipeline(eml_path):
     # ---- Step 1: extract every domain from the email ----
     domains = extract_domains(eml_path)
 
+    # ---- Step 1B: Received-chain + IP intelligence investigation ----
+    received_chain = []
+
+    try:
+        with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
+            email_content = f.read()
+
+        received_headers = re.findall(
+            r"^Received:.*?(?=\n\S|\Z)",
+            email_content,
+            re.IGNORECASE | re.MULTILINE | re.DOTALL
+        )
+
+        received_chain = parse_received_chain(received_headers)
+
+    except Exception as e:
+        print(f"[!] Received-chain parsing failed: {e}")
+
+    hop_data = {
+        "hops": [
+            {
+                "hop_index": hop.get("hop", index),
+                "ip": hop.get("from_ip"),
+                "hostname": hop.get("from_host"),
+                "evidence": {}
+            }
+            for index, hop in enumerate(received_chain, start=1)
+            if hop.get("from_ip")
+        ]
+    }
+
+    reliable_hop_result = investigate_reliable_hop(hop_data)
+
     if not domains:
         return {
             "eml_path": eml_path,
@@ -115,6 +160,8 @@ def run_pipeline(eml_path):
         "eml_path": eml_path,
         "observed_at": datetime.now(timezone.utc).isoformat(),
         "domains_analyzed": len(domains),
+        "received_chain": received_chain,
+        "reliable_hop_analysis": reliable_hop_result,
         "domains": all_domains_data,
         "overall_verdict": {
             "highest_risk_domain": highest_risk_domain[0],
