@@ -174,18 +174,27 @@ __marimo__/
 
 .DS_Store
 
-# Generated investigation results
-dns_results.json
-whois_results.json
-infrastructure_results.json
-ip_intelligence_results.json
-threat_intelligence_results.json
-final_investigation.json
-
-# Datasets
-*.emldata/train_data.csv
-data/test.csv
-data/indian_email_dataset_500k.csv
-data/test_data.csv*.zip
+# Datasets and generated data
 data/*.csv
 data/*.zip
+data/**/*.csv
+data/**/*.zip
+
+# Generated investigation results
+**/dns_results.json
+**/whois_results.json
+**/infrastructure_results.json
+**/ip_intelligence_results.json
+**/threat_intelligence_results.json
+**/final_investigation.json
+
+# Database files (generic - catches phishing.db etc.)
+*.db
+
+# Large phishing dataset (outside data/ folder, not caught by existing CSV rules)
+backend/storage_engine/phishtank_feed.csv
+
+# Additional cache/result files not caught above
+**/tls_results.json
+**/ip_intelligence_cache.json
+**/pipeline_output.json
