@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from db import get_connection, next_email_id
+from db import get_connection, get_or_create_email_id
 
 THIS_DIR = Path(__file__).parent
 sys.path.append(str(THIS_DIR.parent / "header_auth_engine"))
@@ -90,8 +90,11 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data):
 
 def run(eml_path, db_path=None):
     conn = get_connection(db_path)
-    email_id = next_email_id(conn)
-    print(f"[*] Assigned {email_id} -> {eml_path}")
+    email_id, already_existed = get_or_create_email_id(conn, eml_path)
+    if already_existed:
+        print(f"[*] {eml_path} already ingested as {email_id} -- updating existing record")
+    else:
+        print(f"[*] Assigned {email_id} -> {eml_path}")
 
     header_data = build_email_data(eml_path) if build_email_data else None
     if header_data:

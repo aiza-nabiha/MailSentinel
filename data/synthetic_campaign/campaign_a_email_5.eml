@@ -1,0 +1,9 @@
+From: "SBI Security" <alerts@sbi-rewards654.xyz>
+To: victim5@example.com
+Subject: You have a pending reward of Rs 5000
+Date: Mon, 05 Sep 2026 15:00:00 +0530
+Message-ID: <camp-a-5@sbi-rewards654.xyz>
+Received: from bulk-mailer-node7.cheaphost.net (bulk-mailer-node7.cheaphost.net [185.220.101.15]) by mail.example.com; Mon, 05 Sep 2026 15:00:00 +0530
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=alerts@sbi-rewards654.xyz; dkim=fail header.i=@sbi-rewards654.xyz; dmarc=fail header.from=sbi-rewards654.xyz p=reject
+
+Dear Customer, claim your reward before it expires, click here to claim now.
