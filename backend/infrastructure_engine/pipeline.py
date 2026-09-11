@@ -10,6 +10,7 @@ separately.
 import json
 import re
 from datetime import datetime, timezone
+
 import sys
 import os
 
@@ -21,6 +22,7 @@ sys.path.insert(0, BACKEND_PATH)
 
 from header_auth_engine.received_parser import parse_received_chain
 from ip_intelligence import investigate_reliable_hop
+from infrastructure_risk import assess_infrastructure
 
 from domain_extract import extract_domains
 from whois_lookup import extract_whois
@@ -43,11 +45,11 @@ def investigate_domain(domain):
     """
 
     domain_record = {
-        "domain": domain,
-        "whois": {},
-        "dns": {},
-        "tls": {},
-        "reputation": {},
+    "domain": domain,
+    "whois": {},
+    "dns": {},
+    "tls": {},
+    "reputation": {},
     }
 
     # ---- DNS (run on the exact domain/subdomain as extracted) ----
@@ -125,6 +127,44 @@ def run_pipeline(eml_path):
     }
 
     reliable_hop_result = investigate_reliable_hop(hop_data)
+        # ---- Step 4: Final Infrastructure Risk Assessment ----
+
+    authentication = {}
+
+    try:
+        from header_auth_engine.header_parser import build_email_data
+
+        parsed_headers = build_email_data(eml_path)
+
+        authentication = parsed_headers.get(
+            "authentication",
+            {}
+        )
+
+    except Exception as e:
+        print(f"[!] Authentication parsing failed: {e}")
+
+    earliest_node = (
+        reliable_hop_result.get("earliest_reliable_node")
+        if isinstance(reliable_hop_result, dict)
+        else None
+    )
+
+    ip_intelligence = (
+        reliable_hop_result.get("ip_intelligence", {})
+        if isinstance(reliable_hop_result, dict)
+        else {}
+    )
+
+    infrastructure_risk = assess_infrastructure(
+        reliable_hop_analysis=reliable_hop_result.get(
+            "earliest_reliable_node", {}
+        ),
+        ip_intelligence=reliable_hop_result.get(
+            "ip_intelligence", {}
+        ),
+        authentication=authentication
+    )
 
     if not domains:
         return {
@@ -162,6 +202,7 @@ def run_pipeline(eml_path):
         "domains_analyzed": len(domains),
         "received_chain": received_chain,
         "reliable_hop_analysis": reliable_hop_result,
+        "infrastructure_risk": infrastructure_risk,
         "domains": all_domains_data,
         "overall_verdict": {
             "highest_risk_domain": highest_risk_domain[0],
