@@ -1,0 +1,9 @@
+From: "SBI Security" <alerts@sbi-verify123.xyz>
+To: victim1@example.com
+Subject: Urgent: Your account will be suspended
+Date: Mon, 01 Sep 2026 11:00:00 +0530
+Message-ID: <camp-a-1@sbi-verify123.xyz>
+Received: from bulk-mailer-node7.cheaphost.net (bulk-mailer-node7.cheaphost.net [185.220.101.11]) by mail.example.com; Mon, 01 Sep 2026 11:00:00 +0530
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=alerts@sbi-verify123.xyz; dkim=fail header.i=@sbi-verify123.xyz; dmarc=fail header.from=sbi-verify123.xyz p=reject
+
+Dear Customer, click here to verify your account immediately or it will be suspended.
