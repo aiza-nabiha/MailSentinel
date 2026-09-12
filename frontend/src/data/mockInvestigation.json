@@ -1,0 +1,55 @@
+{
+  "investigation_id": "inv_8f21ac93",
+  "analyzed_at": "2026-09-12T09:14:00Z",
+  "risk_score": 87,
+  "risk_level": "High",
+  "highest_risk_domain": "fake-bank.xyz",
+  "summary": "This email impersonates a banking security notice, requests login credentials on a domain registered four days ago, and fails all three authentication checks.",
+  "reasons": [
+    { "id": "cred", "icon": "🔐", "title": "Credential request detected", "source": "Content ML", "weight": 28, "detail": "Pattern: \"verify your account\" + embedded login form language. Model confidence: 0.94" },
+    { "id": "url", "icon": "🌐", "title": "Suspicious URL", "source": "URL Analysis", "weight": 22, "detail": "hxxps://fake-bank.xyz/secure/login — flagged on 3 of 9 blocklists" },
+    { "id": "mismatch", "icon": "⚠️", "title": "Sender / domain mismatch", "source": "Header Analysis", "weight": 19, "detail": "Display name \"Chase Bank Security\" vs actual domain secure-chase-verify.xyz" },
+    { "id": "auth", "icon": "🛡️", "title": "Failed SPF / DKIM / DMARC", "source": "Header Analysis", "weight": 18, "detail": "SPF: fail, DKIM: fail, DMARC: fail. Sending IP not in authorized senders." }
+  ],
+  "domain_info": {
+    "domain": "fake-bank.xyz",
+    "domain_age_days": 4,
+    "registered_on": "2026-09-08",
+    "registrar": "NameCheap, Inc.",
+    "tls_issuer": "Let's Encrypt",
+    "tls_expiry": "2026-12-06",
+    "reputation": "Poor",
+    "blocklist_hits": "3 / 9",
+    "ip": "185.220.101.47",
+    "asn": "AS208091",
+    "location": "Bucharest, RO",
+    "hosting": "M247 Europe SRL"
+  },
+  "relay_path": [
+    { "label": "Sender", "sub": "secure-chase-verify.xyz", "verified": false, "trusted": false, "ip": "—", "location": "Origin (claimed)", "hosting": "—", "note": "Display name spoofs \"Chase Bank Security\"" },
+    { "label": "Hop 1", "sub": "185.220.101.47", "verified": false, "trusted": false, "ip": "185.220.101.47", "location": "Bucharest, Romania", "hosting": "M247 Europe SRL", "note": "Known Tor-adjacent hosting range" },
+    { "label": "Hop 2", "sub": "104.21.9.18", "verified": false, "trusted": false, "ip": "104.21.9.18", "location": "San Francisco, US", "hosting": "Cloudflare, Inc.", "note": "Reverse-proxy pass-through, low signal" },
+    { "label": "Trusted hop", "sub": "mx.google.com", "verified": true, "trusted": true, "ip": "142.250.82.27", "location": "Mountain View, US", "hosting": "Google LLC", "note": "Chain verified from here onward" },
+    { "label": "Recipient", "sub": "you@gmail.com", "verified": true, "trusted": false, "ip": "—", "location": "Recipient mailbox", "hosting": "Google Workspace", "note": "Final delivery" }
+  ],
+  "campaign_correlation": {
+    "matched_investigations": 2,
+    "nodes": [
+      { "id": "email", "x": 450, "y": 220, "icon": "📧", "label": "This email", "core": true },
+      { "id": "domain", "x": 270, "y": 120, "icon": "🌐", "label": "fake-bank.xyz" },
+      { "id": "ip", "x": 640, "y": 110, "icon": "🖥", "label": "185.220.101.47" },
+      { "id": "tls", "x": 250, "y": 320, "icon": "🔐", "label": "TLS cert" },
+      { "id": "ns", "x": 640, "y": 340, "icon": "🌐", "label": "ns1.freehost.io" },
+      { "id": "camp1", "x": 90, "y": 220, "icon": "📧", "label": "invoice-alert.top" },
+      { "id": "camp2", "x": 800, "y": 220, "icon": "📧", "label": "chase-verify-id.com" }
+    ],
+    "edges": [
+      { "a": "email", "b": "domain", "type": "verified", "confidence": 1.0, "reason": "Email links directly to this domain" },
+      { "a": "email", "b": "ip", "type": "verified", "confidence": 1.0, "reason": "Resolves to this IP at analysis time" },
+      { "a": "domain", "b": "tls", "type": "verified", "confidence": 1.0, "reason": "Domain presents this TLS certificate" },
+      { "a": "ip", "b": "ns", "type": "corroborated", "confidence": 0.76, "reason": "Shares nameserver infrastructure" },
+      { "a": "tls", "b": "camp1", "type": "corroborated", "confidence": 0.91, "reason": "Shares TLS certificate fingerprint" },
+      { "a": "ns", "b": "camp2", "type": "inferred", "confidence": 0.58, "reason": "AI-inferred: similar registration pattern, same registrar window" }
+    ]
+  }
+}
