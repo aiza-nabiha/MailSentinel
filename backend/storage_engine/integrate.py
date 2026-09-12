@@ -23,7 +23,7 @@ import json
 import sys
 from pathlib import Path
 
-from db import get_connection, get_or_create_email_id
+from db import get_connection, get_or_create_email_id, get_or_create_user, archive_raw_email
 
 THIS_DIR = Path(__file__).parent
 BACKEND_ROOT = THIS_DIR.parent
@@ -115,7 +115,7 @@ def run_fingerprint(eml_path):
 
 
 def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
-                         classifier_data=None, classifier_source=None, fingerprint_data=None):
+                         classifier_data=None, classifier_source=None, fingerprint_data=None, user_id=None):
     meta = header_data.get("email_metadata", {}) if header_data else {}
     risk_score, verdict = None, None
     if pipeline_data and "overall_verdict" in pipeline_data:
@@ -124,10 +124,10 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
 
     conn.execute(
         """INSERT OR REPLACE INTO emails
-           (email_id, raw_eml_path, subject, from_header, to_header, date_header,
+           (email_id, user_id, raw_eml_path, subject, from_header, to_header, date_header,
             overall_risk_score, verdict)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (email_id, eml_path, meta.get("subject"), meta.get("from"), meta.get("to"),
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (email_id, user_id, eml_path, meta.get("subject"), meta.get("from"), meta.get("to"),
          meta.get("date"), risk_score, verdict),
     )
 
@@ -212,8 +212,11 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
         )
 
 
-def run(eml_path, db_path=None):
+def run(eml_path, db_path=None, user_id=None):
     conn = get_connection(db_path)
+    if user_id:
+        get_or_create_user(conn, user_id)
+
     email_id, already_existed = get_or_create_email_id(conn, eml_path)
     if already_existed:
         print(f"[*] {eml_path} already ingested as {email_id} -- updating existing record")
@@ -239,7 +242,22 @@ def run(eml_path, db_path=None):
               f"(brands targeted: {fingerprint_data['typosquat']['targeted_brands']})")
 
     insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
-                         classifier_data, classifier_source, fingerprint_data)
+                         classifier_data, classifier_source, fingerprint_data, user_id)
+
+    # Archive the raw email (encrypted) for future model retraining --
+    # separate from the derived-signal tables above. Skips gracefully
+    # if DB_ENCRYPTION_KEY isn't configured yet, so this never blocks
+    # today's analysis while you're still setting up encryption.
+    try:
+        with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
+            raw_content = f.read()
+        archive_raw_email(conn, email_id, user_id, raw_content, header_data)
+        print("[*] Raw email archived (encrypted) for future training")
+    except RuntimeError as e:
+        print(f"[!] Skipping archive -- encryption not configured: {e}")
+    except Exception as e:
+        print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
+
     conn.commit()
     print(f"[+] {email_id} stored.")
     conn.close()
@@ -250,5 +268,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--eml", required=True)
     parser.add_argument("--db", default=None)
+    parser.add_argument("--user", default=None, help="Gmail address to associate this email with")
     args = parser.parse_args()
-    run(args.eml, args.db)
+    run(args.eml, args.db, args.user)
