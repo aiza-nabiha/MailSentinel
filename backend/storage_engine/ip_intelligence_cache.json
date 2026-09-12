@@ -1,0 +1,82 @@
+{
+    "143.244.89.51": {
+        "ip": "143.244.89.51",
+        "status": "success",
+        "cached": true,
+        "ipinfo": {
+            "status": "skipped",
+            "source": "IPinfo",
+            "error": "IPINFO_TOKEN is not configured"
+        },
+        "reverse_dns": {
+            "status": "success",
+            "hostname": "bd77f69.bf51x.hubspotemail.net",
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "skipped",
+            "source": "AbuseIPDB",
+            "error": "ABUSEIPDB_API_KEY is not configured"
+        }
+    },
+    "108.174.3.206": {
+        "ip": "108.174.3.206",
+        "status": "success",
+        "cached": true,
+        "ipinfo": {
+            "status": "skipped",
+            "source": "IPinfo",
+            "error": "IPINFO_TOKEN is not configured"
+        },
+        "reverse_dns": {
+            "status": "success",
+            "hostname": "maile-bf.linkedin.com",
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "skipped",
+            "source": "AbuseIPDB",
+            "error": "ABUSEIPDB_API_KEY is not configured"
+        }
+    },
+    "108.174.0.198": {
+        "ip": "108.174.0.198",
+        "status": "success",
+        "cached": false,
+        "ipinfo": {
+            "status": "skipped",
+            "source": "IPinfo",
+            "error": "IPINFO_TOKEN is not configured"
+        },
+        "reverse_dns": {
+            "status": "success",
+            "hostname": "maile-gf.linkedin.com",
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "skipped",
+            "source": "AbuseIPDB",
+            "error": "ABUSEIPDB_API_KEY is not configured"
+        }
+    },
+    "108.174.3.198": {
+        "ip": "108.174.3.198",
+        "status": "success",
+        "cached": false,
+        "ipinfo": {
+            "status": "skipped",
+            "source": "IPinfo",
+            "error": "IPINFO_TOKEN is not configured"
+        },
+        "reverse_dns": {
+            "status": "success",
+            "hostname": "maile-af.linkedin.com",
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "skipped",
+            "source": "AbuseIPDB",
+            "error": "ABUSEIPDB_API_KEY is not configured"
+        }
+    }
+}
