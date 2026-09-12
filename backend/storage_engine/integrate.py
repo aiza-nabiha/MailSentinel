@@ -1,16 +1,21 @@
 """
 backend/storage_engine/integrate.py
 
-Combines Person 2's header/auth parser and Person 3's domain
-pipeline into one email_id-keyed record, persisted via db.py.
+Combines Person 2's header/auth parser, Person 3's domain +
+infrastructure pipeline, Person 1's content classifier, and
+Person 4's fingerprinting into one email_id-keyed record.
+
+IMPORT STYLE NOTE: header_parser.py, content_analysis.py, and
+pipeline.py's own internal cross-folder references now use
+package-qualified imports (e.g. "from .received_parser import ...",
+"from header_auth_engine.header_parser import ..."). This means we
+must add the BACKEND ROOT (not each subfolder) to sys.path and
+import via "header_auth_engine.header_parser", NOT a flat
+"from header_parser import ...", or Python raises "attempted
+relative import with no known parent package".
 
 Usage (from backend/storage_engine/):
     python integrate.py --eml ../../data/test_emails/example.eml
-
-If Person 3's pipeline module isn't importable yet (missing files,
-or no network access for WHOIS/DNS/TLS lookups), this still runs --
-it just stores header/auth data and skips domain_intel, so you're
-never blocked waiting on another module.
 """
 
 import argparse
@@ -21,23 +26,96 @@ from pathlib import Path
 from db import get_connection, get_or_create_email_id
 
 THIS_DIR = Path(__file__).parent
-sys.path.append(str(THIS_DIR.parent / "header_auth_engine"))
-sys.path.append(str(THIS_DIR.parent / "infrastructure_engine"))
+BACKEND_ROOT = THIS_DIR.parent
 
+# Add BACKEND ROOT once -- enables package-qualified imports like
+# "header_auth_engine.header_parser" and "threat_detection_engine.content_analysis"
+sys.path.append(str(BACKEND_ROOT))
+
+# infrastructure_engine's OWN internal imports are still flat
+# (e.g. "from domain_extract import extract_domains" inside pipeline.py),
+# so that folder itself also needs to be on sys.path directly.
+sys.path.append(str(BACKEND_ROOT / "infrastructure_engine"))
+
+# ---- Person 2: header/auth parsing ----
 try:
-    from header_parser import build_email_data
+    from header_auth_engine.header_parser import build_email_data
 except ImportError as e:
     print(f"[!] header_parser not importable: {e}")
     build_email_data = None
 
+# ---- Person 3: domain + infrastructure pipeline ----
 try:
     from pipeline import run_pipeline
 except ImportError as e:
     print(f"[!] pipeline (Person 3) not importable yet -- domain_intel will be skipped: {e}")
     run_pipeline = None
 
+# ---- Person 1: real classifier first, rule-based stub as fallback ----
+classify_email_real = None
+classify_email_fallback = None
 
-def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data):
+try:
+    from threat_detection_engine.core.content_analysis import analyze_email_file as classify_email_real
+    print("[i] Person 1 REAL classifier module found")
+except ImportError as e:
+    print(f"[!] Person 1 real classifier not importable yet: {e}")
+
+try:
+    sys.path.append(str(BACKEND_ROOT / "threat_detection_engine"))
+    from content_analysis_fallback import classify_email as classify_email_fallback
+except ImportError:
+    pass
+
+# ---- Person 4 Part A: fingerprinting (structural hash, typosquat, style) ----
+try:
+    sys.path.append(str(BACKEND_ROOT / "threat_graph_engine"))
+    from fingerprint import generate_fingerprint
+except ImportError as e:
+    print(f"[!] Person 4 fingerprint module not importable yet -- fingerprints will be skipped: {e}")
+    generate_fingerprint = None
+
+
+def run_classifier(eml_path):
+    """Tries the real model first; falls back to the rule-based stub on ANY failure."""
+    if classify_email_real:
+        try:
+            raw = classify_email_real(eml_path)
+            normalized = {
+                "phishing_score": raw.get("threat_probability"),
+                "verdict": raw.get("prediction"),
+                "reasons": raw.get("analysis", {}).get("supporting_evidence", []),
+                "extracted_urls": raw.get("url_intelligence", {}).get("url_details", []),
+                "url_intelligence": raw.get("url_intelligence"),
+                "sender_features": raw.get("sender_features"),
+                "email_structure": raw.get("email_structure"),
+            }
+            return normalized, "real_model"
+        except Exception as e:
+            print(f"[!] Real classifier failed ({e}) -- falling back to rule-based stub")
+
+    if classify_email_fallback:
+        try:
+            return classify_email_fallback(eml_path), "fallback_stub"
+        except Exception as e:
+            print(f"[!] Fallback stub also failed: {e}")
+
+    return None, None
+
+
+def run_fingerprint(eml_path):
+    """Runs Person 4's Part A fingerprinting. Returns None if not available/fails."""
+    if not generate_fingerprint:
+        return None
+    try:
+        return generate_fingerprint(eml_path)
+    except Exception as e:
+        print(f"[!] Fingerprinting failed: {e}")
+        return None
+
+
+def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
+                         classifier_data=None, classifier_source=None, fingerprint_data=None):
     meta = header_data.get("email_metadata", {}) if header_data else {}
     risk_score, verdict = None, None
     if pipeline_data and "overall_verdict" in pipeline_data:
@@ -87,6 +165,52 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data):
                  json.dumps(whois), json.dumps(ddata.get("dns", {})), json.dumps(tls), json.dumps(reputation)),
             )
 
+        # NEW: capture infrastructure_risk / reliable_hop_analysis / received_chain --
+        # pipeline.py now produces these but they were previously silently dropped.
+        infra_risk = pipeline_data.get("infrastructure_risk")
+        if infra_risk:
+            conn.execute(
+                """INSERT OR REPLACE INTO infrastructure_risk
+                   (email_id, risk_score, risk_level, reasons_json, evidence_json,
+                    reliable_hop_json, received_chain_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (email_id, infra_risk.get("risk_score"), infra_risk.get("risk_level"),
+                 json.dumps(infra_risk.get("reasons", [])), json.dumps(infra_risk.get("evidence", [])),
+                 json.dumps(pipeline_data.get("reliable_hop_analysis")),
+                 json.dumps(pipeline_data.get("received_chain", []))),
+            )
+
+    if classifier_data:
+        conn.execute(
+            """INSERT OR REPLACE INTO classifier_results
+               (email_id, phishing_score, verdict, reasons_json, extracted_urls_json,
+                source, url_intelligence_json, sender_features_json, email_structure_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (email_id, classifier_data.get("phishing_score"), classifier_data.get("verdict"),
+             json.dumps(classifier_data.get("reasons", [])),
+             json.dumps(classifier_data.get("extracted_urls", [])),
+             classifier_source,
+             json.dumps(classifier_data.get("url_intelligence")) if classifier_data.get("url_intelligence") else None,
+             json.dumps(classifier_data.get("sender_features")) if classifier_data.get("sender_features") else None,
+             json.dumps(classifier_data.get("email_structure")) if classifier_data.get("email_structure") else None),
+        )
+
+    if fingerprint_data:
+        conn.execute(
+            """INSERT OR REPLACE INTO fingerprints
+               (email_id, structural_hash, skeleton_type, typosquat_matches_json,
+                targeted_brands_json, style_colors_json, style_fonts_json, style_alt_texts_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (email_id,
+             fingerprint_data["structural"]["fingerprint_sha256"],
+             fingerprint_data["structural"]["skeleton_type"],
+             json.dumps(fingerprint_data["typosquat"]["matches"]),
+             json.dumps(fingerprint_data["typosquat"]["targeted_brands"]),
+             json.dumps(fingerprint_data["style"]["colors"]),
+             json.dumps(fingerprint_data["style"]["fonts"]),
+             json.dumps(fingerprint_data["style"]["alt_texts"])),
+        )
+
 
 def run(eml_path, db_path=None):
     conn = get_connection(db_path)
@@ -102,9 +226,20 @@ def run(eml_path, db_path=None):
 
     pipeline_data = run_pipeline(eml_path) if run_pipeline else None
     if pipeline_data:
-        print("[*] Person 3 domain pipeline: OK")
+        print("[*] Person 3 domain + infrastructure pipeline: OK")
 
-    insert_email_record(conn, email_id, eml_path, header_data, pipeline_data)
+    classifier_data, classifier_source = run_classifier(eml_path)
+    if classifier_data:
+        print(f"[*] Classifier ({classifier_source}): OK "
+              f"(verdict: {classifier_data['verdict']}, score: {classifier_data['phishing_score']})")
+
+    fingerprint_data = run_fingerprint(eml_path)
+    if fingerprint_data:
+        print(f"[*] Person 4 fingerprint: OK "
+              f"(brands targeted: {fingerprint_data['typosquat']['targeted_brands']})")
+
+    insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
+                         classifier_data, classifier_source, fingerprint_data)
     conn.commit()
     print(f"[+] {email_id} stored.")
     conn.close()
