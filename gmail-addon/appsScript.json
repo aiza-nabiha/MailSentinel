@@ -9,7 +9,7 @@
     "https://www.googleapis.com/auth/script.external_request"
   ],
   "addOns": {
-    "common": {i
+    "common": {
       "name": "MailSentinel",
 
       "logoUrl": "https://raw.githubusercontent.com/aiza-nabiha/MailSentinel/main/gmail-addon/logo.png",

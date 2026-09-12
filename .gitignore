@@ -214,6 +214,8 @@ data/**/*.zip
 
 # Large phishing dataset outside data/
 backend/storage_engine/phishtank_feed.csv
+backend/infrastructure_engine/phishtank_feed.csv
+phishtank_feed.csv
 
 # Additional cache / result files
 **/tls_results.json
