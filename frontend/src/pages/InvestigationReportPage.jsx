@@ -13,7 +13,9 @@ export default function InvestigationReportPage({ onNewInvestigation }) {
   return (
     <main className="report">
       <div className="report-context"><span className="context-status">● LIVE ANALYSIS</span><span>MAILSENTINEL / INVESTIGATION #{data.investigation_id.slice(-6).toUpperCase()}</span><button className="new-report-button" onClick={onNewInvestigation}>+ New</button><button className="export-button" onClick={() => window.print()}>↓ Download investigation report</button></div>
-        <section className="hero">
+      <div className="report-nav"><a href="#verdict">Verdict</a><a href="#evidence">Evidence <b>04</b></a><a href="#trace">Relay trace</a><a href="#campaign">Campaign graph</a></div>
+        <section className="hero" id="verdict">
+          <div className="report-hero-layout">
           <div className="hero-inner">
             <RiskGauge score={data.risk_score} level={data.risk_level} />
             <div>
@@ -24,11 +26,13 @@ export default function InvestigationReportPage({ onNewInvestigation }) {
               <p className="hero-summary">{data.summary}</p>
             </div>
           </div>
+          <aside className="threat-brief"><div className="brief-label">THREAT BRIEF</div><div className="brief-title">Credential phishing</div><p>Sender impersonation and a newly registered login domain indicate an active credential-harvesting attempt.</p><div className="brief-meta"><span>AUTH <b>3 failures</b></span><span>DOMAIN <b>4 days old</b></span><span>LINKS <b>2 campaign matches</b></span></div></aside>
+          </div>
         </section>
 
-        <section className="section">
+        <section className="section" id="evidence">
           <div className="section-head">
-            <div className="section-title">Why this score?</div>
+            <div><div className="section-kicker">MODEL REASONING</div><div className="section-title">Why this score?</div></div>
             <div className="section-sub">Tap a reason for the underlying evidence</div>
           </div>
           <div className="evidence-grid">
@@ -36,9 +40,9 @@ export default function InvestigationReportPage({ onNewInvestigation }) {
           </div>
         </section>
 
-        <section className="section">
+        <section className="section infra-section">
           <div className="section-head">
-            <div className="section-title">Domain & infrastructure</div>
+            <div><div className="section-kicker">INFRASTRUCTURE INTELLIGENCE</div><div className="section-title">Domain & infrastructure</div></div>
             <div className="section-sub">{data.domain_info.domain}</div>
           </div>
           <div className="infra-layout">
@@ -60,17 +64,17 @@ export default function InvestigationReportPage({ onNewInvestigation }) {
           </div>
         </section>
 
-        <section className="section">
+        <section className="section" id="trace">
           <div className="section-head">
-            <div className="section-title">Relay path</div>
+            <div><div className="section-kicker">MAIL ROUTING FORENSICS</div><div className="section-title">Relay path</div></div>
             <div className="section-sub">Tap a hop for details</div>
           </div>
           <RelayPath hops={data.relay_path} />
         </section>
 
-        <section className="section">
+        <section className="section campaign-section" id="campaign">
           <div className="section-head">
-            <div className="section-title">Campaign correlation</div>
+            <div><div className="section-kicker">LINK ANALYSIS</div><div className="section-title">Campaign correlation</div></div>
             <div className="section-sub">Hover a connection for the reason</div>
           </div>
           <div className="corr-banner">
