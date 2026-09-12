@@ -1,0 +1,1932 @@
+Delivered-To: asmikhatter2007@gmail.com
+Received: by 2002:a05:6504:538b:b0:308:da7f:9152 with SMTP id el11csp2069292ltb;
+        Sat, 22 Aug 2026 04:54:04 -0700 (PDT)
+X-Received: by 2002:a17:903:26c3:b0:2cf:4339:aaa with SMTP id d9443c01a7336-2d64b0c72d2mr267802855ad.12.1787399644503;
+        Sat, 22 Aug 2026 04:54:04 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787399644; cv=none;
+        d=google.com; s=arc-20260327;
+        b=scf2JD8vmHCslqwUn8lQiIBa6sgxSjSeMBqPilmKhd0uqHZqBE/GA/SEa5z3fFVdww
+         hydpqOu3FBfqVs1be4Ap9oGvD+5gPFx0qBBUwAqXKz8BCR4bvPeSeLaJN4jmB0brVlY8
+         X+EDw9yDPI8IULHPQ0m8PSMVRf/HPSGzfCPQIxDAp+QyH+9Vn1Qqz+Ncvh3U3P2P/5zJ
+         PHedUpC4NWRIeivyjvsBu2kakmZomBojqXRAceFWtyrRtx0BP+ujhMeUTnVkZaOtgGRL
+         A6rTm4YpVtk9s9+0Ox0o64WOcHqtAu7X+uSyDNfgMheiaWiur2a/nBeexX7EOvM82JDu
+         yzGw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=mime-version:list-unsubscribe-post:list-unsubscribe:list-id
+         :feedback-id:message-id:date:to:reply-to:from:subject:dkim-signature
+         :dkim-signature;
+        bh=p33z1irUi6sQyhuqJXVBYMQkvTzaL4UYdkU1FZfISrA=;
+        fh=SH+7dS0FjkK+ObpHJW2PwwR1cIp11p1gpGWXuM6+Bsk=;
+        b=WikQWvRGv+aNeX31tF1AGBsQg1wMoPQCfhZy9mQYaKTvVG3OmSYotD8ySo2BbAFzOY
+         QhzntM158RjzWZje6DRo995IdnDnb7XcBz+IR3c23TlaEGMzh5hkCMehbvjpzmIJza+f
+         U8NYslmBQSi2TjeT8U0j5NuluD9+6ZpsCQdyIvjNFStvf3iD2nX4VaHU+CJPj4pH3yag
+         206nHSppowVpeaHBm0pWRIFWDc9Pa9mYfwp8U/3H3UgZywJ5LGzn73XGOhbGSk2bVWzJ
+         8g4JKHtQB2hD7CixQR6xPsim/qkinbOwIlfsLF8095Rqbw9yP9fPXq6TuqNp79pPCuaP
+         hpeg==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@gmail.mcsv.net header.s=k2 header.b=BwAgwjh2;
+       dkim=pass header.i=@avinyaaedtech.com header.s=k3 header.b=cuiIYeD7;
+       spf=pass (google.com: domain of bounce-mc.us4_244715798.13363482.5272982-9e4d1b95fe@mail38.suw11.mcdlv.net designates 198.2.190.38 as permitted sender) smtp.mailfrom=bounce-mc.us4_244715798.13363482.5272982-9e4d1b95fe@mail38.suw11.mcdlv.net;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=avinyaaedtech.com
+Return-Path: <bounce-mc.us4_244715798.13363482.5272982-9e4d1b95fe@mail38.suw11.mcdlv.net>
+Received: from mail38.suw11.mcdlv.net (mail38.suw11.mcdlv.net. [198.2.190.38])
+        by mx.google.com with ESMTPS id d9443c01a7336-2d67677d193si21053175ad.20.2026.08.22.04.54.04
+        for <asmikhatter2007@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 22 Aug 2026 04:54:04 -0700 (PDT)
+Received-SPF: pass (google.com: domain of bounce-mc.us4_244715798.13363482.5272982-9e4d1b95fe@mail38.suw11.mcdlv.net designates 198.2.190.38 as permitted sender) client-ip=198.2.190.38;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@gmail.mcsv.net header.s=k2 header.b=BwAgwjh2;
+       dkim=pass header.i=@avinyaaedtech.com header.s=k3 header.b=cuiIYeD7;
+       spf=pass (google.com: domain of bounce-mc.us4_244715798.13363482.5272982-9e4d1b95fe@mail38.suw11.mcdlv.net designates 198.2.190.38 as permitted sender) smtp.mailfrom=bounce-mc.us4_244715798.13363482.5272982-9e4d1b95fe@mail38.suw11.mcdlv.net;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=avinyaaedtech.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.mcsv.net;
+	s=k2; t=1787399643; x=1787486043;
+	bh=p33z1irUi6sQyhuqJXVBYMQkvTzaL4UYdkU1FZfISrA=;
+	h=Subject:From:Reply-To:To:Date:Message-ID:X-MC-User:Feedback-ID:
+	 List-ID:List-Unsubscribe:List-Unsubscribe-Post:Content-Type:
+	 MIME-Version:CC:Date:Subject:From;
+	b=BwAgwjh2G9Jan/z/QYzI2xvMAoKq5PILGRRd5/JFqWiIQ2EUrVFUbIZA3C9wAHx5e
+	 1/a8VNdIaIkkcVj4IWrIPDzcGjmCWZPjt9r40IEV05741YcRkElPj1tIY5CYrebr1a
+	 J5z54ahvlfN+VxkxQpqYbuVp09+84txObKaSozlIx3hGfkld1SaNN8EoQfsXtcvyIS
+	 4BTC5kwP+E1GJevmJ4Ka2EQ7Eu+f/iKakNwC4H9fL7obsYPKk8vqDDLv6ao6iQCoCJ
+	 6JNgkTJiLW9XpdFjyE8Dwq4EvnSHYz4wtIFTNUW2XyLjgjyF49UZv/ch+EjUkQUTtC
+	 UJHBGqgLtqTmA==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=avinyaaedtech.com;
+	s=k3; t=1787399643; x=1787669643; i=hello@avinyaaedtech.com;
+	bh=p33z1irUi6sQyhuqJXVBYMQkvTzaL4UYdkU1FZfISrA=;
+	h=Subject:From:Reply-To:To:Date:Message-ID:X-MC-User:Feedback-ID:
+	 List-ID:List-Unsubscribe:List-Unsubscribe-Post:Content-Type:
+	 MIME-Version:CC:Date:Subject:From;
+	b=cuiIYeD7bFU9YfOjEDJPhJruIuTNrj1tRWtfuM073YWPCGYiyy8jsXdGUa4uO+4XG
+	 YAY8wl6yfOtTHRsKLY5eyABMBZMi+vqZ5AGsbHUyLdUAhF6T5DWlDU4D9SZSDImHji
+	 TdjbfHLmNPxmvwnJNtA4clY73ixqLoUOjBb8A8pv97eIjYLZu0c2qsBzD0QhGrLm2E
+	 X8dT6PGa46zJKUvjXa06ibGedTRnG8GNL/NS5pOHoXHOqGNUqzQV1n5bthiU6fQxyM
+	 /XpwU/mt8MoSu24WZn3flKF5uqlhjyJIR13GJtRftBanq/FQDTdgr6ihlrBhvOePHE
+	 FO4+qBj2p+FhA==
+Received: from localhost (localhost [127.0.0.1])
+	by mail38.suw11.mcdlv.net (Mailchimp) with ESMTP id 4hRwZ351KRzLfHGXc
+	for <asmikhatter2007@gmail.com>; Sat, 22 Aug 2026 11:54:03 +0000 (UTC)
+Subject: =?utf-8?Q?=E2=9B=94=20Weak=20Tool=20Ruins=20Your=20Credibility?=
+From: Kreativespace <hello@avinyaaedtech.com>
+Reply-To: =?utf-8?Q?Kreativespace?= <hello@avinyaaedtech.com>
+To: <asmikhatter2007@gmail.com>
+Date: Sat, 22 Aug 2026 11:54:02 +0000
+Message-ID: <18482c0a7f4609d9dd0874641.9e4d1b95fe.20260822115357.7edcf03a46.12b58a74@mail38.suw11.mcdlv.net>
+X-Mailer: Mailchimp Mailer - **CID7edcf03a469e4d1b95fe**
+X-Campaign: mailchimp18482c0a7f4609d9dd0874641.7edcf03a46
+X-campaignid: mailchimp18482c0a7f4609d9dd0874641.7edcf03a46
+X-Report-Abuse: Please report abuse for this campaign here: https://mailchimp.com/contact/abuse/?u=18482c0a7f4609d9dd0874641&id=7edcf03a46&e=9e4d1b95fe
+X-MC-User: 18482c0a7f4609d9dd0874641
+Feedback-ID: 244715798:244715798.13363482:us4:mc
+List-ID: 18482c0a7f4609d9dd0874641mc list <18482c0a7f4609d9dd0874641.391975.list-id.mcsv.net>
+X-Accounttype: pr
+List-Unsubscribe: <https://kreativespace.us4.list-manage.com/unsubscribe?u=18482c0a7f4609d9dd0874641&id=bdc8a77544&t=h&e=9e4d1b95fe&c=7edcf03a46&i=c72fc5efcf>, <mailto:unsubscribe-mc.us4_18482c0a7f4609d9dd0874641.7edcf03a46-9e4d1b95fe@unsubscribe.mailchimpapp.net?subject=unsubscribe>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Content-Type: multipart/alternative; boundary="_----------=_MCPart_32786861"
+MIME-Version: 1.0
+
+This is a multi-part message in MIME format
+
+--_----------=_MCPart_32786861
+Content-Type: text/plain; charset="utf-8"; format="fixed"
+Content-Transfer-Encoding: quoted-printable
+
+https://kreativespace.com/?utm_source=3DEmail&utm_medium=3DVisitors&utm_ca=
+mpaign=3DExhibition&utm_source=3DKreativespace&utm_campaign=3D7aea72c8e1-E=
+MAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Demail&utm_term=3D0_bdc8a77544-=
+7aea72c8e1-435429317
+
+Don=E2=80=99t Miss > Start Using > Improve Writing
+https://kreativespace.com/?utm_source=3DEmail&utm_medium=3DVisitors&utm_ca=
+mpaign=3DExhibition&utm_source=3DKreativespace&utm_campaign=3D7aea72c8e1-E=
+MAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Demail&utm_term=3D0_bdc8a77544-=
+7aea72c8e1-435429317
+
+Hi [Name]=2C
+Meet Kreativespace=2C AI Writing Tools that will help
+you in making content accurate=2C polished in seconds.
+Don=E2=80=99t Let Messy Writing Harm your Credibility.
+AI Writing Tools that you can use ANYTIME ANYWHERE ON ANY DEVICE.
+
+Summarizer
+Summarizer
+Students=2C researchers=2C professionals
+Understand content faster with clarity
+Supports PDFs=2C No limit on words=2C best output
+Translator
+Translator
+Students=2C professionals=2C global users
+Translate content instantly across languages
+Supports documents=2C No limit on words=2C best output
+Paraphraser
+Paraphraser
+Students=2C writers=2C professionals
+Rewrite content with better synonyms & clarity
+No limit on words=2C natural output=2C Multiple Tones
+Plagiarism Checker
+Plagiarism Checker
+Students=2C researchers=2C content creators
+Detect duplicate content and risks
+Deep scanning=2C No limit on words=2C best output
+AI Detector
+AI Detector
+Students=2C educators=2C professionals
+Identify AI-generated content accurately
+Detailed analysis=2C No limit on words=2C best output
+Citation Generator
+Citation Generator
+Students=2C researchers=2C academic writers
+Create accurate citations in seconds
+Multiple styles supported=2C best output
+Grammar Checker
+Grammar Checker
+Students=2C professionals=2C writers
+Fix errors and improve clarity
+No limit on checks=2C accurate results=2C best output
+AI Humanizer
+AI Humanizer
+Students=2C professionals=2C writers
+Fix errors and improve clarity
+No limit on checks=2C accurate results=2C best output
+
+Improve my Communication (https://kreativespace.com/pricing?utm_source=3DE=
+mail&utm_medium=3DIntro&utm_campaign=3DKS&utm_source=3DKreativespace&utm_c=
+ampaign=3D7aea72c8e1-EMAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Demail&ut=
+m_term=3D0_bdc8a77544-7aea72c8e1-435429317)
+Powered by Avinyaa EdTech (https://www.avinyaaedtech.com/?utm_source=3DKre=
+ativespace&utm_campaign=3D7aea72c8e1-EMAIL_CAMPAIGN_2026_06_09_03_58&utm_m=
+edium=3Demail&utm_term=3D0_bdc8a77544-7aea72c8e1-435429317)
+Get Kreativespace App
+# #
+
+Follow Us On:
+https://www.facebook.com/thekreativespaceai/?utm_source=3DKreativespace&ut=
+m_campaign=3D7aea72c8e1-EMAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Demail=
+&utm_term=3D0_bdc8a77544-7aea72c8e1-435429317 https://www.linkedin.c=
+om/company/thekreativespace-ai/?utm_source=3DKreativespace&utm_campaign=3D=
+7aea72c8e1-EMAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Demail&utm_term=3D0=
+_bdc8a77544-7aea72c8e1-435429317 https://www.instagram.com/thekreati=
+vespaceai?utm_source=3DKreativespace&utm_campaign=3D7aea72c8e1-EMAIL_CAMPA=
+IGN_2026_06_09_03_58&utm_medium=3Demail&utm_term=3D0_bdc8a77544-7aea72c8e1=
+-435429317 https://x.com/kreativespaceai?utm_source=3DKreativespace&=
+utm_campaign=3D7aea72c8e1-EMAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Dema=
+il&utm_term=3D0_bdc8a77544-7aea72c8e1-435429317 https://www.youtube.=
+com/@thekreativespace-ai?utm_source=3DKreativespace&utm_campaign=3D7aea72c=
+8e1-EMAIL_CAMPAIGN_2026_06_09_03_58&utm_medium=3Demail&utm_term=3D0_bdc8a7=
+7544-7aea72c8e1-435429317
+
+This email was sent to asmikhatter2007@gmail.com (mailto:asmikhatter2007@gmail.com)
+why did I get this? (https://kreativespace.us4.list-manage.com/about?u=3D1=
+8482c0a7f4609d9dd0874641&id=3Dbdc8a77544&e=3D9e4d1b95fe&c=3D7edcf03a46)    =
+ unsubscribe from this list (https://kreativespace.us4.list-manage.com/uns=
+ubscribe?u=3D18482c0a7f4609d9dd0874641&id=3Dbdc8a77544&t=3Db&e=3D9e4d1b95fe&c=3D7edcf03a46&i=3Dc72fc5efcf)     update subscription pr=
+eferences (https://kreativespace.us4.list-manage.com/profile?u=3D18482c0a7=
+f4609d9dd0874641&id=3Dbdc8a77544&e=3D9e4d1b95fe&c=3D7edcf03a46)
+Kreativespace . Making Writing Accessible . for=2C Everyone . . India
+--_----------=_MCPart_32786861
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/ht=
+ml4/strict.dtd">
+<html>
+
+<head>
+    <title>Introduction1</title>
+    <meta name=3D"x-apple-disable-message-reformatting">
+    <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-=
+8">
+
+    <!-- utf-8 works for most cases -->
+    <meta name=3D"viewport" content=3D"width=3Ddevice-width=2C initial-sca=
+le=3D1.0">
+    <meta name=3D"color-scheme" content=3D"light">
+    <meta name=3D"supported-color-schemes" content=3D"light">
+    <!-- Forcing initial-scale shouldn't be necessary -->
+    <meta http-equiv=3D"X-UA-Compatible" content=3D"IE=3Dedge">
+    <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta name=3D"x-apple-disable-message-reformatting">
+    <meta name=3D"format-detection" content=3D"telephone=3Dno=2C date=3Dno=
+=2C address=3Dno=2C email=3Dno">
+    <link rel=3D"preconnect" href=3D"https://fonts.googleapis.com">
+    <link rel=3D"preconnect" href=3D"https://fonts.gstatic.com" crossorigi=
+n=3D"">
+    <link href=3D"https://fonts.googleapis.com/css2?family=3DRoboto:ital=
+=2Cwght@0=2C100..900;1=2C100..900&display=3Dswap" rel=3D"stylesheet">
+    <style type=3D"text/css">
+        @import url('https://fonts.googleapis.com/css2?family=3DRoboto:ita=
+l=2Cwght@0=2C100..900;1=2C100..900&display=3Dswap');
+
+        ul {
+            margin: 0 !important;
+        }
+
+        li {
+            padding-top: 6px !important;
+        }
+
+        body=2C
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        table {
+            margin: 0;
+            padding: 0;
+        }
+
+        td=2C
+        th=2C
+        tr=2C
+        p=2C
+        a {
+            margin: 0;
+            padding: 0;
+            color: #292929;
+            text-align: center;
+            font-family: "Roboto"=2C Roboto=2C sans-serif;
+            font-style: normal;
+            line-height: normal;
+        }
+
+        .hover-underline:hover {
+            text-decoration: underline !important;
+        }
+
+        .mobile-short {
+            width: 400px !important;
+        }
+
+        .footer-break {
+            width: 50% !important;
+        }
+
+
+        @media screen and (max-width:690px) {
+            .pad-t-20 {
+                padding-top: 20px !important;
+            }
+
+            .widFull {
+                width: 360px !important;
+                margin: 0 auto !important;
+                display: block !important;
+                padding-top: 24px !important;
+            }
+
+            .pad-lr-0 {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                display: block !important;
+            }
+
+            .mobile-reponsive {
+                width: 100% !important;
+                max-width: 600px !important;
+            }
+
+            .footer-break {
+                width: 100% !important;
+                display: block !important;
+                float: none !important;
+            }
+
+            .mobile-center {
+                float: none !important;
+                align-items: center !important;
+                align-content: center !important;
+                text-align: center !important;
+                margin: 0 auto !important;
+            }
+
+            .mobile-pad-0 {
+                padding-right: 0 !important;
+                padding-left: 0 !important;
+                margin: 0 auto !important;
+            }
+
+            .pad-16 {
+                padding-top: 24px !important;
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+                padding-bottom: 16px !important;
+            }
+
+            .pad-lr-16 {
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+            }
+
+            .pad-lrb-16 {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+                padding-bottom: 16px !important;
+            }
+
+            .pad-t-16 {
+                padding-top: 16px !important;
+            }
+
+            .pad-t-0 {
+                padding-top: 0px !important;
+            }
+
+            .displayBlock {
+                display: block !important;
+            }
+
+            .displayNone {
+                display: none !important;
+            }
+        }
+
+        @media screen and (max-width:500px) {
+            .mobile-short {
+                width: 320px !important;
+            }
+        }
+
+        @media screen and (max-width:480px) {
+            .widthFull {
+                width: 100% !important;
+                padding: 0px;
+            }
+
+            .product-content.widthFull {
+                width: auto !important;
+            }
+
+            .pad-lr-16 {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+
+            .widFull {
+                width: 100% !important;
+                margin: 0 auto !important;
+                display: block !important;
+            }
+        }
+
+        @media screen and (max-width:420px) {
+            .pad-10 {
+                padding: 16px !important;
+            }
+
+            .pad-l-2 {
+                padding-left: 2px !important;
+            }
+
+            .pad-r-2 {
+                padding-right: 2px !important;
+            }
+
+            .mobile-pad-0 {
+                padding-right: 0 !important;
+                padding-left: 0 !important;
+                margin: 0 auto !important;
+            }
+
+            .mobile-short {
+                width: 280px !important;
+            }
+        }
+
+        .divider-line {
+            max-width: 493px;
+            width: 100%;
+        }
+
+        .footer-full {
+            max-width: 366px;
+            width: 100%;
+        }
+
+        .product-row-table {
+            width: 100%;
+        }
+
+        @media screen and (max-width:690px) {
+            .product-row-table {
+                table-layout: fixed !important;
+            }
+
+            .product-logo=2C
+            .product-content=2C
+            .product-divider {
+                display: table-cell !important;
+                box-sizing: border-box !important;
+            }
+
+            .product-logo {
+                width: 28% !important;
+                max-width: 115px !important;
+                min-width: 88px !important;
+                padding: 0 6px !important;
+                vertical-align: middle !important;
+            }
+
+            .product-logo table td {
+                font-size: 14px !important;
+            }
+
+            .product-content {
+                width: auto !important;
+                max-width: none !important;
+                padding: 0 10px 0 8px !important;
+                vertical-align: top !important;
+                text-align: left !important;
+            }
+
+            td.product-content {
+                width: auto !important;
+            }
+
+            .product-content.widthFull {
+                width: auto !important;
+            }
+
+            .product-divider {
+                width: 1px !important;
+                padding: 0 !important;
+                vertical-align: middle !important;
+            }
+
+            .product-divider.displayNone {
+                display: table-cell !important;
+            }
+
+            .product-divider div {
+                width: 1px !important;
+                min-height: 66.66px !important;
+                height: 100% !important;
+            }
+
+            .footer-social table=2C
+            .footer-social td {
+                text-align: center !important;
+            }
+
+            .footer-social table[align=3D"right"] {
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+
+            .powered-by-wrap {
+                white-space: normal !important;
+            }
+
+            .padding-top-2 {
+                padding-top: 2px !important;
+            }
+        }
+
+        @media screen and (max-width:480px) {
+            .product-logo {
+                width: 26% !important;
+                max-width: 98px !important;
+                min-width: 82px !important;
+                padding: 0 8px !important;
+            }
+
+            .product-logo table td {
+                font-size: 13px !important;
+            }
+
+            .product-content {
+                padding: 0 10px 0 px !important;
+            }
+
+            .product-content td {
+                text-align: left !important;
+                line-height: 140% !important;
+                font-size: 13px !important;
+            }
+
+            .product-row-wrap {
+                padding-top: 16px !important;
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+
+            /* .product-row-wrap-first {
+                padding-top: 24px !important;
+            } */
+
+            .footer-social {
+                padding-top: 24px !important;
+            }
+        }
+    </style>
+</head>
+
+<body style=3D"background-color: #FFF8E8; height: 100%; margin: 0 auto; ve=
+rtical-align: middle;">
+    <table width=3D"100%" height=3D"100%" border=3D"0" cellpadding=3D"0" c=
+ellspacing=3D"0">
+        <tr>
+            <td align=3D"center" valign=3D"middle" style=3D"width: 100%; h=
+eight: 100%; margin: 0 auto;">
+                <table align=3D"center" border=3D"0" width=3D"648" cellpad=
+ding=3D"0" cellspacing=3D"0" style=3D"border-radius: 12px; margin: 0 auto;=
+" class=3D"mobile-reponsive">
+                    <tr>
+                        <td align=3D"center" valign=3D"top" style=3D"paddi=
+ng: 24px;" class=3D"pad-10">
+                            <table align=3D"center" border=3D"0" width=3D"=
+100%" cellpadding=3D"0" cellspacing=3D"0" style=3D"background-color: #fff;=
+ border-radius: 12px; border-radius: 12px; border: 1px solid #C7C7C7;">
+                                <tr>
+                                    <td align=3D"center" valign=3D"top">
+                                        <table align=3D"center" border=3D"=
+0" width=3D"100%" cellpadding=3D"0" cellspacing=3D"0">
+                                            <!-- Brand Logo starts here --=
+>
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding: 25.26px; " class=3D"pad-16 pad-t-16 ">
+                                                    <a href=3D"https://kre=
+ativespace.us4.list-manage.com/track/click?u=3D18482c0a7f4609d9dd0874641&i=
+d=3D6dbba5a182&e=3D9e4d1b95fe&i=3Dc72fc5efcf" target=3D"_bl=
+ank" style=3D"display: block;">
+                                                        <img src=3D"https:=
+//d35z3dfm220p5l.cloudfront.net/kreativeSpace2xLogo.png" alt=3D"Kreativesp=
+ace logo" height=3D"29.63" width=3D"200">
+                                                    </a>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style=3D"text-align: c=
+enter;">
+                                                    <table width=3D"100%"=
+ cellpadding=3D"0" cellspacing=3D"0" border=3D"0" class=3D"divider-line wi=
+dthFull" style=3D"max-width:493px; width:100%; margin: 0 auto;">
+                                                        <tr>
+                                                            <td height=3D"=
+1" style=3D"background-color: #E1E1E3; line-height: 1px; font-size: 1px;">
+                                                                &nbsp;
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <!-- Hero section starts here -->
+                                <tr>
+                                    <td style=3D"padding-top: 26.69px; fon=
+t-weight: 500; font-size: 25px; line-height: 100%; letter-spacing: 0%;">
+                                        Don=E2=80=99t Miss > Start Using >=
+ Improve Writing
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align=3D"center" valign=3D"top" st=
+yle=3D"padding-top: 35.27px; padding-bottom: 28.7px;">
+                                        <a target=3D"_blank" style=3D"disp=
+lay: block;" href=3D"https://kreativespace.us4.list-manage.com/track/click=
+?u=3D18482c0a7f4609d9dd0874641&id=3D444207409f&e=3D9e4d1b95fe&i=3Dc72fc5efcf">
+                                            <img src=3D"http://d35z3dfm220=
+p5l.cloudfront.net/imagedesktop.png" alt=3D"Write Better. Faster. Smarter.=
+ That=E2=80=99s Kreativespace AI. Thank you for visiting us at Bharat Bodh=
+an AI Conclave 2026" width=3D"100%" style=3D"width: 237.49px; height: 167.=
+53px;">
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style=3D"padding-top: 33.61px; tex=
+t-align: center;">
+                                        <table width=3D"100%" cellpadding=
+=3D"0" cellspacing=3D"0" border=3D"0" class=3D"divider-line widthFull" sty=
+le=3D"max-width:493px; width:100%; margin: 0 auto;">
+                                            <tr>
+                                                <td height=3D"1" style=3D"=
+background-color: #E1E1E3; line-height: 1px; font-size: 1px;">
+                                                    &nbsp;
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <!-- Hero section ends here -->
+                                <!-- Products section starts here -->
+                                <tr>
+                                    <td align=3D"center" valign=3D"top">
+                                        <table align=3D"center" border=3D"=
+0" width=3D"100%" cellpadding=3D"0" cellspacing=3D"0">
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" class=3D"pad-lr-16">
+                                                    <table align=3D"center=
+" border=3D"0" width=3D"453" cellpadding=3D"0" cellspacing=3D"0" style=3D"=
+max-width: 453px; width: 100%; margin: 0 auto;">
+
+                                                        <!-- Free month co=
+upon section ends here -->
+                                                        <tr>
+                                                            <td align=3D"l=
+eft" valign=3D"top" style=3D"padding-top: 30.96px; text-align: center; fon=
+t-size: 14px; font-weight: 700; text-transform: capitalize; color: #000000=
+;">
+                                                                Hi [Name]=
+=2C
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td align=3D"c=
+enter" valign=3D"top" style=3D"padding-top: 20.71px; text-align: center; f=
+ont-size: 14px; line-height: 100%; font-weight: 400; color: #000000;">
+                                                                Meet Kreat=
+ivespace=2C AI Writing Tools that will help
+                                                                <br>
+                                                                you in mak=
+ing content accurate=2C polished in seconds.
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td align=3D"c=
+enter" valign=3D"top" style=3D"padding-top: 21.82px; text-align: center; f=
+ont-size: 14px; line-height: 100%;  font-weight: 700; color: #000000;">
+                                                                Don=E2=80=
+=99t Let Messy Writing Harm your Credibility.
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td align=3D"c=
+enter" valign=3D"top" style=3D"padding-top: 21.9px; text-align: center; fo=
+nt-size: 14px; line-height: 100%;  font-weight: 400; color: #000000;">
+                                                                AI Writing=
+ Tools that you can use ANYTIME ANYWHERE ON
+                                                                ANY DEVICE=
+=2E
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style=3D"padding-top:=
+ 33.61px; text-align: center;" class=3D"pad-lr-16">
+                                                    <table width=3D"100%"=
+ cellpadding=3D"0" cellspacing=3D"0" border=3D"0" class=3D"divider-line wi=
+dthFull" style=3D"max-width:493px; width:100%; margin: 0 auto;">
+                                                        <tr>
+                                                            <td height=3D"=
+1" style=3D"background-color: #E1E1E3; line-height: 1px; font-size: 1px;">
+                                                                &nbsp;
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+
+                                            <!-- 1 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 31.83px;" class=3D"product-row-wrap produc=
+t-row-wrap-first">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr align=3D"cente=
+r">
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo " style=3D"pa=
+dding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/summarizerRoundIcon.p=
+ng" alt=3D"Summarizer" width=3D"29.34" height=3D"29.34" border=3D"0" style=
+=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                      color:#000000;
+                                                                         =
+                                      font-size:16px;
+                                                                         =
+                                      font-weight:700;
+                                                                         =
+                                      text-align:center;">
+                                                                         =
+   Summarizer
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C researchers=2C professionals
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Understand content faster with clarity
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Supports PDFs=2C No limit on words=2C best
+                                                                         =
+   output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 2 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/translatorNewIcon.png=
+" alt=3D"Translator" width=3D"29.34" height=3D"29.34" border=3D"0" style=
+=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                                                         =
+                         color:#000000;
+                                                                         =
+                                                                         =
+                         font-size:16px;
+                                                                         =
+                                                                         =
+                         font-weight:700;
+                                                                         =
+                                                                         =
+                         text-align:center;">
+                                                                         =
+   Translator
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C professionals=2C global users
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Translate content instantly across languages
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Supports documents=2C No limit on words=2C best
+                                                                         =
+   output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 3 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/paraNewIcon.png" alt=
+=3D"Paraphraser" width=3D"29.34" height=3D"29.34" border=3D"0" style=3D"di=
+splay:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                                                         =
+                         color:#000000;
+                                                                         =
+                                                                         =
+                         font-size:16px;
+                                                                         =
+                                                                         =
+                         font-weight:700;
+                                                                         =
+                                                                         =
+                         text-align:center;">
+                                                                         =
+   Paraphraser
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C writers=2C professionals </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Rewrite content with better synonyms &
+                                                                         =
+   clarity
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   No limit on words=2C natural output=2C Multiple
+                                                                         =
+   Tones
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 4 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/plagiarismNewIcon.png=
+" alt=3D"Plagiarism Checker" width=3D"29.34" height=3D"29.34" border=3D"0"=
+ style=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                      color:#000000;
+                                                                         =
+                                      font-size:16px;
+                                                                         =
+                                      font-weight:700;
+                                                                         =
+                                      text-align:center;">
+                                                                         =
+   Plagiarism Checker
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C researchers=2C content creators
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Detect duplicate content and risks
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Deep scanning=2C No limit on words=2C best
+                                                                         =
+   output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 5 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/aiDetectorRoundIcon.p=
+ng" alt=3D"AI Detector" width=3D"29.34" height=3D"29.34" border=3D"0" styl=
+e=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                                                         =
+                         color:#000000;
+                                                                         =
+                                                                         =
+                         font-size:16px;
+                                                                         =
+                                                                         =
+                         font-weight:700;
+                                                                         =
+                                                                         =
+                         text-align:center;">
+                                                                         =
+   AI Detector
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C educators=2C professionals
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Identify AI-generated content accurately
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Detailed analysis=2C No limit on words=2C best
+                                                                         =
+   output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 6 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/citationRoundIcon.png=
+" alt=3D"Citation Generator" width=3D"29.34" height=3D"29.34" border=3D"0"=
+ style=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                                                         =
+                         color:#000000;
+                                                                         =
+                                                                         =
+                         font-size:16px;
+                                                                         =
+                                                                         =
+                         font-weight:700;
+                                                                         =
+                                                                         =
+                         text-align:center;">
+                                                                         =
+   Citation Generator
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C researchers=2C academic writers
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Create accurate citations in seconds
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Multiple styles supported=2C best output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 7 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/grammarNewIcon.png" a=
+lt=3D"Grammar Checker" width=3D"29.34" height=3D"29.34" border=3D"0" style=
+=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                                                         =
+                         color:#000000;
+                                                                         =
+                                                                         =
+                         font-size:16px;
+                                                                         =
+                                                                         =
+                         font-weight:700;
+                                                                         =
+                                                                         =
+                         text-align:center;">
+                                                                         =
+   Grammar Checker
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C professionals=2C writers
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Fix errors and improve clarity
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   No limit on checks=2C accurate results=2C best
+                                                                         =
+   output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- 8 product-->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding-top: 57.79px;" class=3D"product-row-wrap">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" class=3D"product-row-table" style=3D"wid=
+th:100%;">
+                                                        <tr>
+                                                            <!-- Logo Sect=
+ion -->
+                                                            <td align=3D"c=
+enter" valign=3D"middle" class=3D"mobile-center product-logo" style=3D"pad=
+ding-left:53.17px; padding-right:48px;">
+
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" align=3D"center" style=3D"ma=
+rgin:0 auto;">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center">
+                                                                         =
+   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/AI Humanizer Icon.svg=
+" alt=3D"AI Humanizer" width=3D"29.34" height=3D"29.34" border=3D"0" style=
+=3D"display:block; margin:0 auto;">
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"center" style=3D"padding-top:3.54px;
+                                                                         =
+                                                                         =
+                         color:#000000;
+                                                                         =
+                                                                         =
+                         font-size:16px;
+                                                                         =
+                                                                         =
+                         font-weight:700;
+                                                                         =
+                                                                         =
+                         text-align:center;">
+                                                                         =
+   AI Humanizer
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Divider -=
+->
+                                                            <td width=3D"1=
+" valign=3D"middle" class=3D"product-divider">
+                                                                <div style=
+=3D"width:1px; height:64.8px; background:#E1E1E3;">
+                                                                </div>
+                                                            </td> <!-- Con=
+tent Section -->
+                                                            <td valign=3D"=
+start" class=3D"product-content" style=3D"padding:0px 25.62px 0px 32.94px;=
+ width:287px; text-align:left;">
+                                                                <table cel=
+lpadding=3D"0" cellspacing=3D"0" border=3D"0" width=3D"100%">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;">
+                                                                         =
+   Students=2C professionals=2C writers
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400; padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   Fix errors and improve clarity
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <t=
+d style=3D"font-size:14px; color:#000000; line-height:100%; text-align:lef=
+t; font-weight: 400;padding-top: 8px;" class=3D"padding-top-2">
+                                                                         =
+   No limit on checks=2C accurate results=2C best
+                                                                         =
+   output
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style=3D"padding-top:=
+ 36.67px; text-align: center;" class=3D"pad-lr-16">
+                                                    <table width=3D"100%"=
+ cellpadding=3D"0" cellspacing=3D"0" border=3D"0" class=3D"divider-line wi=
+dthFull" style=3D"max-width:493px; width:100%; margin: 0 auto;">
+                                                        <tr>
+                                                            <td height=3D"=
+0" style=3D"background-color: #E1E1E3; line-height: 1px; font-size: 1px;">
+                                                                &nbsp;
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Free month coupon section=
+ starts here -->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"
+                                                      padding-top: 41.63px=
+;
+                                                      padding-bottom: 54.1=
+4px;
+                                                    " class=3D"pad-16">
+                                                    <table border=3D"0" ce=
+llpadding=3D"0" cellspacing=3D"0" height=3D"38" role=3D"presentation" styl=
+e=3D"
+                                                        border-collapse: c=
+ollapse;
+                                                        border-radius: 100=
+px;
+                                                        margin: 0 auto;
+                                                      ">
+                                                        <tr>
+                                                            <td align=3D"c=
+enter" style=3D"
+                                                            color: #ffffff=
+ !important;
+                                                            text-align: ce=
+nter;
+                                                            vertical-align=
+: middle;
+                                                            border-radius:=
+ 100px;
+                                                          " valign=3D"midd=
+le">
+                                                                <!--[if m=
+so]>
+                                                                         =
+        <v:roundrect xmlns:v=3D"urn:schemas-microsoft-com:vml" xmlns:w=3D"=
+urn:schemas-microsoft-com:office:word" href=3D"https://kreativespace.com/p=
+ricing?utm_source=3DEmail&utm_medium=3DIntro&utm_campaign=3DKS" target=3D"=
+_blank" style=3D"width:190px; height:40px;v-text-anchor:middle; color:#fff=
+fff" arcsize=3D"50%" strokecolor=3D"#A57F28" fillcolor=3D"#A57F28">
+                                                                         =
+         <w:anchorlock/>
+                                                                         =
+         <center style=3D"color:#ffffff; font-size: 16px;
+                                                                         =
+          line-height: 22px;
+                                                                         =
+          font-weight: 600;">
+                                                                         =
+             <![endif]-->
+                                                                <!--[if !=
+mso]><!-->
+                                                                <a href=3D=
+"https://kreativespace.us4.list-manage.com/track/click?u=3D18482c0a7f4609d=
+9dd0874641&id=3Dc986eec03d&e=3D9e4d1b95fe&i=3Dc72fc5efcf" s=
+tyle=3D"
+                                                              border-radiu=
+s: 100px;
+                                                              outline: 0;
+                                                              background-c=
+olor: #a57f28;
+                                                              text-decorat=
+ion: none !important;
+                                                              color: #ffff=
+ff !important;
+                                                              font-size: 1=
+4px;
+                                                              font-weight:=
+ 500;
+                                                              border-top:=
+ 11.84px solid #a57f28;
+                                                              border-right=
+: 19.28px solid #a57f28;
+                                                              border-botto=
+m: 15.66px solid #a57f28;
+                                                              border-left:=
+ 19.66px solid #a57f28;
+                                                              border-radiu=
+s: 100px;
+                                                              text-decorat=
+ion: none;
+                                                              display: blo=
+ck;
+                                                              text-transfo=
+rm: capitalize;
+                                                            " target=3D"_b=
+lank">
+                                                                    <!--<!=
+[endif]-->
+                                                                    Improv=
+e my Communication
+                                                                    <!--[=
+if !mso]><!-->
+                                                                </a>
+                                                                <!--<![en=
+dif]-->
+                                                                <!--[if m=
+so]>
+                                                                         =
+    </center>
+                                                                         =
+ </v:roundrect>
+                                                                         =
+ <![endif]-->
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Free month coupon section=
+ ends here -->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"background-color: white;">
+                                                    <table cellpadding=3D"=
+0" cellspacing=3D"0" border=3D"0" align=3D"center" width=3D"172" style=3D"=
+width:172px; margin:0 auto;">
+                                                        <tr>
+                                                            <td align=3D"c=
+enter" style=3D"
+                                    text-align:center;
+                                    font-size:12px;
+                                    font-weight:400;
+                                    line-height:22px;
+                                    border:1px solid #E2E2E2;
+                                    white-space:nowrap;
+                                    padding: 4.3px 5.61px 4.3px 5.61px;
+                                     ">
+                                                                <span>Powe=
+red by </span>
+                                                                <a href=3D=
+"https://kreativespace.us4.list-manage.com/track/click?u=3D18482c0a7f4609d=
+9dd0874641&id=3Df6788663ca&e=3D9e4d1b95fe&i=3Dc72fc5efcf" t=
+arget=3D"_blank" style=3D"
+                                       color:#292929 !important;
+                                       text-decoration:underline;
+                                       font-size:16px;
+                                       font-weight:400;
+                                       line-height:22px;
+                                        ">
+                                                                    Avinya=
+a EdTech
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <!-- Get it on playstore and a=
+pp store section starts here -->
+                                            <tr>
+                                                <td align=3D"center" valig=
+n=3D"top" style=3D"padding:9.62px 0px 33.78px;" class=3D"pad-16">
+
+                                                    <table border=3D"0" ce=
+llpadding=3D"0" cellspacing=3D"0" width=3D"366.38" align=3D"center" style=
+=3D"width:366.38px; border-collapse:collapse; margin:0 auto;">
+                                                        <tr>
+
+                                                            <!-- Left Foot=
+er -->
+                                                            <td align=3D"l=
+eft" valign=3D"top">
+
+                                                                <table bor=
+der=3D"0" cellpadding=3D"0" cellspacing=3D"0">
+                                                                    <tr>
+                                                                        <t=
+d style=3D"color:#A57F28;
+                                                                         =
+                                                   font-size:14px;
+                                                                         =
+                                                   font-weight:400;
+                                                                         =
+                                                   line-height:100%;
+                                                                         =
+                                                   padding-bottom:8.93px;"=
+>
+                                                                         =
+   Get Kreativespace App
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d>
+                                                                         =
+   <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0">
+                                                                         =
+       <tr>
+                                                                         =
+           <td style=3D"padding-right:4px;">
+                                                                         =
+               <a href=3D"#" target=3D"_blank" style=3D"display:block;">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/getOn=
+PlayStore.png" alt=3D"Get it on Play Store" width=3D"74.23" height=3D"21.5=
+3" style=3D"display:block; border:0;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+
+                                                                         =
+           <td style=3D"padding-left:4px;">
+                                                                         =
+               <a href=3D"#" target=3D"_blank" style=3D"display:block;">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/getOn=
+AppStore.png" alt=3D"Get it on App Store" width=3D"74.23" height=3D"21.53"=
+ style=3D"display:block; border:0;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+                                                                         =
+       </tr>
+                                                                         =
+   </table>
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                            <!-- Right Foo=
+ter -->
+                                                            <td align=3D"r=
+ight" valign=3D"top">
+
+                                                                <table bor=
+der=3D"0" cellpadding=3D"0" cellspacing=3D"0" align=3D"right">
+                                                                    <tr>
+                                                                        <t=
+d align=3D"right" style=3D"font-size:12px;
+                                                                         =
+                                                   font-weight:400;
+                                                                         =
+                                                   line-height:16px;
+                                                                         =
+                                                   padding-bottom:8px;">
+                                                                         =
+   Follow Us On:
+                                                                        </=
+td>
+                                                                    </tr>
+
+                                                                    <tr>
+                                                                        <t=
+d align=3D"right">
+                                                                         =
+   <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" align=3D"right"=
+>
+                                                                         =
+       <tr>
+
+                                                                         =
+           <td>
+                                                                         =
+               <a href=3D"https://kreativespace.us4.list-manage.com/track/=
+click?u=3D18482c0a7f4609d9dd0874641&id=3De7af165a23&e=3D9e4d1b95fe&i=3Dc72fc5efcf" target=3D"_blank">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/faceb=
+ookIcon.png" width=3D"18" height=3D"18" style=3D"display:block;border:0;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+
+                                                                         =
+           <td style=3D"padding-left:10px;">
+                                                                         =
+               <a href=3D"https://kreativespace.us4.list-manage.com/track/=
+click?u=3D18482c0a7f4609d9dd0874641&id=3D8a61480d2f&e=3D9e4d1b95fe&i=3Dc72fc5efcf" target=3D"_blank">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/linkd=
+Social-png.png" width=3D"18" height=3D"18" style=3D"display:block;border:0=
+;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+
+                                                                         =
+           <td style=3D"padding-left:10px;">
+                                                                         =
+               <a href=3D"https://kreativespace.us4.list-manage.com/track/=
+click?u=3D18482c0a7f4609d9dd0874641&id=3D16c2e53842&e=3D9e4d1b95fe&i=3Dc72fc5efcf" target=3D"_blank">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/insta=
+Social-png.png" width=3D"18" height=3D"18" style=3D"display:block;border:0=
+;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+
+                                                                         =
+           <td style=3D"padding-left:10px;">
+                                                                         =
+               <a href=3D"https://kreativespace.us4.list-manage.com/track/=
+click?u=3D18482c0a7f4609d9dd0874641&id=3Dd7b6bb7603&e=3D9e4d1b95fe&i=3Dc72fc5efcf" target=3D"_blank">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/xSoci=
+al-png.png" width=3D"18" height=3D"18" style=3D"display:block;border:0;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+
+                                                                         =
+           <td style=3D"padding-left:10px;">
+                                                                         =
+               <a href=3D"https://kreativespace.us4.list-manage.com/track/=
+click?u=3D18482c0a7f4609d9dd0874641&id=3D81b142f2ee&e=3D9e4d1b95fe&i=3Dc72fc5efcf" target=3D"_blank">
+                                                                         =
+                   <img src=3D"https://d35z3dfm220p5l.cloudfront.net/youtu=
+beIcon.png" width=3D"18" height=3D"18" style=3D"display:block;border:0;">
+                                                                         =
+               </a>
+                                                                         =
+           </td>
+
+                                                                         =
+       </tr>
+                                                                         =
+   </table>
+                                                                        </=
+td>
+                                                                    </tr>
+                                                                </table>
+
+                                                            </td>
+
+                                                        </tr>
+                                                    </table>
+
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+
+
+    <center>
+
+
+        <style type=3D"text/css">
+            @media only screen and (max-width: 480px) {
+                table#canspamBar td {
+                    font-size: 14px !important;
+                }
+
+                table#canspamBar td a {
+                    display: block !important;
+                    margin-top: 10px !important;
+                }
+            }
+        </style>
+    </center>
+            <center>
+                <br>
+                <br>
+                <br>
+                <br>
+                <br>
+                <br>
+                <table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" wi=
+dth=3D"100%" id=3D"canspamBarWrapper" style=3D"background-color:#FFFFFF; b=
+order-top:1px solid #E5E5E5;">
+                    <tr>
+                        <td align=3D"center" valign=3D"top" style=3D"paddi=
+ng-top:20px; padding-bottom:20px;">
+                            <table border=3D"0" cellpadding=3D"0" cellspac=
+ing=3D"0" id=3D"canspamBar">
+                                <tr>
+                                    <td align=3D"center" valign=3D"top" st=
+yle=3D"color:#606060; font-family:Helvetica=2C Arial=2C sans-serif; font-s=
+ize:11px; line-height:150%; padding-right:20px; padding-bottom:5px; paddin=
+g-left:20px; text-align:center;">
+                                        This email was sent to <a href=3D"=
+mailto:asmikhatter2007@gmail.com" target=3D"_blank" style=3D"color:#404040 !importa=
+nt;">asmikhatter2007@gmail.com</a>
+                                        <br>
+                                        <a href=3D"https://kreativespace.u=
+s4.list-manage.com/about?u=3D18482c0a7f4609d9dd0874641&id=3Dbdc8a77544&e=
+=3D9e4d1b95fe&c=3D7edcf03a46" target=3D"_blank" style=3D"color:#404040 !impo=
+rtant;"><em>why did I get this?</em></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=3D=
+"https://kreativespace.us4.list-manage.com/unsubscribe?u=3D18482c0a7f4609d=
+9dd0874641&id=3Dbdc8a77544&t=3Db&e=3D9e4d1b95fe&c=3D7edcf03a46&i=3Dc72fc5efcf" style=3D"color:#404040 !important;">unsubscribe from t=
+his list</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=3D"https://kreativespace.us4.l=
+ist-manage.com/profile?u=3D18482c0a7f4609d9dd0874641&id=3Dbdc8a77544&e=3D9e4d1b95fe&c=3D7edcf03a46" style=3D"color:#404040 !important;">update subscri=
+ption preferences</a>
+                                        <br>
+                                        Kreativespace &middot; Making Writ=
+ing Accessible &middot; for=2C Everyone . &middot; India
+                                        <br>
+                                        <br>
+
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <style type=3D"text/css">
+                    @media only screen and (max-width: 480px){
+                        table#canspamBar td{font-size:14px !important;}
+                        table#canspamBar td a{display:block !important; ma=
+rgin-top:10px !important;}
+                    }
+                </style>
+            </center><div style=3D"display:none;"><img src=3D"https://us.l=
+ist-manage.com/ISJ2v6wte7at5nhux6jzUF?i=3Dc72fc5efcf&e=3D9e4d1b95fe&c2id=3D72c27e0d0023c62a51608584e22fd769" height=3D"1" width=3D"1" style=3D"display:=
+none;" alt=3D""></div></body>
+
+</html>
+--_----------=_MCPart_32786861--
