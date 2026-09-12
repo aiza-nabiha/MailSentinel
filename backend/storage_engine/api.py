@@ -1,13 +1,20 @@
 """
-backend/storage_engine/api.py (SECURITY-HARDENED, FULL DATA)
+backend/storage_engine/api.py (SECURITY-HARDENED, FULL DATA, MERGED)
 
 The bridge between the Gmail Add-on sidebar and your pipeline.
+
+Accepts EITHER:
+  - {"eml_path": "test_emails/example.eml"}  -- for local testing, path-restricted to data/
+  - {"raw_eml": "<full .eml text>"}          -- for the real sidebar, which sends the
+    currently-open Gmail message's content directly (it has no server-side file path)
 
 Security:
   1. Path traversal fix -- eml_path is restricted to a whitelisted directory.
   2. API key check -- caller must send a shared secret header.
   3. Debug mode OFF, bound to localhost only.
-  4. Input validation -- rejects malformed/missing fields cleanly.
+  4. raw_eml is written to a secure temp file and ALWAYS deleted after processing,
+     even if analysis fails -- never left sitting on disk.
+  5. Input validation -- rejects malformed/missing fields cleanly.
 
 Setup (one-time):
     pip3 install flask python-dotenv
@@ -18,14 +25,21 @@ Run it:
     python3 api.py
 Then it's live at http://127.0.0.1:5001
 
-Test it:
+Test it (path mode):
     curl -X POST http://localhost:5001/analyze \\
       -H "Content-Type: application/json" \\
       -H "X-API-Key: <your key>" \\
       -d '{"eml_path": "test_emails/example.eml"}'
+
+Test it (raw_eml mode -- what the sidebar actually uses):
+    curl -X POST http://localhost:5001/analyze \\
+      -H "Content-Type: application/json" \\
+      -H "X-API-Key: <your key>" \\
+      -d '{"raw_eml": "From: test@example.com\\nSubject: Hi\\n\\nBody text"}'
 """
 
 import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -70,22 +84,45 @@ def analyze():
 
     data = request.get_json(silent=True) or {}
     eml_path_raw = data.get("eml_path")
+    raw_eml = data.get("raw_eml")
 
-    if not eml_path_raw or not isinstance(eml_path_raw, str):
-        return jsonify({"error": "Missing or invalid required field: eml_path (must be a string)"}), 400
+    if not eml_path_raw and not raw_eml:
+        return jsonify({"error": "Provide either eml_path or raw_eml"}), 400
 
-    safe_path = _resolve_safe_eml_path(eml_path_raw)
-    if safe_path is None:
-        return jsonify({"error": "Invalid eml_path -- must stay within the data/ directory"}), 400
+    temporary_path = None
 
-    if not safe_path.exists():
-        return jsonify({"error": f"File not found: {eml_path_raw}"}), 404
+    if raw_eml:
+        if not isinstance(raw_eml, str):
+            return jsonify({"error": "raw_eml must be a string"}), 400
+        # Sidebar case: no server-side file path exists -- write the email
+        # content to a secure temp file, always cleaned up in the finally block.
+        handle = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".eml", delete=False, encoding="utf-8"
+        )
+        handle.write(raw_eml)
+        handle.close()
+        temporary_path = handle.name
+        target_path = Path(temporary_path)
+    else:
+        if not isinstance(eml_path_raw, str):
+            return jsonify({"error": "eml_path must be a string"}), 400
+        target_path = _resolve_safe_eml_path(eml_path_raw)
+        if target_path is None:
+            return jsonify({"error": "Invalid eml_path -- must stay within the data/ directory"}), 400
+        if not target_path.exists():
+            return jsonify({"error": f"File not found: {eml_path_raw}"}), 404
 
     try:
-        email_id = run_integration(str(safe_path))
+        email_id = run_integration(str(target_path))
     except Exception as e:
         print(f"[!] Pipeline error: {e}")
         return jsonify({"error": "Analysis failed -- check server logs"}), 500
+    finally:
+        if temporary_path:
+            try:
+                os.unlink(temporary_path)
+            except OSError:
+                pass
 
     conn = get_connection()
 
