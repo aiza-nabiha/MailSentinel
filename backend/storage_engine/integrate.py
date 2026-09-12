@@ -118,9 +118,10 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
                          classifier_data=None, classifier_source=None, fingerprint_data=None, user_id=None):
     meta = header_data.get("email_metadata", {}) if header_data else {}
     risk_score, verdict = None, None
-    if pipeline_data and "overall_verdict" in pipeline_data:
-        risk_score = pipeline_data["overall_verdict"].get("highest_risk_score")
-        verdict = pipeline_data["overall_verdict"].get("highest_risk_level")
+    if pipeline_data and pipeline_data.get("overall_verdict"):
+        overall_verdict = pipeline_data["overall_verdict"]
+        risk_score = overall_verdict.get("risk_score")
+        verdict = overall_verdict.get("risk_level")
 
     conn.execute(
         """INSERT OR REPLACE INTO emails

@@ -1,32 +1,34 @@
 import requests
 from datetime import datetime, timezone
-
+from functools import lru_cache
 
 IANA_RDAP_BOOTSTRAP = "https://data.iana.org/rdap/dns.json"
 
 REQUEST_TIMEOUT = 10
 
+@lru_cache(maxsize=1)
+def get_rdap_bootstrap():
+
+    response = requests.get(
+        IANA_RDAP_BOOTSTRAP,
+        timeout=REQUEST_TIMEOUT,
+        headers={
+            "Accept": "application/json"
+        }
+    )
+
+    response.raise_for_status()
+
+    return response.json()
+
 
 def get_rdap_server(domain):
-    """
-    Find the correct RDAP server for the domain's TLD
-    using the IANA RDAP bootstrap registry.
-    """
 
     tld = domain.rstrip(".").split(".")[-1].lower()
 
     try:
-        response = requests.get(
-            IANA_RDAP_BOOTSTRAP,
-            timeout=REQUEST_TIMEOUT,
-            headers={
-                "Accept": "application/json"
-            }
-        )
 
-        response.raise_for_status()
-
-        data = response.json()
+        data = get_rdap_bootstrap()
 
         for service in data.get("services", []):
 

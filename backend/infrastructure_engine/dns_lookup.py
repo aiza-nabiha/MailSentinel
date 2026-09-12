@@ -4,6 +4,7 @@ import tldextract
 
 from domain_extract import extract_domains
 from whois_lookup import extract_whois
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 RECORD_TYPES = [
@@ -18,6 +19,32 @@ RECORD_TYPES = [
     "SRV"
 ]
 
+def resolve_record(domain, record_type):
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = 2
+    resolver.lifetime = 3
+
+    try:
+        answers = resolver.resolve(domain, record_type)
+
+        return record_type, [str(answer) for answer in answers]
+
+    except (
+        dns.resolver.NoAnswer,
+        dns.resolver.NXDOMAIN,
+        dns.resolver.NoNameservers,
+        dns.resolver.LifetimeTimeout,
+        dns.resolver.NoMetaqueries
+    ):
+        return record_type, []
+
+    except Exception as e:
+        print(
+            f"[!] Error checking {domain} "
+            f"({record_type}): {e}"
+        )
+        return record_type, []
+
 
 def get_dns_records(domain):
 
@@ -26,46 +53,27 @@ def get_dns_records(domain):
         "records": {}
     }
 
-    resolver = dns.resolver.Resolver()
+    with ThreadPoolExecutor(
+        max_workers=len(RECORD_TYPES)
+    ) as executor:
 
-    resolver.timeout = 3
-    resolver.lifetime = 5
-
-    for record_type in RECORD_TYPES:
-
-        try:
-
-            answers = resolver.resolve(
+        futures = [
+            executor.submit(
+                resolve_record,
                 domain,
                 record_type
             )
+            for record_type in RECORD_TYPES
+        ]
 
-            records = []
+        for future in as_completed(futures):
 
-            for answer in answers:
-                records.append(str(answer))
+            record_type, records = future.result()
 
             if records:
                 result["records"][record_type] = records
 
-        except (
-            dns.resolver.NoAnswer,
-            dns.resolver.NXDOMAIN,
-            dns.resolver.NoNameservers,
-            dns.resolver.LifetimeTimeout,
-            dns.resolver.NoMetaqueries
-        ):
-            continue
-
-        except Exception as e:
-
-            print(
-                f"[!] Error checking "
-                f"{domain} ({record_type}): {e}"
-            )
-
     return result
-
 
 def get_registrable_domain(domain):
 
