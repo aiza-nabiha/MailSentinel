@@ -3,8 +3,15 @@
 
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS users (
+    user_id         TEXT PRIMARY KEY,   -- the Gmail address from Session.getActiveUser().getEmail()
+    first_seen_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS emails (
     email_id        TEXT PRIMARY KEY,
+    user_id         TEXT REFERENCES users(user_id),
     raw_eml_path    TEXT NOT NULL,
     ingested_at     TEXT NOT NULL DEFAULT (datetime('now')),
     subject         TEXT,
@@ -100,5 +107,15 @@ CREATE TABLE IF NOT EXISTS graph_edges (
     weight          REAL
 );
 
+CREATE TABLE IF NOT EXISTS raw_email_archive (
+    email_id            TEXT PRIMARY KEY REFERENCES emails(email_id),
+    user_id             TEXT REFERENCES users(user_id),
+    encrypted_raw_content TEXT NOT NULL,   -- full raw .eml text, Fernet-encrypted
+    encrypted_headers_json TEXT,           -- complete header dump, Fernet-encrypted
+    archived_at         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_archive_user ON raw_email_archive(user_id);
 CREATE INDEX IF NOT EXISTS idx_domain_email ON domain_intel(email_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_members_email ON campaign_members(email_id);
+CREATE INDEX IF NOT EXISTS idx_emails_user ON emails(user_id);
