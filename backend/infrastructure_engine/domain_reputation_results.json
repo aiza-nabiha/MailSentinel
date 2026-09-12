@@ -1,0 +1,203 @@
+{
+    "investigation": {
+        "observed_at": "2026-09-10T06:19:59.012798+00:00",
+        "source": "dns_results.json",
+        "intelligence_providers": [
+            "PhishTank",
+            "Spamhaus DBL"
+        ]
+    },
+    "domains": [
+        {
+            "domain": "avinyaaedtech.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "kreativespace.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "kreativespace.us4.list-manage.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "www.avinyaaedtech.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "www.facebook.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "www.instagram.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "www.linkedin.com",
+            "reputation": "high risk",
+            "found_on_lists": [
+                "PhishTank"
+            ],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": true
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "www.youtube.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        },
+        {
+            "domain": "x.com",
+            "reputation": "clean",
+            "found_on_lists": [],
+            "sources_checked": [
+                "PhishTank",
+                "Spamhaus DBL"
+            ],
+            "details": {
+                "phishtank": {
+                    "source": "PhishTank",
+                    "status": "success",
+                    "listed": false
+                },
+                "spamhaus": {
+                    "source": "Spamhaus DBL",
+                    "status": "success",
+                    "listed": false
+                }
+            }
+        }
+    ]
+}
