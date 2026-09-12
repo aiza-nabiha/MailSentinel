@@ -20,17 +20,27 @@ BACKEND_PATH = os.path.abspath(
 
 sys.path.insert(0, BACKEND_PATH)
 
+GRAPH_ENGINE_PATH=os.path.join(
+    BACKEND_PATH,
+    "threat_graph_engine"
+)
+
+if GRAPH_ENGINE_PATH not in sys.path:
+    sys.path.insert(0,GRAPH_ENGINE_PATH)
+
 from header_auth_engine.received_parser import parse_received_chain
 from ip_intelligence import investigate_reliable_hop
 from infrastructure_risk import assess_infrastructure
 
 from domain_extract import extract_domains
+from domain_extract import extract_urls
 from whois_lookup import extract_whois
 from dns_lookup import get_dns_records, get_registrable_domain
 from domain_reputation import check_domain_reputation
+from domain_reputation import check_url_reputation
 from tls_lookup import extract_tls
 from risk_scorer import compute_risk
-
+from fingerprint import generate_fingerprint
 
 # ==================================================================
 # PER-DOMAIN INVESTIGATION
@@ -92,8 +102,33 @@ def run_pipeline(eml_path):
     that email, fully enriched and risk-scored.
     """
 
+    email_id=os.path.splitext(
+        os.path.basename(eml_path)
+    )[0]
+
     # ---- Step 1: extract every domain from the email ----
+    # ---- Step 1: extract every domain and URL from the email ----
     domains = extract_domains(eml_path)
+    urls = extract_urls(eml_path)
+
+# ---- Step 1A: exact URL reputation checks ----
+    url_reputation = []
+
+    for url in urls:
+        try:
+            url_reputation.append(check_url_reputation(url))
+        except Exception as e:
+            url_reputation.append({
+                "url": url,
+                "status": "error",
+                "error": str(e)
+            })
+
+    try:
+        fingerprint=generate_fingerprint(eml_path)
+    except Exception as e:
+        print(f"[!]Fingerprint generation failed: {e}")
+        fingerprint={}
 
     # ---- Step 1B: Received-chain + IP intelligence investigation ----
     received_chain = []
@@ -156,20 +191,30 @@ def run_pipeline(eml_path):
         else {}
     )
 
-    infrastructure_risk = assess_infrastructure(
-        reliable_hop_analysis=reliable_hop_result.get(
-            "earliest_reliable_node", {}
-        ),
-        ip_intelligence=reliable_hop_result.get(
-            "ip_intelligence", {}
-        ),
-        authentication=authentication
-    )
+    if isinstance(reliable_hop_result, dict):
+        infrastructure_risk = assess_infrastructure(
+            reliable_hop_analysis=reliable_hop_result.get(
+                "earliest_reliable_node", {}
+            ),
+            ip_intelligence=reliable_hop_result.get(
+                "ip_intelligence", {}
+            ),
+            authentication=authentication
+        )
+    else:
+        infrastructure_risk = {
+            "status": "unavailable",
+            "reason": "Reliable hop analysis unavailable"
+        }
 
     if not domains:
         return {
+            "email_id":email_id,
             "eml_path": eml_path,
             "observed_at": datetime.now(timezone.utc).isoformat(),
+            "fingerprint":fingerprint,
+            "urls":urls,
+            "url_reputation": url_reputation,
             "domains": {},
             "warning": "No domains extracted from this email"
         }
@@ -196,19 +241,62 @@ def run_pipeline(eml_path):
         key=lambda item: item[1]["risk"]["risk_score"]
     )
 
+    domain_scores = [
+        item[1]["risk"]["risk_score"]
+        for item in all_domains_data.items()
+    ]
+
+    max_domain_score = max(domain_scores, default=0)
+
+    overall_score = infrastructure_risk.get("risk_score", 0)
+
+    overall_reasons = []
+
+    if infrastructure_risk.get("reasons"):
+        overall_reasons.extend(
+            infrastructure_risk["reasons"]
+        )
+
+    if max_domain_score >= 60:
+        overall_score = max(overall_score, max_domain_score)
+        overall_reasons.append(
+            f"High-risk domain detected: {highest_risk_domain[0]}"
+        )
+
+    elif max_domain_score >= 25:
+        overall_reasons.append(
+            f"Medium-risk embedded domain detected: {highest_risk_domain[0]}"
+    )
+
+    overall_score = min(overall_score, 100)
+
+    if overall_score >= 60:
+        overall_level = "high"
+    elif overall_score >= 25:
+        overall_level = "medium"
+    else:
+        overall_level = "low"    
+
     overall_result = {
+        "email_id":email_id,
         "eml_path": eml_path,
         "observed_at": datetime.now(timezone.utc).isoformat(),
         "domains_analyzed": len(domains),
         "received_chain": received_chain,
         "reliable_hop_analysis": reliable_hop_result,
         "infrastructure_risk": infrastructure_risk,
+        "fingerprint":fingerprint,
+        "urls": urls,
+        "url_reputation": url_reputation,
         "domains": all_domains_data,
         "overall_verdict": {
+            "risk_score": overall_score,
+            "risk_level": overall_level,
             "highest_risk_domain": highest_risk_domain[0],
             "highest_risk_score": highest_risk_domain[1]["risk"]["risk_score"],
-            "highest_risk_level": highest_risk_domain[1]["risk"]["risk_level"],
+            "reasons": overall_reasons
         }
+       
     }
 
     return overall_result
