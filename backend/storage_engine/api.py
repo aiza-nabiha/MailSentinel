@@ -20,6 +20,8 @@ Install requirement (one-time):
 """
 
 from flask import Flask, request, jsonify
+import os
+import tempfile
 from db import get_connection
 from integrate import run as run_integration
 
@@ -44,9 +46,18 @@ def analyze():
     """
     data = request.get_json(silent=True) or {}
     eml_path = data.get("eml_path")
+    raw_eml = data.get("raw_eml")
 
-    if not eml_path:
-        return jsonify({"error": "Missing required field: eml_path"}), 400
+    if not eml_path and not raw_eml:
+        return jsonify({"error": "Provide either eml_path or raw_eml"}), 400
+
+    temporary_path = None
+    if raw_eml:
+        handle = tempfile.NamedTemporaryFile(mode="w", suffix=".eml", delete=False, encoding="utf-8")
+        handle.write(raw_eml)
+        handle.close()
+        temporary_path = handle.name
+        eml_path = temporary_path
 
     try:
         email_id = run_integration(eml_path)
@@ -54,6 +65,12 @@ def analyze():
         return jsonify({"error": f"File not found: {eml_path}"}), 404
     except Exception as e:
         return jsonify({"error": f"Pipeline failed: {e}"}), 500
+    finally:
+        if temporary_path:
+            try:
+                os.unlink(temporary_path)
+            except OSError:
+                pass
 
     # Pull back the freshly-stored record to return to the caller
     conn = get_connection()
@@ -72,6 +89,9 @@ def analyze():
         (email_id,),
     ).fetchone()
     conn.close()
+
+    print("DEBUG email_row:", email_row)
+    print("DEBUG header_row:", header_row)
 
     result = {
         "email_id": email_row[0],
