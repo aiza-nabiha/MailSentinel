@@ -1,6 +1,6 @@
 {
     "investigation": {
-        "observed_at": "2026-09-13T16:15:05.759143+00:00"
+        "observed_at": "2026-09-13T16:43:12.632281+00:00"
     },
     "domains": [
         {
@@ -375,7 +375,7 @@
             "issuer": "Let's Encrypt",
             "valid_from": "Aug 25 16:30:34 2026 GMT",
             "valid_to": "Nov 23 16:30:33 2026 GMT",
-            "days_until_expiry": 71,
+            "days_until_expiry": 70,
             "san_domains": [
                 "docs.tigergraph.com",
                 "tigergraph.com",
@@ -432,6 +432,21 @@
                 "mapi.in.mpms.mufg.com"
             ],
             "fingerprint_sha256": "e416bf682fba7544674d1f09fd5d195f40a385230c3a8de96ae8c8a18fea2ade",
+            "cert_shared_with": [],
+            "error": null
+        },
+        {
+            "domain": "u29817465.ct.sendgrid.net",
+            "status": "success",
+            "issuer": "GoDaddy.com, Inc.",
+            "valid_from": "May 29 19:51:46 2026 GMT",
+            "valid_to": "Dec 13 19:51:46 2026 GMT",
+            "days_until_expiry": 91,
+            "san_domains": [
+                "*.ct.sendgrid.net",
+                "ct.sendgrid.net"
+            ],
+            "fingerprint_sha256": "1b16f95bd92da3c2cd5a021c8204310d0f5e7911234b5b797a5b8008ea3b6a97",
             "cert_shared_with": [],
             "error": null
         }
