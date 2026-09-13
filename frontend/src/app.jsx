@@ -31,6 +31,32 @@ export default function App() {
   useEffect(() => document.documentElement.setAttribute("data-theme", theme), [theme]);
   const home = () => setView("landing");
 
+  // Reads ?investigation=<email_id> from the URL on page load -- this is
+  // what makes the Gmail plugin's "VIEW FULL INVESTIGATION" link work.
+  // Without this, the URL param is silently ignored and the site always
+  // shows the plain landing page instead of jumping to the report.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const investigationId = params.get("investigation");
+    if (!investigationId) return;
+
+    (async () => {
+      setView("analyzing");
+      setFileName(investigationId);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/investigation/${investigationId}`, {
+          headers: { "X-API-Key": import.meta.env.VITE_API_KEY },
+        });
+        const result = await response.json();
+        setInvestigationData(result);
+        setView("report");
+      } catch (err) {
+        console.error("Failed to load investigation:", err);
+        setView("landing");
+      }
+    })();
+  }, []);
+
   const start = async (file) => {
     setFileName(file?.name || "sample-phishing-email.eml");
     setView("analyzing");
