@@ -43,7 +43,7 @@ from header_auth_engine.received_parser import parse_received_chain
 
 from ip_intelligence import investigate_reliable_hop
 
-from infrastructure_risk import assess_infrastructure
+
 
 from domain_extract import extract_domains
 from domain_extract import extract_urls
@@ -62,7 +62,7 @@ from domain_reputation import (
 
 from tls_lookup import extract_tls
 
-from risk_scorer import compute_risk
+from risk_scorer import compute_risk, assess_infrastructure
 
 from fingerprint import generate_fingerprint
 
