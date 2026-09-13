@@ -220,4 +220,4 @@ phishtank_feed.csv
 # Additional cache / result files
 **/tls_results.json
 **/ip_intelligence_cache.json
-**/pipeline_output.json
+**/pipeline_output.jsonfrontend/.env

@@ -1,21 +1,5 @@
 """
 backend/storage_engine/integrate.py
-
-Combines Person 2's header/auth parser, Person 3's domain +
-infrastructure pipeline, Person 1's content classifier, and
-Person 4's fingerprinting into one email_id-keyed record.
-
-IMPORT STYLE NOTE: header_parser.py, content_analysis.py, and
-pipeline.py's own internal cross-folder references now use
-package-qualified imports (e.g. "from .received_parser import ...",
-"from header_auth_engine.header_parser import ..."). This means we
-must add the BACKEND ROOT (not each subfolder) to sys.path and
-import via "header_auth_engine.header_parser", NOT a flat
-"from header_parser import ...", or Python raises "attempted
-relative import with no known parent package".
-
-Usage (from backend/storage_engine/):
-    python integrate.py --eml ../../data/test_emails/example.eml
 """
 
 import argparse
@@ -28,30 +12,21 @@ from db import get_connection, get_or_create_email_id, get_or_create_user, archi
 THIS_DIR = Path(__file__).parent
 BACKEND_ROOT = THIS_DIR.parent
 
-# Add BACKEND ROOT once -- enables package-qualified imports like
-# "header_auth_engine.header_parser" and "threat_detection_engine.content_analysis"
 sys.path.append(str(BACKEND_ROOT))
-
-# infrastructure_engine's OWN internal imports are still flat
-# (e.g. "from domain_extract import extract_domains" inside pipeline.py),
-# so that folder itself also needs to be on sys.path directly.
 sys.path.append(str(BACKEND_ROOT / "infrastructure_engine"))
 
-# ---- Person 2: header/auth parsing ----
 try:
     from header_auth_engine.header_parser import build_email_data
 except ImportError as e:
     print(f"[!] header_parser not importable: {e}")
     build_email_data = None
 
-# ---- Person 3: domain + infrastructure pipeline ----
 try:
     from pipeline import run_pipeline
 except ImportError as e:
     print(f"[!] pipeline (Person 3) not importable yet -- domain_intel will be skipped: {e}")
     run_pipeline = None
 
-# ---- Person 1: real classifier first, rule-based stub as fallback ----
 classify_email_real = None
 classify_email_fallback = None
 
@@ -67,7 +42,6 @@ try:
 except ImportError:
     pass
 
-# ---- Person 4 Part A: fingerprinting (structural hash, typosquat, style) ----
 try:
     sys.path.append(str(BACKEND_ROOT / "threat_graph_engine"))
     from fingerprint import generate_fingerprint
@@ -75,9 +49,14 @@ except ImportError as e:
     print(f"[!] Person 4 fingerprint module not importable yet -- fingerprints will be skipped: {e}")
     generate_fingerprint = None
 
+try:
+    from correlate import record_correlations
+except ImportError as e:
+    print(f"[!] Correlation engine not importable yet -- campaign correlation will be skipped: {e}")
+    record_correlations = None
+
 
 def run_classifier(eml_path):
-    """Tries the real model first; falls back to the rule-based stub on ANY failure."""
     if classify_email_real:
         try:
             raw = classify_email_real(eml_path)
@@ -104,7 +83,6 @@ def run_classifier(eml_path):
 
 
 def run_fingerprint(eml_path):
-    """Runs Person 4's Part A fingerprinting. Returns None if not available/fails."""
     if not generate_fingerprint:
         return None
     try:
@@ -159,15 +137,13 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
                     found_on_lists_json, risk_score, risk_level, risk_reasons_json,
                     whois_json, dns_json, tls_json, reputation_json)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (email_id, domain, whois.get("domain_age", {}).get("days"),
+                (email_id, domain, (whois.get("domain_age") or {}).get("days"),
                  tls.get("issuer"), tls.get("status"), json.dumps(tls.get("cert_shared_with", [])),
                  json.dumps(reputation.get("found_on_lists", [])),
                  risk.get("risk_score"), risk.get("risk_level"), json.dumps(risk.get("reasons", [])),
                  json.dumps(whois), json.dumps(ddata.get("dns", {})), json.dumps(tls), json.dumps(reputation)),
             )
 
-        # NEW: capture infrastructure_risk / reliable_hop_analysis / received_chain --
-        # pipeline.py now produces these but they were previously silently dropped.
         infra_risk = pipeline_data.get("infrastructure_risk")
         if infra_risk:
             conn.execute(
@@ -245,10 +221,6 @@ def run(eml_path, db_path=None, user_id=None):
     insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
                          classifier_data, classifier_source, fingerprint_data, user_id)
 
-    # Archive the raw email (encrypted) for future model retraining --
-    # separate from the derived-signal tables above. Skips gracefully
-    # if DB_ENCRYPTION_KEY isn't configured yet, so this never blocks
-    # today's analysis while you're still setting up encryption.
     try:
         with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
             raw_content = f.read()
@@ -258,6 +230,16 @@ def run(eml_path, db_path=None, user_id=None):
         print(f"[!] Skipping archive -- encryption not configured: {e}")
     except Exception as e:
         print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
+
+    if record_correlations:
+        try:
+            matches = record_correlations(conn, email_id)
+            if matches:
+                print(f"[*] Correlation: matched {len(matches)} other investigation(s) -- {[m['email_id'] for m in matches]}")
+            else:
+                print("[*] Correlation: no matches against prior investigations")
+        except Exception as e:
+            print(f"[!] Correlation check failed (non-fatal): {e}")
 
     conn.commit()
     print(f"[+] {email_id} stored.")

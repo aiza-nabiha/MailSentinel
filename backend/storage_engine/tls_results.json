@@ -1,6 +1,6 @@
 {
     "investigation": {
-        "observed_at": "2026-09-12T17:30:23.741700+00:00"
+        "observed_at": "2026-09-13T14:34:28.257688+00:00"
     },
     "domains": [
         {
@@ -9,7 +9,7 @@
             "issuer": "Google Trust Services",
             "valid_from": "Aug 19 21:55:34 2026 GMT",
             "valid_to": "Nov 17 22:55:27 2026 GMT",
-            "days_until_expiry": 66,
+            "days_until_expiry": 65,
             "san_domains": [
                 "c5165a27.sni.cloudflaressl.com",
                 "info.tigergraph.com"
@@ -40,7 +40,7 @@
             "issuer": "DigiCert Inc",
             "valid_from": "Apr 16 00:00:00 2026 GMT",
             "valid_to": "Oct 16 23:59:59 2026 GMT",
-            "days_until_expiry": 34,
+            "days_until_expiry": 33,
             "san_domains": [
                 "www.linkedin.com",
                 "linkedin.com",
@@ -83,7 +83,7 @@
             "issuer": "DigiCert Inc",
             "valid_from": "May 20 00:00:00 2026 GMT",
             "valid_to": "Nov 20 23:59:59 2026 GMT",
-            "days_until_expiry": 69,
+            "days_until_expiry": 68,
             "san_domains": [
                 "linkedin.com"
             ],
