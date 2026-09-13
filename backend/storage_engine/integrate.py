@@ -95,11 +95,36 @@ def run_fingerprint(eml_path):
 def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
                          classifier_data=None, classifier_source=None, fingerprint_data=None, user_id=None):
     meta = header_data.get("email_metadata", {}) if header_data else {}
-    risk_score, verdict = None, None
+
+    # Combined risk score -- the WORST CASE across all three independent
+    # signals (domain intel, infrastructure/auth risk, ML classifier).
+    # Previously this only used the domain pipeline's score, meaning the
+    # ML classifier's verdict was silently ignored in the stored
+    # overall_risk_score -- which is exactly what the Gmail sidebar reads.
+    # The website was separately computing this same combined value in
+    # its own adapter, causing the two surfaces to show different numbers
+    # for the same email. Computing it once here, at the source, keeps
+    # both surfaces in sync.
+    domain_risk_score = 0
     if pipeline_data and pipeline_data.get("overall_verdict"):
-        overall_verdict = pipeline_data["overall_verdict"]
-        risk_score = overall_verdict.get("risk_score")
-        verdict = overall_verdict.get("risk_level")
+        domain_risk_score = pipeline_data["overall_verdict"].get("risk_score") or 0
+
+    infra_risk_score = 0
+    if pipeline_data and pipeline_data.get("infrastructure_risk"):
+        infra_risk_score = pipeline_data["infrastructure_risk"].get("risk_score") or 0
+
+    classifier_risk_score = 0
+    if classifier_data and classifier_data.get("phishing_score") is not None:
+        classifier_risk_score = classifier_data["phishing_score"] * 100
+
+    risk_score = round(max(domain_risk_score, infra_risk_score, classifier_risk_score))
+
+    if risk_score >= 70:
+        verdict = "high"
+    elif risk_score >= 40:
+        verdict = "medium"
+    else:
+        verdict = "low"
 
     conn.execute(
         """INSERT OR REPLACE INTO emails
