@@ -1,4 +1,10 @@
 Flask
 python-dotenv
+requests
+pandas
+scikit-learn
+scipy
+joblib
 dnspython
 tldextract
+python-whois
