@@ -15,9 +15,18 @@ function Landing({ onAnalyze }) {
   return <main className="landing"><NetworkBackdrop /><section className="command-hero"><div className="hero-copy"><div className="eyebrow"><span /> EMAIL THREAT FORENSICS</div><h1>See the attack<br /><em>behind</em> the email.</h1><p>MailSentinel turns a suspicious message into a defensible investigation—tracing authentication, infrastructure and campaign links in one live workspace.</p><div className="hero-actions"><button className="hero-primary" onClick={() => onAnalyze(null)}>Explore a live investigation <b>→</b></button><button className="hero-secondary" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}>Analyze an .eml</button></div><div className="trust-strip"><span><b>7</b> intelligence checks</span><i /><span><b>3</b> evidence confidence levels</span></div></div><div className="hero-visual"><img src="/forensics-hero.png" alt="Abstract forensic data network" /><div className="visual-chip chip-top">● AUTHENTICATION <b>FAILED</b></div><div className="visual-chip chip-bottom">CAMPAIGN MATCH <b>91% confidence</b></div></div></section><section className="signal-band"><div><small>01 / INGEST</small><strong>Preserve headers</strong><span>Original .eml evidence</span></div><div><small>02 / ANALYZE</small><strong>Expose signals</strong><span>Explainable threat score</span></div><div><small>03 / CORRELATE</small><strong>Connect campaigns</strong><span>Infrastructure graph</span></div></section><section className="upload-section" id="upload"><div className="upload-copy"><div className="eyebrow"><span /> START AN INVESTIGATION</div><h2>Bring the original.<br />Follow the evidence.</h2><p>Upload an exported email to retain the headers that explain where it actually came from.</p><div className="mini-evidence"><span>✦</span><p><b>No black-box verdicts.</b><br />Every risk signal connects to underlying evidence.</p></div></div><label className={`drop-zone ${dragging ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files[0]); }}><input type="file" accept=".eml,message/rfc822" onChange={(e) => choose(e.target.files[0])} /><div className="upload-orb">↑</div><strong>{fileName || "Drop a .eml file here"}</strong><span>{fileName ? "Ready for investigation" : "or click to browse from your device"}</span>{error && <small className="upload-error">{error}</small>}<button type="button" className="analyze-button" onClick={(e) => { e.preventDefault(); onAnalyze(selectedFile); }}>Analyze email <b>→</b></button><button type="button" className="sample-button" onClick={(e) => { e.preventDefault(); onAnalyze(null); }}>Try a sample investigation</button></label></section><section className="why-section"><div className="section-kicker">INTELLIGENCE YOU CAN DEFEND</div><h2>One message.<br /><em>Every</em> connection.</h2><div className="feature-grid"><article><span>◈</span><h3>Explainable risk</h3><p>Show the exact content, URL and authentication signals that make the decision.</p></article><article><span>⌁</span><h3>Forensic relay trace</h3><p>Find the trusted boundary and distinguish what is known from what was claimed.</p></article><article><span>◎</span><h3>Campaign intelligence</h3><p>See verified infrastructure links separately from corroborated and inferred patterns.</p></article></div></section></main>;
 }
 
-function Analyzing({ fileName, onDone }) {
+function Analyzing({ fileName }) {
+  // NOTE: this animation is now PURELY VISUAL. It no longer controls
+  // navigation -- it just loops/holds on the last step until the real
+  // fetch (in App's start()) actually finishes and switches the view
+  // itself. This fixes the bug where the fixed ~3.4s animation timer
+  // used to force-switch to the report page before the real backend
+  // response had arrived, showing stale/previous data instead.
   const [step, setStep] = useState(0);
-  useEffect(() => { const id = setInterval(() => setStep((value) => { if (value === analysisSteps.length - 1) { clearInterval(id); setTimeout(onDone, 500); return value; } return value + 1; }), 420); return () => clearInterval(id); }, [onDone]);
+  useEffect(() => {
+    const id = setInterval(() => setStep((value) => (value < analysisSteps.length - 1 ? value + 1 : value)), 420);
+    return () => clearInterval(id);
+  }, []);
   return <main className="analysis-screen"><NetworkBackdrop /><div className="analysis-card"><div className="analysis-radar"><span /><span /><span /><b>⌁</b></div><div className="eyebrow"><span /> INVESTIGATION IN PROGRESS</div><h1>Reading the signals.</h1><p className="analysis-file">{fileName}</p><ol>{analysisSteps.map((item, index) => <li className={index < step ? "done" : index === step ? "current" : ""} key={item}><span>{index < step ? "✓" : index === step ? "◌" : "·"}</span>{item}<small>{index < step ? "complete" : index === step ? "running" : "queued"}</small></li>)}</ol></div></main>;
 }
 
@@ -29,18 +38,15 @@ export default function App() {
   const [theme, setTheme] = useState("dark"), [view, setView] = useState("landing"), [fileName, setFileName] = useState("");
   const [investigationData, setInvestigationData] = useState(null);
   useEffect(() => document.documentElement.setAttribute("data-theme", theme), [theme]);
-  const home = () => setView("landing");
+  const home = () => { setInvestigationData(null); setView("landing"); };
 
-  // Reads ?investigation=<email_id> from the URL on page load -- this is
-  // what makes the Gmail plugin's "VIEW FULL INVESTIGATION" link work.
-  // Without this, the URL param is silently ignored and the site always
-  // shows the plain landing page instead of jumping to the report.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const investigationId = params.get("investigation");
     if (!investigationId) return;
 
     (async () => {
+      setInvestigationData(null);
       setView("analyzing");
       setFileName(investigationId);
       try {
@@ -58,6 +64,7 @@ export default function App() {
   }, []);
 
   const start = async (file) => {
+    setInvestigationData(null);  // clear any previous result BEFORE starting, so stale data can never show
     setFileName(file?.name || "sample-phishing-email.eml");
     setView("analyzing");
     try {
@@ -71,9 +78,11 @@ export default function App() {
       });
       const result = await response.json();
       setInvestigationData(result);
+      setView("report");  // only switch to report once the REAL result has arrived
     } catch (err) {
       console.error("Analysis failed:", err);
       setInvestigationData(null);
+      setView("landing");  // don't leave the user stuck on the animation forever if it fails
     }
   };
 
@@ -81,7 +90,7 @@ export default function App() {
     <div className="app-shell">
       <Topbar theme={theme} setTheme={setTheme} onHome={home} view={view} setView={setView} />
       {view === "landing" && <Landing onAnalyze={start} />}
-      {view === "analyzing" && <Analyzing fileName={fileName} onDone={() => setView("report")} />}
+      {view === "analyzing" && <Analyzing fileName={fileName} />}
       {view === "report" && <InvestigationReportPage apiResponse={investigationData} onNewInvestigation={home} />}
       {view === "history" && <History openReport={() => setView("report")} newInvestigation={home} />}
       {view === "settings" && <Settings />}

@@ -104,7 +104,7 @@
     "136.143.188.146": {
         "ip": "136.143.188.146",
         "status": "success",
-        "cached": false,
+        "cached": true,
         "ipinfo": {
             "status": "skipped",
             "source": "IPinfo",
@@ -179,6 +179,28 @@
         "reverse_dns": {
             "status": "success",
             "hostname": "mta-69.184.etransmail.com",
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "success",
+            "source": "AbuseIPDB",
+            "abuse_score": 0,
+            "total_reports": 0,
+            "risk_flag": false
+        }
+    },
+    "167.89.19.126": {
+        "ip": "167.89.19.126",
+        "status": "success",
+        "cached": false,
+        "ipinfo": {
+            "status": "skipped",
+            "source": "IPinfo",
+            "error": "IPINFO_TOKEN is not configured"
+        },
+        "reverse_dns": {
+            "status": "success",
+            "hostname": "o1189.ptr7920.mailers.zomato.com",
             "source": "DNS"
         },
         "reputation": {
