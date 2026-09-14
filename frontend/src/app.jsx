@@ -16,12 +16,6 @@ function Landing({ onAnalyze }) {
 }
 
 function Analyzing({ fileName }) {
-  // NOTE: this animation is now PURELY VISUAL. It no longer controls
-  // navigation -- it just loops/holds on the last step until the real
-  // fetch (in App's start()) actually finishes and switches the view
-  // itself. This fixes the bug where the fixed ~3.4s animation timer
-  // used to force-switch to the report page before the real backend
-  // response had arrived, showing stale/previous data instead.
   const [step, setStep] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setStep((value) => (value < analysisSteps.length - 1 ? value + 1 : value)), 420);
@@ -51,7 +45,10 @@ export default function App() {
       setFileName(investigationId);
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/investigation/${investigationId}`, {
-          headers: { "X-API-Key": import.meta.env.VITE_API_KEY },
+          headers: {
+            "X-API-Key": import.meta.env.VITE_API_KEY,
+            "ngrok-skip-browser-warning": "true",
+          },
         });
         const result = await response.json();
         setInvestigationData(result);
@@ -64,7 +61,7 @@ export default function App() {
   }, []);
 
   const start = async (file) => {
-    setInvestigationData(null);  // clear any previous result BEFORE starting, so stale data can never show
+    setInvestigationData(null);
     setFileName(file?.name || "sample-phishing-email.eml");
     setView("analyzing");
     try {
@@ -73,16 +70,20 @@ export default function App() {
         : { eml_path: "test_emails/example.eml", user_id: "demo@gmail.com" };
       const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": import.meta.env.VITE_API_KEY },
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": import.meta.env.VITE_API_KEY,
+          "ngrok-skip-browser-warning": "true",
+        },
         body: JSON.stringify(body),
       });
       const result = await response.json();
       setInvestigationData(result);
-      setView("report");  // only switch to report once the REAL result has arrived
+      setView("report");
     } catch (err) {
       console.error("Analysis failed:", err);
       setInvestigationData(null);
-      setView("landing");  // don't leave the user stuck on the animation forever if it fails
+      setView("landing");
     }
   };
 
