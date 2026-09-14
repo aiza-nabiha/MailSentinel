@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -20,6 +20,48 @@ from integrate import run as run_integration
 load_dotenv()
 
 app = Flask(__name__)
+
+# Serves the built website (frontend/dist/) directly from this same
+# Flask process -- eliminates the need for a second ngrok tunnel
+# (free-tier ngrok only reliably supports one), and permanently fixes
+# the http/https mismatch, since everything now shares this one
+# tunnel's HTTPS URL.
+FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+
+
+@app.route("/debug/dashboard-path", methods=["GET"])
+def debug_dashboard_path():
+    """
+    TEMPORARY diagnostic route -- confirms whether frontend/dist
+    actually exists in this deployed environment, and what's in it.
+    Remove this once the /dashboard 404 is resolved.
+    """
+    exists = FRONTEND_DIST.exists()
+    contents = []
+    if exists:
+        try:
+            contents = [str(p.name) for p in FRONTEND_DIST.iterdir()]
+        except Exception as e:
+            contents = [f"error listing: {e}"]
+    return jsonify({
+        "computed_path": str(FRONTEND_DIST),
+        "exists": exists,
+        "contents": contents,
+        "cwd": str(Path.cwd()),
+    })
+
+
+@app.route("/dashboard", defaults={"path": ""})
+@app.route("/dashboard/", defaults={"path": ""})
+@app.route("/dashboard/<path:path>")
+def serve_dashboard(path):
+    target = FRONTEND_DIST / path if path else None
+    if target and target.is_file():
+        return send_from_directory(FRONTEND_DIST, path)
+    # Any other path (including ?investigation=... query strings, which
+    # don't affect this) falls back to index.html -- the React app
+    # itself reads window.location.search client-side.
+    return send_from_directory(FRONTEND_DIST, "index.html")
 
 # CORS: the Gmail plugin calls this API from Apps Script's SERVER
 # (UrlFetchApp) -- browsers never restrict that, no CORS needed there.
