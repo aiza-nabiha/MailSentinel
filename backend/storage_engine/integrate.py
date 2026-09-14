@@ -105,19 +105,24 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
     # its own adapter, causing the two surfaces to show different numbers
     # for the same email. Computing it once here, at the source, keeps
     # both surfaces in sync.
-    domain_risk_score = 0
-    if pipeline_data and pipeline_data.get("overall_verdict"):
-        domain_risk_score = pipeline_data["overall_verdict"].get("risk_score") or 0
+    domain_infra_risk = 0
 
-    infra_risk_score = 0
-    if pipeline_data and pipeline_data.get("infrastructure_risk"):
-        infra_risk_score = pipeline_data["infrastructure_risk"].get("risk_score") or 0
+    if pipeline_data and pipeline_data.get("overall_verdict"):
+        domain_infra_risk = (
+            pipeline_data["overall_verdict"].get("risk_score") or 0
+        )
 
     classifier_risk_score = 0
-    if classifier_data and classifier_data.get("phishing_score") is not None:
-        classifier_risk_score = classifier_data["phishing_score"] * 100
 
-    risk_score = round(max(domain_risk_score, infra_risk_score, classifier_risk_score))
+    if classifier_data and classifier_data.get("phishing_score") is not None:
+        classifier_risk_score = (
+            classifier_data["phishing_score"] * 100
+        )
+
+    risk_score = round(
+        0.40 * classifier_risk_score +
+        0.60 * domain_infra_risk
+    )
 
     if risk_score >= 70:
         verdict = "high"
