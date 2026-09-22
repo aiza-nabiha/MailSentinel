@@ -212,7 +212,13 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
         )
 
 
-def run(eml_path, db_path=None):
+def run(eml_path, db_path=None, return_details=False):
+    """Run the full investigation pipeline.
+
+    ``return_details`` keeps the original email-id return value as the default
+    for CLI and existing callers, while allowing the HTTP API to pass the
+    complete, already-computed pipeline record to the correlation engine.
+    """
     conn = get_connection(db_path)
     email_id, already_existed = get_or_create_email_id(conn, eml_path)
     if already_existed:
@@ -243,6 +249,12 @@ def run(eml_path, db_path=None):
     conn.commit()
     print(f"[+] {email_id} stored.")
     conn.close()
+    if return_details:
+        return {
+            "email_id": email_id,
+            "pipeline_data": pipeline_data or {"email_id": email_id},
+            "fingerprint_data": fingerprint_data or {},
+        }
     return email_id
 
 
