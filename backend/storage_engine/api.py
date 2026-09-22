@@ -39,6 +39,7 @@ Test it (raw_eml mode -- what the sidebar actually uses):
 """
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -47,12 +48,30 @@ from flask import Flask, request, jsonify
 from db import get_connection
 from integrate import run as run_integration
 
+BACKEND_DIR = Path(__file__).parent.parent
+INFRASTRUCTURE_ENGINE_DIR = BACKEND_DIR / "infrastructure_engine"
+if str(INFRASTRUCTURE_ENGINE_DIR) not in sys.path:
+    sys.path.insert(0, str(INFRASTRUCTURE_ENGINE_DIR))
+
+from threat_correlation_engine import correlate
+
 load_dotenv()
 
 app = Flask(__name__)
 
 ALLOWED_EML_DIR = (Path(__file__).parent.parent.parent / "data").resolve()
 API_SECRET_KEY = os.environ.get("API_SECRET_KEY")
+
+
+@app.after_request
+def allow_local_frontend(response):
+    """Allow the Vite development frontend to call this localhost API."""
+    origin = request.headers.get("Origin")
+    if origin in {"http://localhost:5173", "http://127.0.0.1:5173"}:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key"
+        response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    return response
 
 
 def _require_api_key():
@@ -113,7 +132,16 @@ def analyze():
             return jsonify({"error": f"File not found: {eml_path_raw}"}), 404
 
     try:
-        email_id = run_integration(str(target_path))
+        integration = run_integration(str(target_path), return_details=True)
+        email_id = integration["email_id"]
+
+        # The correlation engine needs the full infrastructure record, not the
+        # reduced rows returned to the client. Reuse the result we just
+        # calculated instead of rerunning DNS/WHOIS/fingerprinting work.
+        correlation_record = integration["pipeline_data"]
+        correlation_record["email_id"] = email_id
+        correlation_record["fingerprint"] = integration["fingerprint_data"]
+        correlation_result = correlate([correlation_record])
     except Exception as e:
         print(f"[!] Pipeline error: {e}")
         return jsonify({"error": "Analysis failed -- check server logs"}), 500
@@ -193,6 +221,9 @@ def analyze():
             {"domain": d[0], "risk_score": d[1], "risk_level": d[2], "reasons": d[3]}
             for d in domain_rows
         ],
+        # Raw output from infrastructure_engine/threat_correlation_engine.py.
+        # The frontend maps this graph to its visual node layout.
+        "campaign_correlation": correlation_result,
     }
     return jsonify(result), 200
 

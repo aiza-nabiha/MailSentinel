@@ -4,9 +4,13 @@ import RelayPath from "../components/RelayPath";
 import CampaignGraph from "../components/CampaignGraph";
 import mockData from "../data/mockInvestigation.json";
 
-export default function InvestigationReportPage({ onNewInvestigation }) {
+export default function InvestigationReportPage({ onNewInvestigation, campaignCorrelation }) {
   // Replace this fixture with the resolved API response when the endpoint is available.
   const data = mockData;
+  const campaign = campaignCorrelation || data.campaign_correlation;
+  const matchedInvestigations = campaignCorrelation
+    ? Math.max(0, (campaignCorrelation.investigation?.historical_email_count || 0))
+    : campaign.matched_investigations;
 
   const riskColor = data.risk_level === "High" ? "var(--high)" : data.risk_level === "Medium" ? "var(--medium)" : "var(--safe)";
 
@@ -78,14 +82,14 @@ export default function InvestigationReportPage({ onNewInvestigation }) {
             <div className="section-sub">Hover a connection for the reason</div>
           </div>
           <div className="corr-banner">
-            <div>Matched <strong>{data.campaign_correlation.matched_investigations} prior investigations</strong> against this infrastructure.</div>
+            <div>Matched <strong>{matchedInvestigations} prior investigations</strong> against this infrastructure.</div>
             <div className="legend">
               <div className="legend-item"><span className="legend-line" /> Verified</div>
               <div className="legend-item"><span className="legend-line corroborated" /> Corroborated</div>
               <div className="legend-item"><span className="legend-line inferred" /> AI-inferred</div>
             </div>
           </div>
-          <CampaignGraph nodes={data.campaign_correlation.nodes} edges={data.campaign_correlation.edges} />
+          <CampaignGraph nodes={campaign.nodes} edges={campaign.edges} graph={campaignCorrelation?.graph} />
         </section>
     </main>
   );
