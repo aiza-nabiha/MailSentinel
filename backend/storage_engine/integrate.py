@@ -1,10 +1,31 @@
 """
 backend/storage_engine/integrate.py
+
+POSTGRES VERSION. Two things changed from the original:
+
+  1. All raw SQL converted from SQLite's `?` placeholders to
+     Postgres's `%s`, and `INSERT OR REPLACE` to
+     `INSERT ... ON CONFLICT DO UPDATE`.
+
+  2. The correlation engine wired in here is now
+     threat_correlation_engine.py (the real, full engine -- rarity
+     weighting, time decay, cohesion checks, cross-session memory),
+     NOT the old threat_graph_engine/correlate.py simplified 3-signal
+     engine, which is retired.
+
+     threat_correlation_engine.correlate() recomputes the ENTIRE
+     campaign graph from full history every time it's called (it's
+     not incremental). So rather than trying to diff its output,
+     persist_campaign_cache() just wipes and rewrites the
+     campaign_membership / campaign_edges tables after every run --
+     they're a cache of "what does the graph look like right now",
+     not a running log. api.py reads that cache directly.
 """
 
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from db import get_connection, get_or_create_email_id, get_or_create_user, archive_raw_email
@@ -49,11 +70,14 @@ except ImportError as e:
     print(f"[!] Person 4 fingerprint module not importable yet -- fingerprints will be skipped: {e}")
     generate_fingerprint = None
 
+# threat_correlation_engine.py lives in infrastructure_engine/, already
+# on sys.path above. This REPLACES the old threat_graph_engine/correlate.py
+# import that used to be here.
 try:
-    from correlate import record_correlations
+    from threat_correlation_engine import correlate as run_threat_correlation
 except ImportError as e:
-    print(f"[!] Correlation engine not importable yet -- campaign correlation will be skipped: {e}")
-    record_correlations = None
+    print(f"[!] threat_correlation_engine not importable yet -- campaign correlation will be skipped: {e}")
+    run_threat_correlation = None
 
 
 def run_classifier(eml_path):
@@ -96,15 +120,10 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
                          classifier_data=None, classifier_source=None, fingerprint_data=None, user_id=None):
     meta = header_data.get("email_metadata", {}) if header_data else {}
 
-    # Combined risk score -- the WORST CASE across all three independent
-    # signals (domain intel, infrastructure/auth risk, ML classifier).
-    # Previously this only used the domain pipeline's score, meaning the
-    # ML classifier's verdict was silently ignored in the stored
-    # overall_risk_score -- which is exactly what the Gmail sidebar reads.
-    # The website was separately computing this same combined value in
-    # its own adapter, causing the two surfaces to show different numbers
-    # for the same email. Computing it once here, at the source, keeps
-    # both surfaces in sync.
+    # Combined risk score -- the WORST CASE across all three
+    # independent signals (domain intel, infrastructure/auth risk,
+    # ML classifier). Computed once here, at the source, so the
+    # Gmail sidebar and the website always show the same number.
     domain_infra_risk = 0
 
     if pipeline_data and pipeline_data.get("overall_verdict"):
@@ -132,10 +151,19 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
         verdict = "low"
 
     conn.execute(
-        """INSERT OR REPLACE INTO emails
-           (email_id, user_id, raw_eml_path, subject, from_header, to_header, date_header,
-            overall_risk_score, verdict)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO emails
+               (email_id, user_id, raw_eml_path, subject, from_header, to_header, date_header,
+                overall_risk_score, verdict)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+           ON CONFLICT (email_id) DO UPDATE SET
+               user_id = EXCLUDED.user_id,
+               raw_eml_path = EXCLUDED.raw_eml_path,
+               subject = EXCLUDED.subject,
+               from_header = EXCLUDED.from_header,
+               to_header = EXCLUDED.to_header,
+               date_header = EXCLUDED.date_header,
+               overall_risk_score = EXCLUDED.overall_risk_score,
+               verdict = EXCLUDED.verdict""",
         (email_id, user_id, eml_path, meta.get("subject"), meta.get("from"), meta.get("to"),
          meta.get("date"), risk_score, verdict),
     )
@@ -143,10 +171,19 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
     if header_data:
         auth = header_data.get("authentication", {})
         conn.execute(
-            """INSERT OR REPLACE INTO header_results
-               (email_id, spf_result, spf_domain, dkim_json, dmarc_result, dmarc_domain,
-                dmarc_policy, received_chain_json, raw_auth_results_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO header_results
+                   (email_id, spf_result, spf_domain, dkim_json, dmarc_result, dmarc_domain,
+                    dmarc_policy, received_chain_json, raw_auth_results_json)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (email_id) DO UPDATE SET
+                   spf_result = EXCLUDED.spf_result,
+                   spf_domain = EXCLUDED.spf_domain,
+                   dkim_json = EXCLUDED.dkim_json,
+                   dmarc_result = EXCLUDED.dmarc_result,
+                   dmarc_domain = EXCLUDED.dmarc_domain,
+                   dmarc_policy = EXCLUDED.dmarc_policy,
+                   received_chain_json = EXCLUDED.received_chain_json,
+                   raw_auth_results_json = EXCLUDED.raw_auth_results_json""",
             (email_id, auth.get("spf", {}).get("result"), auth.get("spf", {}).get("domain"),
              json.dumps(auth.get("dkim", [])), auth.get("dmarc", {}).get("result"),
              auth.get("dmarc", {}).get("domain"), auth.get("dmarc", {}).get("policy"),
@@ -155,7 +192,7 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
         )
 
     if pipeline_data:
-        conn.execute("DELETE FROM domain_intel WHERE email_id = ?", (email_id,))
+        conn.execute("DELETE FROM domain_intel WHERE email_id = %s", (email_id,))
         for domain, ddata in pipeline_data.get("domains", {}).items():
             risk = ddata.get("risk", {})
             whois = ddata.get("whois", {})
@@ -163,10 +200,10 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
             reputation = ddata.get("reputation", {})
             conn.execute(
                 """INSERT INTO domain_intel
-                   (email_id, domain, age_days, tls_issuer, tls_status, cert_shared_with_json,
-                    found_on_lists_json, risk_score, risk_level, risk_reasons_json,
-                    whois_json, dns_json, tls_json, reputation_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (email_id, domain, age_days, tls_issuer, tls_status, cert_shared_with_json,
+                        found_on_lists_json, risk_score, risk_level, risk_reasons_json,
+                        whois_json, dns_json, tls_json, reputation_json)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 (email_id, domain, (whois.get("domain_age") or {}).get("days"),
                  tls.get("issuer"), tls.get("status"), json.dumps(tls.get("cert_shared_with", [])),
                  json.dumps(reputation.get("found_on_lists", [])),
@@ -177,10 +214,17 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
         infra_risk = pipeline_data.get("infrastructure_risk")
         if infra_risk:
             conn.execute(
-                """INSERT OR REPLACE INTO infrastructure_risk
-                   (email_id, risk_score, risk_level, reasons_json, evidence_json,
-                    reliable_hop_json, received_chain_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO infrastructure_risk
+                       (email_id, risk_score, risk_level, reasons_json, evidence_json,
+                        reliable_hop_json, received_chain_json)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (email_id) DO UPDATE SET
+                       risk_score = EXCLUDED.risk_score,
+                       risk_level = EXCLUDED.risk_level,
+                       reasons_json = EXCLUDED.reasons_json,
+                       evidence_json = EXCLUDED.evidence_json,
+                       reliable_hop_json = EXCLUDED.reliable_hop_json,
+                       received_chain_json = EXCLUDED.received_chain_json""",
                 (email_id, infra_risk.get("risk_score"), infra_risk.get("risk_level"),
                  json.dumps(infra_risk.get("reasons", [])), json.dumps(infra_risk.get("evidence", [])),
                  json.dumps(pipeline_data.get("reliable_hop_analysis")),
@@ -189,10 +233,19 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
 
     if classifier_data:
         conn.execute(
-            """INSERT OR REPLACE INTO classifier_results
-               (email_id, phishing_score, verdict, reasons_json, extracted_urls_json,
-                source, url_intelligence_json, sender_features_json, email_structure_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO classifier_results
+                   (email_id, phishing_score, verdict, reasons_json, extracted_urls_json,
+                    source, url_intelligence_json, sender_features_json, email_structure_json)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (email_id) DO UPDATE SET
+                   phishing_score = EXCLUDED.phishing_score,
+                   verdict = EXCLUDED.verdict,
+                   reasons_json = EXCLUDED.reasons_json,
+                   extracted_urls_json = EXCLUDED.extracted_urls_json,
+                   source = EXCLUDED.source,
+                   url_intelligence_json = EXCLUDED.url_intelligence_json,
+                   sender_features_json = EXCLUDED.sender_features_json,
+                   email_structure_json = EXCLUDED.email_structure_json""",
             (email_id, classifier_data.get("phishing_score"), classifier_data.get("verdict"),
              json.dumps(classifier_data.get("reasons", [])),
              json.dumps(classifier_data.get("extracted_urls", [])),
@@ -204,10 +257,18 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
 
     if fingerprint_data:
         conn.execute(
-            """INSERT OR REPLACE INTO fingerprints
-               (email_id, structural_hash, skeleton_type, typosquat_matches_json,
-                targeted_brands_json, style_colors_json, style_fonts_json, style_alt_texts_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO fingerprints
+                   (email_id, structural_hash, skeleton_type, typosquat_matches_json,
+                    targeted_brands_json, style_colors_json, style_fonts_json, style_alt_texts_json)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (email_id) DO UPDATE SET
+                   structural_hash = EXCLUDED.structural_hash,
+                   skeleton_type = EXCLUDED.skeleton_type,
+                   typosquat_matches_json = EXCLUDED.typosquat_matches_json,
+                   targeted_brands_json = EXCLUDED.targeted_brands_json,
+                   style_colors_json = EXCLUDED.style_colors_json,
+                   style_fonts_json = EXCLUDED.style_fonts_json,
+                   style_alt_texts_json = EXCLUDED.style_alt_texts_json""",
             (email_id,
              fingerprint_data["structural"]["fingerprint_sha256"],
              fingerprint_data["structural"]["skeleton_type"],
@@ -217,6 +278,68 @@ def insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
              json.dumps(fingerprint_data["style"]["fonts"]),
              json.dumps(fingerprint_data["style"]["alt_texts"])),
         )
+
+
+def persist_campaign_cache(conn, campaigns):
+    """
+    threat_correlation_engine.correlate() returns the FULL current
+    campaign graph, recomputed from scratch, every time it runs.
+    Rather than diffing that against whatever was there before, wipe
+    the cache tables and write the fresh result -- correct and simple
+    at this app's scale (dozens/hundreds of investigations, not
+    millions).
+    """
+    cur = conn.cursor()
+    cur.execute("TRUNCATE campaign_membership, campaign_edges")
+
+    for campaign in campaigns:
+        campaign_id = campaign["campaign_id"]
+        confidence = campaign["confidence"]
+        cohesion = campaign["cohesion"]
+        cohesion_warning = campaign["cohesion_warning"]
+        signal_summary_json = json.dumps(campaign["signal_summary"])
+
+        for member_email_id in campaign["emails"]:
+            cur.execute(
+                """INSERT INTO campaign_membership
+                       (email_id, campaign_id, confidence, cohesion, cohesion_warning, signal_summary_json)
+                   VALUES (%s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (email_id, campaign_id) DO NOTHING""",
+                (member_email_id, campaign_id, confidence, cohesion, cohesion_warning, signal_summary_json),
+            )
+
+        for edge in campaign["connections"]:
+            cur.execute(
+                """INSERT INTO campaign_edges
+                       (campaign_id, source_email_id, target_email_id, confidence,
+                        evidence_summary_json, signals_json)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (campaign_id, edge["source"], edge["target"], edge["confidence"],
+                 json.dumps(edge["evidence_summary"]), json.dumps(edge["signals"])),
+            )
+
+    conn.commit()
+
+
+def run_correlation(conn, email_id, pipeline_data, fingerprint_data):
+    """
+    Builds the record shape threat_correlation_engine.normalize_email_record()
+    expects, runs the real correlation engine against full history, and
+    persists its output into the campaign_membership/campaign_edges cache
+    that api.py reads from.
+    """
+    record = {
+        "email_id": email_id,
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "domains": (pipeline_data or {}).get("domains", {}),
+        "reliable_hop_analysis": (pipeline_data or {}).get("reliable_hop_analysis", {}),
+        "fingerprint": fingerprint_data or {},
+    }
+    # output_file=None -- we don't need the JSON file dump in the live
+    # pipeline, only the CLI usage writes that.
+    result = run_threat_correlation(conn, [record], output_file=None)
+    persist_campaign_cache(conn, result["campaigns"])
+    return result
 
 
 def run(eml_path, db_path=None, user_id=None):
@@ -261,13 +384,14 @@ def run(eml_path, db_path=None, user_id=None):
     except Exception as e:
         print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
 
-    if record_correlations:
+    if run_threat_correlation:
         try:
-            matches = record_correlations(conn, email_id)
-            if matches:
-                print(f"[*] Correlation: matched {len(matches)} other investigation(s) -- {[m['email_id'] for m in matches]}")
+            correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data)
+            my_campaigns = [c for c in correlation_result["campaigns"] if email_id in c["emails"]]
+            if my_campaigns:
+                print(f"[*] Correlation: matched campaign(s) -- {[c['campaign_id'] for c in my_campaigns]}")
             else:
-                print("[*] Correlation: no matches against prior investigations")
+                print("[*] Correlation: no campaign matches against prior investigations")
         except Exception as e:
             print(f"[!] Correlation check failed (non-fatal): {e}")
 

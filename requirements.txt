@@ -156,3 +156,5 @@ widgetsnbextension==4.0.15
 wrapt==2.4.1
 xgboost==3.3.0
 xlrd==2.0.2
+psycopg2-binary
+networkx
