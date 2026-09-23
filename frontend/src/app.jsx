@@ -9,10 +9,10 @@ function Topbar({ theme, setTheme, onHome, view, setView }) {
 }
 const NetworkBackdrop = () => <div className="network-backdrop" aria-hidden="true"><i /><i /><i /><i /><b /><b /><b /><b /></div>;
 
-function Landing({ onAnalyze }) {
+function Landing({ onAnalyze, analysisError }) {
   const [dragging, setDragging] = useState(false), [fileName, setFileName] = useState(""), [error, setError] = useState(""), [selectedFile, setSelectedFile] = useState(null);
   const choose = (file) => { if (!file) return; if (!file.name.toLowerCase().endsWith(".eml")) { setError("MailSentinel needs the original .eml message to retain forensic headers."); return; } setError(""); setFileName(file.name); setSelectedFile(file); };
-  return <main className="landing"><NetworkBackdrop /><section className="command-hero"><div className="hero-copy"><div className="eyebrow"><span /> EMAIL THREAT FORENSICS</div><h1>See the attack<br /><em>behind</em> the email.</h1><p>MailSentinel turns a suspicious message into a defensible investigation—tracing authentication, infrastructure and campaign links in one live workspace.</p><div className="hero-actions"><button className="hero-primary" onClick={() => onAnalyze(null)}>Explore a live investigation <b>→</b></button><button className="hero-secondary" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}>Analyze an .eml</button></div><div className="trust-strip"><span><b>7</b> intelligence checks</span><i /><span><b>3</b> evidence confidence levels</span></div></div><div className="hero-visual"><img src="/forensics-hero.png" alt="Abstract forensic data network" /><div className="visual-chip chip-top">● AUTHENTICATION <b>FAILED</b></div><div className="visual-chip chip-bottom">CAMPAIGN MATCH <b>91% confidence</b></div></div></section><section className="signal-band"><div><small>01 / INGEST</small><strong>Preserve headers</strong><span>Original .eml evidence</span></div><div><small>02 / ANALYZE</small><strong>Expose signals</strong><span>Explainable threat score</span></div><div><small>03 / CORRELATE</small><strong>Connect campaigns</strong><span>Infrastructure graph</span></div></section><section className="upload-section" id="upload"><div className="upload-copy"><div className="eyebrow"><span /> START AN INVESTIGATION</div><h2>Bring the original.<br />Follow the evidence.</h2><p>Upload an exported email to retain the headers that explain where it actually came from.</p><div className="mini-evidence"><span>✦</span><p><b>No black-box verdicts.</b><br />Every risk signal connects to underlying evidence.</p></div></div><label className={`drop-zone ${dragging ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files[0]); }}><input type="file" accept=".eml,message/rfc822" onChange={(e) => choose(e.target.files[0])} /><div className="upload-orb">↑</div><strong>{fileName || "Drop a .eml file here"}</strong><span>{fileName ? "Ready for investigation" : "or click to browse from your device"}</span>{error && <small className="upload-error">{error}</small>}<button type="button" className="analyze-button" onClick={(e) => { e.preventDefault(); onAnalyze(selectedFile); }}>Analyze email <b>→</b></button><button type="button" className="sample-button" onClick={(e) => { e.preventDefault(); onAnalyze(null); }}>Try a sample investigation</button></label></section><section className="why-section"><div className="section-kicker">INTELLIGENCE YOU CAN DEFEND</div><h2>One message.<br /><em>Every</em> connection.</h2><div className="feature-grid"><article><span>◈</span><h3>Explainable risk</h3><p>Show the exact content, URL and authentication signals that make the decision.</p></article><article><span>⌁</span><h3>Forensic relay trace</h3><p>Find the trusted boundary and distinguish what is known from what was claimed.</p></article><article><span>◎</span><h3>Campaign intelligence</h3><p>See verified infrastructure links separately from corroborated and inferred patterns.</p></article></div></section></main>;
+  return <main className="landing"><NetworkBackdrop /><section className="command-hero product-hero"><div className="hero-copy"><div className="eyebrow"><span /> EMAIL THREAT INTELLIGENCE</div><h1>Detect the email.<br /><em>Reconstruct</em> the attack.</h1><p>Analyze suspicious emails using content intelligence, authentication, infrastructure analysis and campaign correlation — all from one investigation.</p><div className="hero-actions"><button className="hero-primary" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}>Upload .EML <b>→</b></button><button className="hero-secondary" onClick={() => onAnalyze(null)}>Analyze with Gmail</button></div></div><div className="product-preview"><div className="preview-top"><span className="mono">MAILSENTINEL / LIVE ANALYSIS</span><span className="preview-dot">●</span></div><div className="preview-verdict"><div><small>RISK VERDICT</small><strong>ANALYZE AN EMAIL</strong><span>Investigation data appears here</span></div><div className="preview-score">—<small>/ 100</small></div></div><div className="preview-path"><span>EMAIL</span><b>→</b><span>URL</span><b>→</b><span>DOMAIN</span><b>→</b><span>IP</span><b>→</b><span>ASN</span></div><div className="preview-related"><span>◌</span> Related investigations are shown when matching infrastructure is found.</div></div></section><section className="signal-band"><div><small>01 / INGEST</small><strong>Preserve headers</strong><span>Original .eml evidence</span></div><div><small>02 / ANALYZE</small><strong>Expose signals</strong><span>Explainable threat score</span></div><div><small>03 / CORRELATE</small><strong>Connect campaigns</strong><span>Infrastructure graph</span></div></section><section className="upload-section" id="upload"><div className="upload-copy"><div className="eyebrow"><span /> START AN INVESTIGATION</div><h2>Bring the original.<br />Follow the evidence.</h2><p>Upload an exported email to retain the headers that explain where it actually came from.</p></div><label className={`drop-zone ${dragging ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files[0]); }}><input type="file" accept=".eml,message/rfc822" onChange={(e) => choose(e.target.files[0])} /><div className="upload-orb">↑</div><strong>{fileName || "Drop a .eml file here"}</strong><span>{fileName ? "Ready for investigation" : "or click to browse from your device"}</span>{(error || analysisError) && <small className="upload-error">{error || analysisError}</small>}<button type="button" className="analyze-button" onClick={(e) => { e.preventDefault(); onAnalyze(selectedFile); }}>Analyze email <b>→</b></button></label></section><section className="why-section"><div className="section-kicker">INTELLIGENCE YOU CAN DEFEND</div><h2>One message.<br /><em>Every</em> connection.</h2><div className="feature-grid capability-grid"><article><div className="capability-icon">◈</div><h3>Explainable risk</h3><div className="capability-lines"><span>Content</span><span>Authentication</span><span>URL</span><span>Infrastructure</span></div><a href="#upload">View evidence →</a></article><article><div className="capability-icon">⌁</div><h3>Forensic relay trace</h3><p>Map received hops and distinguish the trusted boundary from claimed routing data.</p><a href="#upload">Trace route →</a></article><article><div className="capability-icon">◎</div><h3>Campaign intelligence</h3><p>Connect investigations only when the analysis finds shared infrastructure.</p><a href="#upload">Explore connections →</a></article></div></section></main>;
 }
 
 function Analyzing({ fileName }) {
@@ -30,7 +30,7 @@ function Settings() { const [saved, setSaved] = useState(false); return <main cl
 
 export default function App() {
   const [theme, setTheme] = useState("dark"), [view, setView] = useState("landing"), [fileName, setFileName] = useState("");
-  const [investigationData, setInvestigationData] = useState(null);
+  const [investigationData, setInvestigationData] = useState(null), [analysisError, setAnalysisError] = useState("");
   useEffect(() => document.documentElement.setAttribute("data-theme", theme), [theme]);
   const home = () => { setInvestigationData(null); setView("landing"); };
 
@@ -61,6 +61,7 @@ export default function App() {
   }, []);
 
   const start = async (file) => {
+    setAnalysisError("");
     setInvestigationData(null);
     setFileName(file?.name || "sample-phishing-email.eml");
     setView("analyzing");
@@ -68,7 +69,8 @@ export default function App() {
       const body = file
         ? { raw_eml: await file.text(), user_id: "demo@gmail.com" }
         : { eml_path: "test_emails/example.eml", user_id: "demo@gmail.com" };
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:5001";
+      const response = await fetch(`${apiUrl}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,10 +80,12 @@ export default function App() {
         body: JSON.stringify(body),
       });
       const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Analysis request failed (${response.status})`);
       setInvestigationData(result);
       setView("report");
     } catch (err) {
       console.error("Analysis failed:", err);
+      setAnalysisError(err.message || "Unable to reach the analysis service. Check that the backend is running.");
       setInvestigationData(null);
       setView("landing");
     }
@@ -90,7 +94,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <Topbar theme={theme} setTheme={setTheme} onHome={home} view={view} setView={setView} />
-      {view === "landing" && <Landing onAnalyze={start} />}
+      {view === "landing" && <Landing onAnalyze={start} analysisError={analysisError} />}
       {view === "analyzing" && <Analyzing fileName={fileName} />}
       {view === "report" && <InvestigationReportPage apiResponse={investigationData} onNewInvestigation={home} />}
       {view === "history" && <History openReport={() => setView("report")} newInvestigation={home} />}
