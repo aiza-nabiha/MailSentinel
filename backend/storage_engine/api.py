@@ -1,7 +1,15 @@
 """
 backend/storage_engine/api.py
 
-Bridge between the Gmail Add-on / website and the pipeline.
+POSTGRES VERSION. Changes from the original:
+  - All `?` placeholders -> `%s`.
+  - campaign_correlation now reads from campaign_membership /
+    campaign_edges (the threat_correlation_engine.py cache tables)
+    instead of the old campaigns / campaign_members / graph_edges
+    tables written by the retired threat_graph_engine/correlate.py.
+    Response shape kept backward-compatible (matched_investigations,
+    matches[].signals) with a couple of extra fields (confidence,
+    cohesion) added since the real engine actually computes those.
 """
 
 import hmac
@@ -21,21 +29,11 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Serves the built website (frontend/dist/) directly from this same
-# Flask process -- eliminates the need for a second ngrok tunnel
-# (free-tier ngrok only reliably supports one), and permanently fixes
-# the http/https mismatch, since everything now shares this one
-# tunnel's HTTPS URL.
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
 
 @app.route("/debug/dashboard-path", methods=["GET"])
 def debug_dashboard_path():
-    """
-    TEMPORARY diagnostic route -- confirms whether frontend/dist
-    actually exists in this deployed environment, and what's in it.
-    Remove this once the /dashboard 404 is resolved.
-    """
     exists = FRONTEND_DIST.exists()
     contents = []
     if exists:
@@ -58,17 +56,9 @@ def serve_dashboard(path):
     target = FRONTEND_DIST / path if path else None
     if target and target.is_file():
         return send_from_directory(FRONTEND_DIST, path)
-    # Any other path (including ?investigation=... query strings, which
-    # don't affect this) falls back to index.html -- the React app
-    # itself reads window.location.search client-side.
     return send_from_directory(FRONTEND_DIST, "index.html")
 
-# CORS: the Gmail plugin calls this API from Apps Script's SERVER
-# (UrlFetchApp) -- browsers never restrict that, no CORS needed there.
-# The website's React frontend calls this API from JAVASCRIPT RUNNING
-# IN THE BROWSER, which IS restricted by CORS by default. Without this,
-# the browser silently blocks every fetch() call even though curl/Postman
-# work fine. Allowing all origins for the demo; tighten before real use.
+
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["100 per hour"], storage_uri="memory://")
@@ -96,7 +86,7 @@ def _resolve_safe_eml_path(user_supplied_path):
 
 def _build_investigation_result(conn, email_id, include_raw_content=False):
     email_row = conn.execute(
-        "SELECT email_id, subject, from_header, overall_risk_score, verdict, ingested_at FROM emails WHERE email_id = ?",
+        "SELECT email_id, subject, from_header, overall_risk_score, verdict, ingested_at FROM emails WHERE email_id = %s",
         (email_id,),
     ).fetchone()
     if not email_row:
@@ -105,33 +95,31 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
     domain_rows = conn.execute(
         """SELECT domain, risk_score, risk_level, risk_reasons_json, age_days, tls_issuer,
                   tls_status, found_on_lists_json, whois_json, dns_json, tls_json, reputation_json
-           FROM domain_intel WHERE email_id = ?""",
+           FROM domain_intel WHERE email_id = %s""",
         (email_id,),
     ).fetchall()
     header_row = conn.execute(
-        "SELECT spf_result, dmarc_result, dmarc_policy, received_chain_json FROM header_results WHERE email_id = ?",
+        "SELECT spf_result, dmarc_result, dmarc_policy, received_chain_json FROM header_results WHERE email_id = %s",
         (email_id,),
     ).fetchone()
     classifier_row = conn.execute(
         """SELECT phishing_score, verdict, reasons_json, source, url_intelligence_json
-           FROM classifier_results WHERE email_id = ?""",
+           FROM classifier_results WHERE email_id = %s""",
         (email_id,),
     ).fetchone()
     fingerprint_row = conn.execute(
         """SELECT structural_hash, skeleton_type, typosquat_matches_json, targeted_brands_json
-           FROM fingerprints WHERE email_id = ?""",
+           FROM fingerprints WHERE email_id = %s""",
         (email_id,),
     ).fetchone()
     infra_row = conn.execute(
         """SELECT risk_score, risk_level, reasons_json, evidence_json, reliable_hop_json, received_chain_json
-           FROM infrastructure_risk WHERE email_id = ?""",
+           FROM infrastructure_risk WHERE email_id = %s""",
         (email_id,),
     ).fetchone()
 
     import json as _json
 
-    # Pick the single highest-risk domain to surface as the "headline" domain --
-    # the website's UI is built around one primary domain, not a flat list.
     domains_parsed = []
     for d in domain_rows:
         domains_parsed.append({
@@ -148,30 +136,42 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
 
     trigger = get_trigger_metadata(conn, email_id)
 
-    # Real correlation data -- which other stored investigations share
-    # infrastructure with this one, and how (see correlate.py).
+    # Real correlation data, now from threat_correlation_engine.py's
+    # cache tables (see integrate.py's persist_campaign_cache()).
     campaign_row = conn.execute(
-        "SELECT campaign_id FROM campaign_members WHERE email_id = ?", (email_id,)
+        """SELECT campaign_id, confidence, cohesion, cohesion_warning, signal_summary_json
+           FROM campaign_membership WHERE email_id = %s LIMIT 1""",
+        (email_id,),
     ).fetchone()
     campaign_correlation = None
     if campaign_row:
-        campaign_id = campaign_row[0]
+        campaign_id, confidence, cohesion, cohesion_warning, signal_summary_json = campaign_row
         member_rows = conn.execute(
-            "SELECT email_id FROM campaign_members WHERE campaign_id = ? AND email_id != ?",
+            "SELECT email_id FROM campaign_membership WHERE campaign_id = %s AND email_id != %s",
             (campaign_id, email_id),
         ).fetchall()
         edge_rows = conn.execute(
-            "SELECT node_a, node_b, edge_type FROM graph_edges WHERE node_a = ? OR node_b = ?",
-            (email_id, email_id),
+            """SELECT source_email_id, target_email_id, signals_json FROM campaign_edges
+               WHERE campaign_id = %s AND (source_email_id = %s OR target_email_id = %s)""",
+            (campaign_id, email_id, email_id),
         ).fetchall()
+
+        def _signal_types_for(other_email_id):
+            types = []
+            for source_id, target_id, signals_json in edge_rows:
+                if other_email_id in (source_id, target_id) and email_id in (source_id, target_id):
+                    for s in (_json.loads(signals_json) if signals_json else []):
+                        types.append(s.get("type"))
+            return types
+
         campaign_correlation = {
             "campaign_id": campaign_id,
+            "confidence": confidence,
+            "cohesion": cohesion,
+            "cohesion_warning": cohesion_warning,
             "matched_investigations": len(member_rows),
             "matches": [
-                {
-                    "email_id": r[0],
-                    "signals": [e[2] for e in edge_rows if email_id in (e[0], e[1]) and r[0] in (e[0], e[1])],
-                }
+                {"email_id": r[0], "signals": _signal_types_for(r[0])}
                 for r in member_rows
             ],
         }
@@ -211,7 +211,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
         },
         "domains": domains_parsed,
         "highest_risk_domain": highest_risk,
-        "campaign_correlation": campaign_correlation,  # real data, or None if no matches found
+        "campaign_correlation": campaign_correlation,
         "triggered_by": {
             "user_id": trigger[0] if trigger else None,
             "ip_address": trigger[1] if trigger else None,
@@ -221,7 +221,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
 
     if include_raw_content:
         archive = get_raw_archive_for_email(conn, email_id)
-        result["raw_email"] = archive  # {"raw_content": ..., "headers": ...} or None
+        result["raw_email"] = archive
 
     return result
 
@@ -294,16 +294,6 @@ def analyze():
 
 @app.route("/investigation/<email_id>", methods=["GET"])
 def get_investigation(email_id):
-    """
-    Fetches a PAST investigation by email_id, no re-analysis. This is
-    what the WEBSITE calls when the Gmail plugin's "View Full
-    Investigation" link opens it with that email_id in the URL.
-
-    Pass ?full=true to also include the decrypted raw email content
-    and headers -- kept opt-in rather than always-on, since decrypting
-    full email content is a more sensitive operation than the derived
-    risk/analysis data returned by default.
-    """
     auth_error = _require_api_key()
     if auth_error:
         return auth_error

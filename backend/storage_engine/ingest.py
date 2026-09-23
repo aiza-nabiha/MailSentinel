@@ -1,12 +1,7 @@
 """
 backend/storage_engine/ingest.py
 
-Bulk-loads every .eml in a directory into the `emails` table with
-just the basic headers. This has ZERO dependency on anyone else's
-module -- safe to run right now, on any .eml files you have.
-
-Usage (from backend/storage_engine/):
-    python ingest.py --eml-dir ../../data/test_emails
+POSTGRES VERSION -- only change is `?` -> `%s` placeholders.
 """
 
 import argparse
@@ -52,7 +47,7 @@ def ingest_dir(eml_dir, db_path=None):
 
         conn.execute(
             """INSERT INTO emails (email_id, raw_eml_path, subject, from_header, to_header, date_header)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             (email_id, filepath, fields["subject"], fields["from_header"],
              fields["to_header"], fields["date_header"]),
         )
