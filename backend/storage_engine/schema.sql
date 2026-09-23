@@ -1,10 +1,15 @@
 -- SIH 26106 -- backend/storage_engine/schema.sql
--- Run automatically by db.py -- you don't need to run this by hand.
-
 PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id         TEXT PRIMARY KEY,
+    first_seen_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 CREATE TABLE IF NOT EXISTS emails (
     email_id        TEXT PRIMARY KEY,
+    user_id         TEXT REFERENCES users(user_id),
     raw_eml_path    TEXT NOT NULL,
     ingested_at     TEXT NOT NULL DEFAULT (datetime('now')),
     subject         TEXT,
@@ -18,14 +23,14 @@ CREATE TABLE IF NOT EXISTS emails (
 
 CREATE TABLE IF NOT EXISTS classifier_results (
     email_id        TEXT PRIMARY KEY REFERENCES emails(email_id),
-    phishing_score  REAL,       -- maps to threat_probability (real model) or phishing_score (fallback)
-    verdict         TEXT,       -- maps to prediction (real model) or verdict (fallback)
+    phishing_score  REAL,
+    verdict         TEXT,
     reasons_json    TEXT,
     extracted_urls_json TEXT,
-    source          TEXT,       -- 'real_model' or 'fallback_stub' -- lets you know which one ran
-    url_intelligence_json TEXT, -- only populated by the real model
-    sender_features_json TEXT,  -- only populated by the real model
-    email_structure_json TEXT   -- only populated by the real model
+    source          TEXT,
+    url_intelligence_json TEXT,
+    sender_features_json TEXT,
+    email_structure_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS header_results (
@@ -100,5 +105,28 @@ CREATE TABLE IF NOT EXISTS graph_edges (
     weight          REAL
 );
 
+CREATE TABLE IF NOT EXISTS raw_email_archive (
+    email_id            TEXT PRIMARY KEY REFERENCES emails(email_id),
+    user_id             TEXT REFERENCES users(user_id),
+    encrypted_raw_content TEXT NOT NULL,
+    encrypted_headers_json TEXT,
+    archived_at         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS access_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    endpoint        TEXT NOT NULL,
+    email_id        TEXT REFERENCES emails(email_id),
+    user_id         TEXT,
+    ip_address      TEXT,
+    status_code     INTEGER,
+    detail          TEXT,
+    logged_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_log_email ON access_log(email_id);
+
+CREATE INDEX IF NOT EXISTS idx_archive_user ON raw_email_archive(user_id);
 CREATE INDEX IF NOT EXISTS idx_domain_email ON domain_intel(email_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_members_email ON campaign_members(email_id);
+CREATE INDEX IF NOT EXISTS idx_emails_user ON emails(user_id);

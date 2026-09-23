@@ -21,6 +21,12 @@ PHISHTANK_FEED_URL = "http://data.phishtank.com/data/online-valid.csv"
 PHISHTANK_LOCAL_CACHE = "phishtank_feed.csv"
 PHISHTANK_CACHE_MAX_AGE_SECONDS = 3600
 
+# In-memory cache.
+# This prevents the 14 MB PhishTank CSV from being read and parsed
+# again for every URL/domain during one server process.
+PHISHTANK_MEMORY_CACHE = None
+PHISHTANK_MEMORY_CACHE_TIME = 0
+
 SPAMHAUS_DBL_ZONE = "dbl.spamhaus.org"
 
 
@@ -142,23 +148,56 @@ def _load_phishtank_urls():
     """
     Load phishing URLs from the PhishTank feed.
 
-    IMPORTANT:
-    This stores URLs, NOT just domains.
+    Uses two levels of caching:
 
-    That preserves the URL-level evidence required by Path B.
+    1. Local file cache:
+       Avoids downloading the feed repeatedly.
+
+    2. In-memory cache:
+       Avoids reading and parsing the large CSV repeatedly
+       during the same server process.
+
+    Returns:
+        set[str]: normalized phishing URLs
     """
+
+    global PHISHTANK_MEMORY_CACHE
+    global PHISHTANK_MEMORY_CACHE_TIME
+
+    now = time.time()
+
+    # --------------------------------------------------------------
+    # 1. Use in-memory cache if it is still fresh
+    # --------------------------------------------------------------
+
+    if (
+        PHISHTANK_MEMORY_CACHE is not None
+        and (
+            now - PHISHTANK_MEMORY_CACHE_TIME
+            <= PHISHTANK_CACHE_MAX_AGE_SECONDS
+        )
+    ):
+        return PHISHTANK_MEMORY_CACHE
+
+    # --------------------------------------------------------------
+    # 2. Check local file cache
+    # --------------------------------------------------------------
 
     needs_download = True
 
     if os.path.exists(PHISHTANK_LOCAL_CACHE):
 
         age = (
-            time.time()
+            now
             - os.path.getmtime(PHISHTANK_LOCAL_CACHE)
         )
 
         if age <= PHISHTANK_CACHE_MAX_AGE_SECONDS:
             needs_download = False
+
+    # --------------------------------------------------------------
+    # 3. Download if local cache is stale/missing
+    # --------------------------------------------------------------
 
     if needs_download:
 
@@ -168,7 +207,7 @@ def _load_phishtank_urls():
 
         except requests.exceptions.RequestException:
 
-            # Use existing cache if available.
+            # If download fails, fall back to an existing cache.
             if os.path.exists(PHISHTANK_LOCAL_CACHE):
 
                 with open(
@@ -182,6 +221,10 @@ def _load_phishtank_urls():
 
                 raise
 
+    # --------------------------------------------------------------
+    # 4. Read existing local cache
+    # --------------------------------------------------------------
+
     else:
 
         with open(
@@ -190,6 +233,10 @@ def _load_phishtank_urls():
             encoding="utf-8"
         ) as f:
             csv_text = f.read()
+
+    # --------------------------------------------------------------
+    # 5. Parse the feed ONCE
+    # --------------------------------------------------------------
 
     phishing_urls = set()
 
@@ -208,6 +255,13 @@ def _load_phishtank_urls():
 
         if normalized_url:
             phishing_urls.add(normalized_url)
+
+    # --------------------------------------------------------------
+    # 6. Save parsed data in memory
+    # --------------------------------------------------------------
+
+    PHISHTANK_MEMORY_CACHE = phishing_urls
+    PHISHTANK_MEMORY_CACHE_TIME = now
 
     return phishing_urls
 
@@ -615,17 +669,26 @@ def check_domain_reputation(domain):
 
             reputation = "clean"
 
+    # --------------------------------------------------------------
+    # Evidence
+    # --------------------------------------------------------------
+
     evidence = []
 
     if spamhaus_result.get("listed"):
+
         evidence.append({
             "source": "Spamhaus DBL",
             "type": "domain_blocklist",
             "severity": "high",
-            "details": spamhaus_result.get("reasons", [])
+            "details": spamhaus_result.get(
+                "reasons",
+                []
+            )
         })
 
     if phishtank_context.get("listed"):
+
         evidence.append({
             "source": "PhishTank",
             "type": "domain_context",
@@ -637,19 +700,30 @@ def check_domain_reputation(domain):
         })
 
     if not evidence:
+
         evidence.append({
             "source": "Reputation checks",
             "type": "no_known_reputation_match",
             "severity": "informational"
         })
 
+    # --------------------------------------------------------------
+    # Sources checked
+    # --------------------------------------------------------------
+
     sources_checked = []
 
     if phishtank_context.get("status") == "success":
-        sources_checked.append("PhishTank")
+
+        sources_checked.append(
+            "PhishTank"
+        )
 
     if spamhaus_result.get("status") == "success":
-        sources_checked.append("Spamhaus DBL")    
+
+        sources_checked.append(
+            "Spamhaus DBL"
+        )
 
     return {
         "domain": domain,
@@ -767,7 +841,9 @@ def investigate_domain_reputation(
             .get("phishtank", {})
         )
 
-        if phishtank.get("match_type") == "domain_context":
+        if phishtank.get(
+            "match_type"
+        ) == "domain_context":
 
             print(
                 "PhishTank: "
