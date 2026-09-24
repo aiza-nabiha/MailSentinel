@@ -1,3 +1,4 @@
+import LoginPage from "./pages/LoginPage";
 import { useEffect, useState } from "react";
 import InvestigationReportPage from "./pages/InvestigationReportPage";
 import { analyzeEmail, getHistory, getInvestigation } from "./utils/api";
@@ -6,7 +7,7 @@ const analysisSteps = ["Parsing email", "Extracting indicators", "Checking authe
 const Mark = () => <div className="brand-mark" aria-hidden="true">⌁</div>;
 
 function Topbar({ theme, setTheme, onHome, view, setView }) {
-  return <header className="topbar"><button className="brand" onClick={onHome}><Mark /><span className="brand-name">Mail<span>Sentinel</span></span></button><nav className="top-nav"><button className={view === "report" ? "active" : ""} onClick={() => setView("report")}>Investigations</button><button className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button><button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>Settings</button></nav><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span>{theme === "dark" ? "☀" : "☾"}</span><span>{theme === "dark" ? "Light" : "Dark"}</span></button></header>;
+  return <header className="topbar"><button className="brand" onClick={onHome}><Mark /><span className="brand-name">Mail<span>Sentinel</span></span></button><nav className="top-nav"><button className={view === "report" ? "active" : ""} onClick={() => setView("report")}>Investigations</button><button className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button><button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>Settings</button></nav><button className="theme-toggle"onClick={() => setView("login")}>LOGIN</button><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span>{theme === "dark" ? "☀" : "☾"}</span><span>{theme === "dark" ? "Light" : "Dark"}</span></button></header>;
 }
 const NetworkBackdrop = () => <div className="network-backdrop" aria-hidden="true"><i /><i /><i /><i /><b /><b /><b /><b /></div>;
 
@@ -100,6 +101,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <Topbar theme={theme} setTheme={setTheme} onHome={home} view={view} setView={setView} />
+      {view === "login" && <LoginPage />}
       {view === "landing" && <Landing onAnalyze={start} analysisError={analysisError} />}
       {view === "analyzing" && <Analyzing fileName={fileName} />}
       {view === "report" && <InvestigationReportPage apiResponse={investigationData} onNewInvestigation={home} />}
