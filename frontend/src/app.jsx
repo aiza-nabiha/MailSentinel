@@ -31,7 +31,23 @@ function History({ openReport, newInvestigation, userId }) {
   return <main className="workspace-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> INVESTIGATION ARCHIVE</div><h1>Recent investigations</h1><p>Review historic email decisions and their connected infrastructure.</p></div><button className="analyze-button" onClick={newInvestigation}>+ New investigation</button></div><div className="archive-list">{loading && <p>Loading investigations…</p>}{error && <p className="upload-error">{error}</p>}{!loading && !error && !items.length && <p>No investigations have been created for this workspace yet.</p>}{items.map((item) => <button className="archive-row" key={item.email_id} onClick={() => openReport(item.email_id)}><span className={`risk-pill ${String(item.verdict || "safe").toLowerCase()}`}>{item.verdict || "safe"}</span><strong>{item.subject || item.email_id}</strong><span className="archive-time">{item.ingested_at || "Date unavailable"}</span><span className="archive-score">{item.overall_risk_score ?? "—"}<small>/100</small></span><span>→</span></button>)}</div></main>;
 }
 
-function Settings() { const [saved, setSaved] = useState(false); return <main className="workspace-page settings-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> WORKSPACE</div><h1>Investigation settings</h1><p>Configure how MailSentinel presents and retains analysis results.</p></div></div><div className="settings-card"><div><h2>Analysis endpoint</h2><p>Connect this workspace to the MailSentinel backend when it is running.</p></div><label>Endpoint<input defaultValue="http://localhost:5001/analyze" /></label><label className="switch-row">Keep investigations in this browser <input type="checkbox" defaultChecked /></label><button className="analyze-button" onClick={() => setSaved(true)}>{saved ? "✓ Settings saved" : "Save settings"}</button></div></main>; }
+function Settings() {
+  const [provider, setProvider] = useState("Gmail");
+
+  return <main className="workspace-page signin-page">
+    <form className="signin-card" aria-labelledby="signin-title" onSubmit={(event) => event.preventDefault()}>
+      <h1 id="signin-title">Email test login</h1>
+      <div className="provider-list" role="radiogroup" aria-label="Email provider">
+        {["Gmail", "Rediffmail", "Yahoo Mail"].map((name) => <label className="provider-option" key={name}>
+          <input type="radio" name="provider" value={name} checked={provider === name} onChange={() => setProvider(name)} />
+          {name}
+        </label>)}
+      </div>
+      <label className="email-field">Email address<input type="email" placeholder="you@example.com" required /></label>
+      <button className="analyze-button" type="submit">Login / Continue</button>
+    </form>
+  </main>;
+}
 
 export default function App() {
   const [theme, setTheme] = useState("dark"), [view, setView] = useState("landing"), [fileName, setFileName] = useState("");
