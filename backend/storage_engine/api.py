@@ -19,13 +19,46 @@ Install requirement (one-time):
     pip3 install flask
 """
 
-from flask import Flask, request, jsonify
+import sys
 import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from flask import Flask, request, jsonify
+from flask import session, redirect, url_for
+from dotenv import load_dotenv
+
+from auth.google_auth import init_google_oauth
 import tempfile
 from db import get_connection
 from integrate import run as run_integration
 
 app = Flask(__name__)
+load_dotenv()
+
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+
+oauth = init_google_oauth(app)
+@app.route("/auth/google")
+def google_login():
+    redirect_uri = url_for("google_callback", _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@app.route("/auth/google/callback")
+def google_callback():
+    token = oauth.google.authorize_access_token()
+    userinfo = token.get("userinfo")
+
+    if not userinfo:
+        return "Google authentication failed.", 401
+
+    session["user"] = {
+        "email": userinfo.get("email"),
+        "name": userinfo.get("name"),
+        "picture": userinfo.get("picture")
+    }
+
+    return redirect("http://localhost:5173/")
 
 
 @app.route("/health", methods=["GET"])
