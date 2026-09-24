@@ -31,7 +31,22 @@ function History({ openReport, newInvestigation, userId }) {
   return <main className="workspace-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> INVESTIGATION ARCHIVE</div><h1>Recent investigations</h1><p>Review historic email decisions and their connected infrastructure.</p></div><button className="analyze-button" onClick={newInvestigation}>+ New investigation</button></div><div className="archive-list">{loading && <p>Loading investigations…</p>}{error && <p className="upload-error">{error}</p>}{!loading && !error && !items.length && <p>No investigations have been created for this workspace yet.</p>}{items.map((item) => <button className="archive-row" key={item.email_id} onClick={() => openReport(item.email_id)}><span className={`risk-pill ${String(item.verdict || "safe").toLowerCase()}`}>{item.verdict || "safe"}</span><strong>{item.subject || item.email_id}</strong><span className="archive-time">{item.ingested_at || "Date unavailable"}</span><span className="archive-score">{item.overall_risk_score ?? "—"}<small>/100</small></span><span>→</span></button>)}</div></main>;
 }
 
-function Settings() { const [saved, setSaved] = useState(false); return <main className="workspace-page settings-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> WORKSPACE</div><h1>Investigation settings</h1><p>Configure how MailSentinel presents and retains analysis results.</p></div></div><div className="settings-card"><div><h2>Analysis endpoint</h2><p>Connect this workspace to the MailSentinel backend when it is running.</p></div><label>Endpoint<input defaultValue="http://localhost:5001/analyze" /></label><label className="switch-row">Keep investigations in this browser <input type="checkbox" defaultChecked /></label><button className="analyze-button" onClick={() => setSaved(true)}>{saved ? "✓ Settings saved" : "Save settings"}</button></div></main>; }
+function Settings() {
+  return <main className="workspace-page signin-page">
+    <section className="signin-card" aria-labelledby="signin-title">
+      <Mark />
+      <div>
+        <div className="eyebrow"><span /> SECURE WORKSPACE</div>
+        <h1 id="signin-title">Sign in to MailSentinel</h1>
+      </div>
+      <div className="provider-list">
+        <button className="provider-button google" type="button"><span aria-hidden="true">G</span>Continue with Google</button>
+        <button className="provider-button microsoft" type="button"><span aria-hidden="true">⊞</span>Continue with Microsoft</button>
+        <button className="provider-button apple" type="button"><span aria-hidden="true">●</span>Continue with Apple</button>
+      </div>
+    </section>
+  </main>;
+}
 
 export default function App() {
   const [theme, setTheme] = useState("dark"), [view, setView] = useState("landing"), [fileName, setFileName] = useState("");
