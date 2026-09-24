@@ -772,6 +772,15 @@ def build_campaigns(graph):
 
         campaign_confidence = round(sum(e["confidence"] for e in edges) / len(edges), 2) if edges else 0.0
 
+        campaign_email_ids = set(nodes)
+        infra_node_ids = set()
+        for email_id in campaign_email_ids:
+            for neighbor in graph.neighbors(email_id):
+                if graph.nodes[neighbor].get("node_type") != "email":
+                    infra_node_ids.add(neighbor)
+        campaign_subgraph = graph.subgraph(campaign_email_ids | infra_node_ids)
+        campaign_graph = serialize_graph(campaign_subgraph)
+
         campaigns.append({
             "campaign_id": f"campaign-{index:03d}",
             "emails": nodes,
@@ -781,6 +790,7 @@ def build_campaigns(graph):
             "cohesion_warning": cohesion < MIN_CLUSTER_COHESION,
             "signal_summary": dict(signal_types),
             "connections": edges,
+            "graph": campaign_graph,
         })
 
     return campaigns

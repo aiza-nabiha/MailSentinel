@@ -290,7 +290,7 @@ def persist_campaign_cache(conn, campaigns):
     millions).
     """
     cur = conn.cursor()
-    cur.execute("TRUNCATE campaign_membership, campaign_edges")
+    cur.execute("TRUNCATE campaign_membership, campaign_edges, campaign_graphs")
 
     for campaign in campaigns:
         campaign_id = campaign["campaign_id"]
@@ -317,6 +317,13 @@ def persist_campaign_cache(conn, campaigns):
                 (campaign_id, edge["source"], edge["target"], edge["confidence"],
                  json.dumps(edge["evidence_summary"]), json.dumps(edge["signals"])),
             )
+
+        cur.execute(
+            """INSERT INTO campaign_graphs (campaign_id, graph_json)
+               VALUES (%s, %s)
+               ON CONFLICT (campaign_id) DO UPDATE SET graph_json = EXCLUDED.graph_json""",
+            (campaign_id, json.dumps(campaign["graph"])),
+        )
 
     conn.commit()
 

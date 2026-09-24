@@ -65,6 +65,7 @@ export function mapApiResponseToReportShape(api) {
       cohesion_warning: api.campaign_correlation.cohesion_warning ?? null,
       campaign_id: api.campaign_correlation.campaign_id || null,
       nodes, edges,
+      graph: api.campaign_correlation.graph || null,
     } : null,
     fingerprint: api.fingerprint ? {
       structural_hash: api.fingerprint.structural_hash || null,

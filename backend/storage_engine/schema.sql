@@ -197,6 +197,11 @@ CREATE TABLE IF NOT EXISTS campaign_edges (
     signals_json             TEXT
 );
 
+CREATE TABLE IF NOT EXISTS campaign_graphs (
+    campaign_id TEXT PRIMARY KEY,
+    graph_json  TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_campaign_membership_email ON campaign_membership(email_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_edges_source ON campaign_edges(source_email_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_edges_target ON campaign_edges(target_email_id);
