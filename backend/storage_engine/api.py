@@ -168,6 +168,12 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
             (campaign_id, email_id, email_id),
         ).fetchall()
 
+        graph_row = conn.execute(
+            "SELECT graph_json FROM campaign_graphs WHERE campaign_id = %s",
+            (campaign_id,),
+        ).fetchone()
+        campaign_graph = _json.loads(graph_row[0]) if graph_row and graph_row[0] else None
+
         def _edge_info_for(other_email_id):
             types = []
             edge_confidence = None
@@ -190,6 +196,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
             "cohesion_warning": cohesion_warning,
             "matched_investigations": len(member_rows),
             "matches": matches,
+            "graph": campaign_graph,
         }
 
     result = {

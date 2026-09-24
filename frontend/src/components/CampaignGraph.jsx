@@ -8,10 +8,17 @@ function graphLayout(graph) {
   const emailNodes = graph.nodes.filter((node) => node.node_type === "email");
   const current = emailNodes.find((node) => !node.is_historical) || emailNodes[0];
   const ordered = [current, ...graph.nodes.filter((node) => node.id !== current.id)];
+  // Keep every node's circle + label inside the 900x420 viewBox: cap the
+  // radius so center +/- radius + label margin (~45px for icon+text) never
+  // exceeds the canvas, on both axes, regardless of node count.
+  const labelMargin = 45;
+  const maxRadiusX = center.x - 70 - labelMargin;
+  const maxRadiusY = center.y - 70 - labelMargin;
+  const baseRadius = ordered.length > 9 ? 150 : 120;
+  const radius = Math.max(60, Math.min(baseRadius, maxRadiusX, maxRadiusY));
   const nodes = ordered.map((node, index) => {
     if (index === 0) return { id: node.id, ...center, icon: iconFor(node.node_type), label: "This email", core: true };
     const angle = ((index - 1) / Math.max(1, ordered.length - 1)) * Math.PI * 2 - Math.PI / 2;
-    const radius = index <= 8 ? 145 : 190;
     return { id: node.id, x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius, icon: iconFor(node.node_type), label: node.value || node.id, core: false };
   });
   const edges = graph.edges.map((edge) => ({
@@ -37,7 +44,7 @@ export default function CampaignGraph({ nodes, edges, graph }) {
 
   return (
     <div className="graph-wrap" style={{ position: "relative" }}>
-      <svg viewBox="0 0 900 440" style={{ width: "100%", height: 440 }}>
+      <svg viewBox="0 0 900 420" style={{ width: "100%", height: 420 }}>
         {displayEdges.map((e, i) => {
           const a = node(e.a), b = node(e.b);
           return (
