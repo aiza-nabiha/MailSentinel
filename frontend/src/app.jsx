@@ -33,10 +33,13 @@ function History({ openReport, newInvestigation, userId }) {
 
 function Settings() {
   const [provider, setProvider] = useState("Gmail");
+  const [saved, setSaved] = useState(false);
 
-  return <main className="workspace-page signin-page">
-    <form className="signin-card" aria-labelledby="signin-title" onSubmit={(event) => event.preventDefault()}>
-      <h1 id="signin-title">Email test login</h1>
+  return <main className="workspace-page settings-page">
+    <div className="workspace-heading"><div><div className="eyebrow"><span /> WORKSPACE</div><h1>Investigation settings</h1><p>Configure how MailSentinel presents and retains analysis results.</p></div></div>
+    <div className="settings-card"><div><h2>Analysis endpoint</h2><p>Connect this workspace to the MailSentinel backend when it is running.</p></div><label>Endpoint<input defaultValue="http://localhost:5001/analyze" /></label><label className="switch-row">Keep investigations in this browser <input type="checkbox" defaultChecked /></label><button className="analyze-button" onClick={() => setSaved(true)}>{saved ? "✓ Settings saved" : "Save settings"}</button></div>
+    <form className="email-test-card" aria-labelledby="email-test-title" onSubmit={(event) => event.preventDefault()}>
+      <h2 id="email-test-title">Email testing</h2>
       <div className="provider-list" role="radiogroup" aria-label="Email provider">
         {["Gmail", "Rediffmail", "Yahoo Mail"].map((name) => <label className="provider-option" key={name}>
           <input type="radio" name="provider" value={name} checked={provider === name} onChange={() => setProvider(name)} />
