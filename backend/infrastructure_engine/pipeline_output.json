@@ -1,0 +1,387 @@
+{
+    "eml_path": "..\\..\\data\\test_emails\\example.eml",
+    "observed_at": "2026-09-11T19:21:42.762507+00:00",
+    "domains_analyzed": 3,
+    "received_chain": [
+        {
+            "hop": 1,
+            "raw": "Received: by 2002:a05:6504:538b:b0:308:da7f:9152 with SMTP id el11csp5851337ltb;\n        Tue, 25 Aug 2026 10:06:34 -0700 (PDT)",
+            "from_host": null,
+            "from_ip": null,
+            "by_host": "2002:a05:6504:538b:b0:308:da7f:9152",
+            "timestamp": "Tue, 25 Aug 2026 10:06:34 -0700 (PDT)"
+        },
+        {
+            "hop": 2,
+            "raw": "Received: from bd77f69.bf51x.hubspotemail.net (bd77f69.bf51x.hubspotemail.net. [143.244.89.51])\n        by mx.google.com with ESMTPS id af79cd13be357-9377e68a955si24806385a.315.2026.08.25.10.06.33\n        for <asmikhatter2007@gmail.com>\n        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);\n        Tue, 25 Aug 2026 10:06:33 -0700 (PDT)",
+            "from_host": "bd77f69.bf51x.hubspotemail.net",
+            "from_ip": "143.244.89.51",
+            "by_host": "mx.google.com",
+            "timestamp": "Tue, 25 Aug 2026 10:06:33 -0700 (PDT)"
+        },
+        {
+            "hop": 3,
+            "raw": "Received: by 172.16.139.55 with SMTP id a0b9znrox27ui25xrchl0u582xztweatky55xmmy8o0;\n        Tue, 25 Aug 2026 17:06:33 GMT",
+            "from_host": null,
+            "from_ip": null,
+            "by_host": "172.16.139.55",
+            "timestamp": "Tue, 25 Aug 2026 17:06:33 GMT"
+        }
+    ],
+    "reliable_hop_analysis": {
+        "status": "success",
+        "earliest_reliable_node": {
+            "hop_index": 1,
+            "ip": "143.244.89.51",
+            "hostname": "bd77f69.bf51x.hubspotemail.net",
+            "confidence": 0.6,
+            "reliability": "LIKELY_TRUSTED",
+            "reasons": [
+                "Public IP address",
+                "Hostname is available",
+                "Hostname has valid domain structure"
+            ]
+        },
+        "ip_intelligence": {
+            "ip": "143.244.89.51",
+            "status": "success",
+            "cached": true,
+            "ipinfo": {
+                "status": "success",
+                "source": "IPinfo",
+                "asn": "AS14618",
+                "as_name": "Amazon.com, Inc.",
+                "as_domain": "amazon.com",
+                "country_code": "US",
+                "country": "United States",
+                "continent_code": "NA",
+                "continent": "North America"
+            },
+            "reverse_dns": {
+                "status": "success",
+                "hostname": "bd77f69.bf51x.hubspotemail.net",
+                "source": "DNS"
+            },
+            "reputation": {
+                "status": "success",
+                "source": "AbuseIPDB",
+                "abuse_score": 0,
+                "total_reports": 0,
+                "risk_flag": false
+            }
+        }
+    },
+    "infrastructure_risk": {
+        "risk_score": 0,
+        "risk_level": "low",
+        "reasons": [],
+        "evidence": [
+            "Hop reliability: LIKELY_TRUSTED",
+            "Observable IP: 143.244.89.51",
+            "Hostname: bd77f69.bf51x.hubspotemail.net",
+            "ASN: AS14618",
+            "Organization: Amazon.com, Inc.",
+            "Country: United States",
+            "AbuseIPDB score: 0",
+            "AbuseIPDB reports: 0",
+            "SPF: PASS",
+            "DKIM: PASS, PASS",
+            "DMARC: PASS"
+        ]
+    },
+    "domains": {
+        "bf51x.hubspotemail.net": {
+            "domain": "bf51x.hubspotemail.net",
+            "whois": {
+                "domain": "hubspotemail.net",
+                "status": "success",
+                "source": "RDAP",
+                "rdap_server": "https://rdap.verisign.com/net/v1/",
+                "registrar": "MarkMonitor Inc.",
+                "creation_date": "2016-05-05T19:20:47Z",
+                "updated_date": "2026-04-03T12:24:37Z",
+                "expiration_date": "2028-05-05T19:20:47Z",
+                "domain_age": {
+                    "days": 3780,
+                    "years": 10.35
+                },
+                "domain_status": [
+                    "client delete prohibited",
+                    "client transfer prohibited",
+                    "client update prohibited"
+                ],
+                "name_servers": [
+                    "JERRY.NS.CLOUDFLARE.COM",
+                    "YOLANDA.NS.CLOUDFLARE.COM"
+                ],
+                "error": null
+            },
+            "dns": {
+                "domain": "bf51x.hubspotemail.net",
+                "records": {
+                    "A": [
+                        "143.244.95.233",
+                        "143.244.89.215",
+                        "143.244.89.189",
+                        "143.244.89.175",
+                        "143.244.89.207",
+                        "143.244.89.149",
+                        "143.244.89.132",
+                        "143.244.89.158"
+                    ],
+                    "MX": [
+                        "0 mx.hubapi.com."
+                    ],
+                    "TXT": [
+                        "\"yahoo-verification-key=J89WsehClIsFvNsK/sHe+9c/Ad9DcVRTt+JLSfW35vw=\"",
+                        "\"v=spf1 ip4:143.244.89.48/30 ip4:143.244.89.128 ip4:143.244.89.130/31 ip4:143.244.89.132/30 ip4:143.244.89.136/29 ip4:143.244.89.144/29 ip4:143.244.89.153 ip4:143.244.89.154/31 ip4:143.244.89.156/30 ip4:143.244.89.160/27 ip4:143.244.89.192/28 ip4:143.244\" \".89.208 ip4:143.244.89.213 ip4:143.244.89.214/31 ip4:143.244.89.217 ip4:143.244.89.219 ip4:143.244.89.222 ip4:143.244.89.224/31 ip4:143.244.89.228 ip4:143.244.89.230/31 ip4:143.244.89.233 ip4:143.244.89.235 ip4:143.244.89.240/28 ip4:143.244.95.224/28 -a\" \"ll\"",
+                        "\"google-site-verification=yn584YUhOVYgprz8GaRcaVKMfZr4MYbhqkPVd3UeN6o\""
+                    ]
+                }
+            },
+            "tls": {
+                "domain": "bf51x.hubspotemail.net",
+                "status": "failed",
+                "issuer": null,
+                "valid_from": null,
+                "valid_to": null,
+                "days_until_expiry": null,
+                "san_domains": [],
+                "fingerprint_sha256": null,
+                "cert_shared_with": [],
+                "error": "Connection timed out"
+            },
+            "reputation": {
+                "domain": "bf51x.hubspotemail.net",
+                "reputation": "clean",
+                "found_on_lists": [],
+                "sources_checked": [
+                    "PhishTank",
+                    "Spamhaus DBL"
+                ],
+                "details": {
+                    "phishtank": {
+                        "source": "PhishTank",
+                        "status": "success",
+                        "listed": false
+                    },
+                    "spamhaus": {
+                        "source": "Spamhaus DBL",
+                        "status": "success",
+                        "listed": false
+                    }
+                }
+            },
+            "risk": {
+                "risk_score": 15,
+                "risk_level": "low",
+                "reasons": [
+                    "Could not establish a valid TLS connection"
+                ]
+            }
+        },
+        "info.tigergraph.com": {
+            "domain": "info.tigergraph.com",
+            "whois": {
+                "domain": "tigergraph.com",
+                "status": "success",
+                "source": "RDAP",
+                "rdap_server": "https://rdap.verisign.com/com/v1/",
+                "registrar": "GoDaddy.com, LLC",
+                "creation_date": "2017-08-09T17:38:06Z",
+                "updated_date": "2026-08-10T10:46:57Z",
+                "expiration_date": "2027-08-09T17:38:06Z",
+                "domain_age": {
+                    "days": 3320,
+                    "years": 9.09
+                },
+                "domain_status": [
+                    "client delete prohibited",
+                    "client renew prohibited",
+                    "client transfer prohibited",
+                    "client update prohibited"
+                ],
+                "name_servers": [
+                    "NS55.DOMAINCONTROL.COM",
+                    "NS56.DOMAINCONTROL.COM"
+                ],
+                "error": null
+            },
+            "dns": {
+                "domain": "info.tigergraph.com",
+                "records": {
+                    "A": [
+                        "199.60.103.28",
+                        "199.60.103.228"
+                    ],
+                    "AAAA": [
+                        "2606:2c40::c73c:67e4",
+                        "2606:2c40::c73c:671c"
+                    ],
+                    "CNAME": [
+                        "4114546.group46.sites.hubspot.net."
+                    ]
+                }
+            },
+            "tls": {
+                "domain": "info.tigergraph.com",
+                "status": "success",
+                "issuer": "Google Trust Services",
+                "valid_from": "Aug 19 21:55:34 2026 GMT",
+                "valid_to": "Nov 17 22:55:27 2026 GMT",
+                "days_until_expiry": 67,
+                "san_domains": [
+                    "c5165a27.sni.cloudflaressl.com",
+                    "info.tigergraph.com"
+                ],
+                "fingerprint_sha256": "059106e9e0988a49b8d74954b955ddb3dabffde6f6467cd6231a0b32cead69dd",
+                "cert_shared_with": [],
+                "error": null
+            },
+            "reputation": {
+                "domain": "info.tigergraph.com",
+                "reputation": "clean",
+                "found_on_lists": [],
+                "sources_checked": [
+                    "PhishTank",
+                    "Spamhaus DBL"
+                ],
+                "details": {
+                    "phishtank": {
+                        "source": "PhishTank",
+                        "status": "success",
+                        "listed": false
+                    },
+                    "spamhaus": {
+                        "source": "Spamhaus DBL",
+                        "status": "success",
+                        "listed": false
+                    }
+                }
+            },
+            "risk": {
+                "risk_score": 0,
+                "risk_level": "low",
+                "reasons": []
+            }
+        },
+        "tigergraph.com": {
+            "domain": "tigergraph.com",
+            "whois": {
+                "domain": "tigergraph.com",
+                "status": "success",
+                "source": "RDAP",
+                "rdap_server": "https://rdap.verisign.com/com/v1/",
+                "registrar": "GoDaddy.com, LLC",
+                "creation_date": "2017-08-09T17:38:06Z",
+                "updated_date": "2026-08-10T10:46:57Z",
+                "expiration_date": "2027-08-09T17:38:06Z",
+                "domain_age": {
+                    "days": 3320,
+                    "years": 9.09
+                },
+                "domain_status": [
+                    "client delete prohibited",
+                    "client renew prohibited",
+                    "client transfer prohibited",
+                    "client update prohibited"
+                ],
+                "name_servers": [
+                    "NS55.DOMAINCONTROL.COM",
+                    "NS56.DOMAINCONTROL.COM"
+                ],
+                "error": null
+            },
+            "dns": {
+                "domain": "tigergraph.com",
+                "records": {
+                    "A": [
+                        "18.213.114.166"
+                    ],
+                    "MX": [
+                        "10 alt4.aspmx.l.google.com.",
+                        "5 alt1.aspmx.l.google.com.",
+                        "10 alt3.aspmx.l.google.com.",
+                        "1 aspmx.l.google.com.",
+                        "5 alt2.aspmx.l.google.com."
+                    ],
+                    "NS": [
+                        "ns55.domaincontrol.com.",
+                        "ns56.domaincontrol.com."
+                    ],
+                    "TXT": [
+                        "\"google-site-verification=A5w7Di6aHycSW3nBE6zTIpRNxHuY6SDFL-jlX9wGZQc\"",
+                        "\"anthropic-domain-verification-2swwep=yNtx1MWxWxCtWjjeYAABGKYNZ\"",
+                        "\"google-site-verification=-MimVwYdcDpslQ_HQJcVHJ3VE1zs0IVLQWi1adTOu3Q\"",
+                        "\"google-site-verification=Nz-GqJ5N1P_IsrBtPNmui1C6vJKhbzgVeLjlZACGSQw\"",
+                        "\"MS=ms42657838\"",
+                        "\"google-site-verification=-1GE2ONudaje7_wKDNnafDHFp-mlAK9lJVZtFE06oAE\"",
+                        "\"MS=ms62146148\"",
+                        "\"v=spf1 include:_spf.google.com include:4114546.spf04.hubspotemail.net ~all\"",
+                        "\"ciscocidomainverification=3e1e1a5fe2cc1191474e08a39cd1c00cd1f1d2a67e2e5eced4288c41996e12f7\"",
+                        "\"google-site-verification=dXuulqL9NQWVKG_IjKl5AYq2DmOruOMvh6ILDxS7qUI\"",
+                        "\"google-site-verification=_trUrfQ0S-7ikpenIp20VAuOYcEpt83yxU_IAVYx8Ck\"",
+                        "\"MS=ms55837011\"",
+                        "\"box-domain-verification=f30ef5398c0546105360275adc0088368a243c2a79e8d46f208bb38e92a706c4\"",
+                        "\"apple-domain-verification=d91039B89Mpydcqp\"",
+                        "\"atlassian-domain-verification=n0lOhe8u0HVw2X4KeqsyyOhql4uhkYrhegDxrfqD80VZO/wSxfz3bQPFoszWBjiy\"",
+                        "\"OSSRH-79387\"",
+                        "\"virtru-site-verify=@zGnT8uymJCW9QdYeg26PEvhyrUdfYR8yxv4u2owG\""
+                    ],
+                    "SOA": [
+                        "ns55.domaincontrol.com. dns.jomax.net. 2026082500 28800 7200 604800 600"
+                    ]
+                }
+            },
+            "tls": {
+                "domain": "tigergraph.com",
+                "status": "success",
+                "issuer": "Let's Encrypt",
+                "valid_from": "Aug 25 16:30:34 2026 GMT",
+                "valid_to": "Nov 23 16:30:33 2026 GMT",
+                "days_until_expiry": 72,
+                "san_domains": [
+                    "docs.tigergraph.com",
+                    "tigergraph.com",
+                    "www.tigergraph.com"
+                ],
+                "fingerprint_sha256": "18b70b988beda42aa9c2b11cc9df73e3c926e59a2daaada8df4da9b34821c7c4",
+                "cert_shared_with": [],
+                "error": null
+            },
+            "reputation": {
+                "domain": "tigergraph.com",
+                "reputation": "clean",
+                "found_on_lists": [],
+                "sources_checked": [
+                    "PhishTank",
+                    "Spamhaus DBL"
+                ],
+                "details": {
+                    "phishtank": {
+                        "source": "PhishTank",
+                        "status": "success",
+                        "listed": false
+                    },
+                    "spamhaus": {
+                        "source": "Spamhaus DBL",
+                        "status": "success",
+                        "listed": false
+                    }
+                }
+            },
+            "risk": {
+                "risk_score": 5,
+                "risk_level": "low",
+                "reasons": [
+                    "Free/low-verification certificate issuer (Let's Encrypt)"
+                ]
+            }
+        }
+    },
+    "overall_verdict": {
+        "highest_risk_domain": "bf51x.hubspotemail.net",
+        "highest_risk_score": 15,
+        "highest_risk_level": "low"
+    }
+}
