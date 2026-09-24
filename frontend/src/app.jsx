@@ -32,19 +32,20 @@ function History({ openReport, newInvestigation, userId }) {
 }
 
 function Settings() {
+  const [provider, setProvider] = useState("Gmail");
+
   return <main className="workspace-page signin-page">
-    <section className="signin-card" aria-labelledby="signin-title">
-      <Mark />
-      <div>
-        <div className="eyebrow"><span /> SECURE WORKSPACE</div>
-        <h1 id="signin-title">Sign in to MailSentinel</h1>
+    <form className="signin-card" aria-labelledby="signin-title" onSubmit={(event) => event.preventDefault()}>
+      <h1 id="signin-title">Email test login</h1>
+      <div className="provider-list" role="radiogroup" aria-label="Email provider">
+        {["Gmail", "Rediffmail", "Yahoo Mail"].map((name) => <label className="provider-option" key={name}>
+          <input type="radio" name="provider" value={name} checked={provider === name} onChange={() => setProvider(name)} />
+          {name}
+        </label>)}
       </div>
-      <div className="provider-list">
-        <button className="provider-button google" type="button"><span aria-hidden="true">G</span>Continue with Google</button>
-        <button className="provider-button microsoft" type="button"><span aria-hidden="true">⊞</span>Continue with Microsoft</button>
-        <button className="provider-button apple" type="button"><span aria-hidden="true">●</span>Continue with Apple</button>
-      </div>
-    </section>
+      <label className="email-field">Email address<input type="email" placeholder="you@example.com" required /></label>
+      <button className="analyze-button" type="submit">Login / Continue</button>
+    </form>
   </main>;
 }
 
