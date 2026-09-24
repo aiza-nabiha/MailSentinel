@@ -34,9 +34,10 @@ function History({ openReport, newInvestigation, userId }) {
 function Settings() {
   const [provider, setProvider] = useState("Gmail");
 
-  return <main className="workspace-page signin-page">
-    <form className="signin-card" aria-labelledby="signin-title" onSubmit={(event) => event.preventDefault()}>
-      <h1 id="signin-title">Email test login</h1>
+  return <main className="workspace-page email-test-page">
+    <form className="email-test-card" aria-labelledby="email-test-title" onSubmit={(event) => event.preventDefault()}>
+      <Mark />
+      <div><div className="eyebrow"><span /> SECURE WORKSPACE</div><h1 id="email-test-title">Sign in to MailSentinel</h1></div>
       <div className="provider-list" role="radiogroup" aria-label="Email provider">
         {["Gmail", "Rediffmail", "Yahoo Mail"].map((name) => <label className="provider-option" key={name}>
           <input type="radio" name="provider" value={name} checked={provider === name} onChange={() => setProvider(name)} />
