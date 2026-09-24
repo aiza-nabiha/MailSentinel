@@ -38,6 +38,15 @@ body{background:radial-gradient(circle at 4% 0%,color-mix(in srgb,var(--primary)
 .brand-mark{box-shadow:0 8px 22px color-mix(in srgb,var(--primary) 32%,transparent)}
 .top-nav button{transition:background .2s,color .2s,transform .2s}.top-nav button:hover{transform:translateY(-1px)}
 .theme-toggle,.new-report-button,.export-button{transition:border-color .2s,background .2s,color .2s,transform .2s}.theme-toggle:hover,.new-report-button:hover,.export-button:hover{border-color:color-mix(in srgb,var(--primary) 70%,var(--border));background:color-mix(in srgb,var(--primary) 14%,var(--card));color:var(--text);transform:translateY(-1px)}
+.topbar > .theme-toggle + .theme-toggle {
+  margin-left: 33px;
+}
+
+.topbar > .theme-toggle {
+  min-width: 76px;
+  height: 36px;
+  justify-content: center;
+}
 .command-hero{min-height:640px}.hero-copy h1{max-width:720px;text-wrap:balance}.hero-copy>p{font-size:16.5px}.hero-primary,.analyze-button{position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}.hero-primary:after,.analyze-button:after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 25%,color-mix(in srgb,var(--alabaster) 30%,transparent),transparent 62%);transform:translateX(-120%);transition:transform .55s}.hero-primary:hover,.analyze-button:hover{transform:translateY(-2px);box-shadow:0 16px 34px color-mix(in srgb,var(--primary) 38%,transparent)}.hero-primary:hover:after,.analyze-button:hover:after{transform:translateX(120%)}
 .hero-secondary{transition:border-color .2s,background .2s,transform .2s}.hero-secondary:hover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);transform:translateY(-2px)}
 .hero-visual{border-radius:28px 8px 28px 8px;isolation:isolate}.hero-visual:before{content:"";position:absolute;z-index:2;top:0;right:0;width:130px;height:130px;background:radial-gradient(circle at 100% 0,color-mix(in srgb,var(--primary) 38%,transparent),transparent 68%);pointer-events:none}.visual-chip{border-radius:10px;box-shadow:0 14px 34px color-mix(in srgb,var(--sapphire) 42%,transparent)}
