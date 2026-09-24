@@ -7,7 +7,21 @@ const analysisSteps = ["Parsing email", "Extracting indicators", "Checking authe
 const Mark = () => <div className="brand-mark" aria-hidden="true">⌁</div>;
 
 function Topbar({ theme, setTheme, onHome, view, setView }) {
-  return <header className="topbar"><button className="brand" onClick={onHome}><Mark /><span className="brand-name">Mail<span>Sentinel</span></span></button><nav className="top-nav"><button className={view === "report" ? "active" : ""} onClick={() => setView("report")}>Investigations</button><button className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button><button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>Settings</button></nav><button className="theme-toggle"onClick={() => setView("login")}>LOGIN</button><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><span>{theme === "dark" ? "☀" : "☾"}</span><span>{theme === "dark" ? "Light" : "Dark"}</span></button></header>;
+  return <header className="topbar"><button className="brand" onClick={onHome}><Mark /><span className="brand-name">Mail<span>Sentinel</span></span></button><nav className="top-nav"><button className={view === "report" ? "active" : ""} onClick={() => setView("report")}>Investigations</button><button className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button><button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>Settings</button></nav>
+    <button 
+      className="theme-toggle"
+      onClick={() => setView("login")}
+    > 
+      LOGIN  
+    </button> 
+
+    <button className="theme-toggle"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+    >
+      <span>{theme === "dark" ? "☀" : "☾"}</span>
+      <span>{theme === "dark" ? "Light" : "Dark"}</span>
+    </button>
+    </header>;
 }
 const NetworkBackdrop = () => <div className="network-backdrop" aria-hidden="true"><i /><i /><i /><i /><b /><b /><b /><b /></div>;
 
