@@ -17,5 +17,5 @@ async function request(path, options = {}) {
 }
 
 export const analyzeEmail = (body) => request("/analyze", { method: "POST", body: JSON.stringify(body) });
-export const getInvestigation = (investigationId) => request(`/investigation/${encodeURIComponent(investigationId)}`);
+export const getInvestigation = (investigationId) => request(`/investigation/${encodeURIComponent(investigationId)}?full=true`);
 export const getHistory = (userId) => request(`/history?user_id=${encodeURIComponent(userId)}`);

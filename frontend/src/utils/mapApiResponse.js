@@ -17,6 +17,7 @@ export function mapApiResponseToReportShape(api) {
   }));
 
   const reliableHop = api.infrastructure_risk?.reliable_hop || null;
+  const reliableHopNode = reliableHop?.earliest_reliable_node || {};
   const ipinfo = reliableHop?.ip_intelligence?.ipinfo || {};
 
   const matches = array(api.campaign_correlation?.matches);
@@ -31,7 +32,7 @@ export function mapApiResponseToReportShape(api) {
     reasons, infrastructure_evidence: array(api.infrastructure_risk?.evidence),
     domain_info: primary.domain ? {
       domain: primary.domain,
-      ip: reliableHop?.ip || primary.dns?.records?.A?.[0] || primary.ip || null,
+      ip: reliableHopNode.ip || primary.dns?.records?.A?.[0] || primary.ip || null,
       asn: ipinfo.asn || null,
       hosting: ipinfo.as_name || null,
       country: ipinfo.country || null,
@@ -44,7 +45,8 @@ export function mapApiResponseToReportShape(api) {
       reputation: primary.reputation || null,
     } : null,
     relay_path: received.map((hop, index) => {
-      const isReliableHop = reliableHop && hop.from_ip && reliableHop.ip && hop.from_ip === reliableHop.ip;
+      const isReliableHop = reliableHopNode.ip && hop.from_ip && hop.from_ip === reliableHopNode.ip;
+      const abuseScore = reliableHop?.ip_intelligence?.reputation?.abuse_score;
       return {
         label: `Hop ${index + 1}`,
         sub: hop.from_host || hop.hostname || hop.from_ip || "Unknown host",
@@ -53,7 +55,7 @@ export function mapApiResponseToReportShape(api) {
         ip: hop.from_ip || "—",
         location: isReliableHop ? (ipinfo.country || "Unknown") : (hop.location || "Unknown"),
         hosting: isReliableHop ? (ipinfo.as_name || "Unknown") : (hop.hosting || "Unknown"),
-        note: isReliableHop ? `Reliable hop (${reliableHop.reliability || "assessed"})` : (hop.note || "Received header observation"),
+        note: isReliableHop ? `Reliable hop (${reliableHopNode.reliability || "assessed"})${abuseScore != null ? ` · AbuseIPDB score ${abuseScore}` : ""}` : (hop.note || "Received header observation"),
       };
     }),
     campaign_correlation: api.campaign_correlation ? {
