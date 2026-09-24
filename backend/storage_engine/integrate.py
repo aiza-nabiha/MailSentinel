@@ -321,7 +321,7 @@ def persist_campaign_cache(conn, campaigns):
     conn.commit()
 
 
-def run_correlation(conn, email_id, pipeline_data, fingerprint_data):
+def run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data):
     """
     Builds the record shape threat_correlation_engine.normalize_email_record()
     expects, runs the real correlation engine against full history, and
@@ -334,6 +334,7 @@ def run_correlation(conn, email_id, pipeline_data, fingerprint_data):
         "domains": (pipeline_data or {}).get("domains", {}),
         "reliable_hop_analysis": (pipeline_data or {}).get("reliable_hop_analysis", {}),
         "fingerprint": fingerprint_data or {},
+        "received_chain": (header_data or {}).get("received_chain", []),
     }
     # output_file=None -- we don't need the JSON file dump in the live
     # pipeline, only the CLI usage writes that.
@@ -386,7 +387,7 @@ def run(eml_path, db_path=None, user_id=None):
 
     if run_threat_correlation:
         try:
-            correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data)
+            correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data)
             my_campaigns = [c for c in correlation_result["campaigns"] if email_id in c["emails"]]
             if my_campaigns:
                 print(f"[*] Correlation: matched campaign(s) -- {[c['campaign_id'] for c in my_campaigns]}")
