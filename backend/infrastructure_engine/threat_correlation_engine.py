@@ -91,6 +91,7 @@ MAX_SIGNAL_SCORE = {
     "same_nameserver": 0.65,
     "same_mail_server": 0.50,
     "same_cname": 0.50,
+    "same_relay_host": 0.65,
 }
 
 CAMPAIGN_EDGE_THRESHOLD = 55.0
@@ -158,10 +159,13 @@ def load_historical_emails(conn, exclude_ids=None):
         if email_id in exclude_ids:
             continue
         infra_raw = json.loads(infra_json)
+        infrastructure = {k: set(v) for k, v in infra_raw.items()}
+        for required_field in ("domains", "ips", "nameservers", "mail_servers", "cnames", "relay_hosts"):
+            infrastructure.setdefault(required_field, set())
         emails.append({
             "email_id": email_id,
             "observed_at": observed_at.isoformat() if hasattr(observed_at, "isoformat") else observed_at,
-            "infrastructure": {k: set(v) for k, v in infra_raw.items()},
+            "infrastructure": infrastructure,
             "asns": set(json.loads(asns_json)),
             "fingerprint": json.loads(fp_json),
             "is_historical": True,
@@ -273,10 +277,23 @@ def normalize_ip(value):
 # INFRASTRUCTURE EXTRACTION (unchanged)
 # ============================================================
 
+def extract_relay_hosts(received_chain):
+    hosts = set()
+    if not isinstance(received_chain, list):
+        return hosts
+    for hop in received_chain:
+        if isinstance(hop, dict) and hop.get("from_host"):
+            host = normalize_hostname(hop["from_host"])
+            if host:
+                hosts.add(host)
+    return hosts
+
+
 def extract_infrastructure(data):
     result = {
         "domains": set(), "ips": set(), "asns": set(),
         "nameservers": set(), "mail_servers": set(), "cnames": set(),
+        "relay_hosts": set(),
     }
     if not isinstance(data, dict):
         return result
@@ -448,6 +465,7 @@ def build_infrastructure_signals(email_a, email_b, conn):
         ("nameservers", "nameserver", "same_nameserver", "Both emails use the same nameserver"),
         ("mail_servers", "mail_server", "same_mail_server", "Both emails use the same mail infrastructure"),
         ("cnames", "cname", "same_cname", "Both emails resolve through the same canonical host"),
+        ("relay_hosts", "relay_host", "same_relay_host", "Both emails routed through the same mail relay"),
     ]
 
     for field, value_type, signal_type, reason in families:
@@ -561,6 +579,7 @@ def group_meaningful_signals(signals):
         "same_ip": "ip", "same_domain": "domain", "same_nameserver": "nameserver",
         "same_mail_server": "mail_server", "same_cname": "cname", "same_asn": "asn",
         "same_fingerprint": "fingerprint", "similar_fingerprint": "fingerprint",
+        "same_relay_host": "relay_host",
     }
     for signal in signals:
         score = float(signal.get("score", 0))
@@ -633,7 +652,8 @@ def build_correlation_graph(new_emails, historical_emails, conn):
         collapsed_counts = Counter()
 
         for kind, field in [("ip", "ips"), ("domain", "domains"), ("nameserver", "nameservers"),
-                             ("mail_server", "mail_servers"), ("cname", "cnames")]:
+                             ("mail_server", "mail_servers"), ("cname", "cnames"),
+                             ("relay_host", "relay_hosts")]:
 
             values = sorted(infra[field])
             shown = 0
@@ -808,6 +828,7 @@ def normalize_email_record(record, observed_at, index):
     if not infrastructure_source:
         infrastructure_source = {"domains": record.get("domains", {})}
     infrastructure = extract_infrastructure(infrastructure_source)
+    infrastructure["relay_hosts"] = extract_relay_hosts(record.get("received_chain", []))
 
     ip_intelligence = record.get("ip_intelligence", {})
     if not ip_intelligence:
