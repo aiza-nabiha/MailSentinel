@@ -59,6 +59,18 @@ def serve_dashboard(path):
     return send_from_directory(FRONTEND_DIST, "index.html")
 
 
+# The built index.html references root-level paths (/assets/..., /favicon.svg)
+# rather than /dashboard-prefixed ones, so those need their own routes.
+@app.route("/assets/<path:filename>")
+def serve_assets(filename):
+    return send_from_directory(FRONTEND_DIST / "assets", filename)
+
+
+@app.route("/favicon.svg")
+def serve_favicon():
+    return send_from_directory(FRONTEND_DIST, "favicon.svg")
+
+
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["100 per hour"], storage_uri="memory://")
@@ -151,18 +163,25 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
             (campaign_id, email_id),
         ).fetchall()
         edge_rows = conn.execute(
-            """SELECT source_email_id, target_email_id, signals_json FROM campaign_edges
+            """SELECT source_email_id, target_email_id, confidence, signals_json FROM campaign_edges
                WHERE campaign_id = %s AND (source_email_id = %s OR target_email_id = %s)""",
             (campaign_id, email_id, email_id),
         ).fetchall()
 
-        def _signal_types_for(other_email_id):
+        def _edge_info_for(other_email_id):
             types = []
-            for source_id, target_id, signals_json in edge_rows:
+            edge_confidence = None
+            for source_id, target_id, edge_conf, signals_json in edge_rows:
                 if other_email_id in (source_id, target_id) and email_id in (source_id, target_id):
+                    edge_confidence = edge_conf
                     for s in (_json.loads(signals_json) if signals_json else []):
                         types.append(s.get("type"))
-            return types
+            return types, edge_confidence
+
+        matches = []
+        for r in member_rows:
+            signal_types, edge_confidence = _edge_info_for(r[0])
+            matches.append({"email_id": r[0], "signals": signal_types, "confidence": edge_confidence})
 
         campaign_correlation = {
             "campaign_id": campaign_id,
@@ -170,10 +189,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
             "cohesion": cohesion,
             "cohesion_warning": cohesion_warning,
             "matched_investigations": len(member_rows),
-            "matches": [
-                {"email_id": r[0], "signals": _signal_types_for(r[0])}
-                for r in member_rows
-            ],
+            "matches": matches,
         }
 
     result = {
