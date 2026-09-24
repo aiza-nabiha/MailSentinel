@@ -1,0 +1,185 @@
+{
+    "email_id": "campaign_a_email_1",
+    "eml_path": "../../data/synthetic_campaign/campaign_a_email_1.eml",
+    "observed_at": "2026-09-14T10:00:58.118492+00:00",
+    "domains_analyzed": 1,
+    "received_chain": [
+        {
+            "hop": 1,
+            "raw": "Received: from bulk-mailer-node7.cheaphost.net (bulk-mailer-node7.cheaphost.net [185.220.101.11]) by mail.example.com; Mon, 01 Sep 2026 11:00:00 +0530",
+            "from_host": "bulk-mailer-node7.cheaphost.net",
+            "from_ip": "185.220.101.11",
+            "by_host": "mail.example.com",
+            "timestamp": "Mon, 01 Sep 2026 11:00:00 +0530"
+        }
+    ],
+    "reliable_hop_analysis": {
+        "status": "success",
+        "earliest_reliable_node": {
+            "hop_index": 1,
+            "ip": "185.220.101.11",
+            "hostname": "bulk-mailer-node7.cheaphost.net",
+            "confidence": 0.6,
+            "reliability": "LIKELY_TRUSTED",
+            "reasons": [
+                "Public IP address",
+                "Hostname is available",
+                "Hostname has valid domain structure"
+            ]
+        },
+        "ip_intelligence": {
+            "ip": "185.220.101.11",
+            "status": "success",
+            "cached": true,
+            "ipinfo": {
+                "status": "skipped",
+                "source": "IPinfo",
+                "error": "IPINFO_TOKEN is not configured"
+            },
+            "reverse_dns": {
+                "status": "success",
+                "hostname": "berlin01.tor-exit.artikel10.org",
+                "source": "DNS"
+            },
+            "reputation": {
+                "status": "skipped",
+                "source": "AbuseIPDB",
+                "error": "ABUSEIPDB_API_KEY is not configured"
+            }
+        }
+    },
+    "infrastructure_risk": {
+        "risk_score": 60,
+        "risk_level": "high",
+        "reasons": [
+            "SPF result is fail",
+            "DKIM authentication failed",
+            "DMARC authentication failed"
+        ],
+        "evidence": [
+            "Hop reliability: LIKELY_TRUSTED",
+            "Observable IP: 185.220.101.11",
+            "Hostname: bulk-mailer-node7.cheaphost.net",
+            "SPF: FAIL",
+            "DKIM: FAIL",
+            "DMARC: FAIL"
+        ]
+    },
+    "fingerprint": {
+        "eml_path": "../../data/synthetic_campaign/campaign_a_email_1.eml",
+        "structural": {
+            "skeleton_type": "text",
+            "fingerprint_sha256": "ce3d33e76026ebc0d7edfafd3e70a1bd0cfd5dd25f79922c29db2eed2023eae5"
+        },
+        "typosquat": {
+            "domains_checked": [
+                "sbi-verify123.xyz"
+            ],
+            "matches": [
+                {
+                    "domain": "sbi-verify123.xyz",
+                    "matched_brand": "sbi",
+                    "matched_chunk": "sbi",
+                    "edit_distance": 0
+                }
+            ],
+            "targeted_brands": [
+                "sbi"
+            ],
+            "extraction_error": null
+        },
+        "style": {
+            "has_html": false,
+            "colors": [],
+            "fonts": [],
+            "alt_texts": []
+        }
+    },
+    "urls": [],
+    "url_reputation": [],
+    "domains": {
+        "sbi-verify123.xyz": {
+            "domain": "sbi-verify123.xyz",
+            "whois": {
+                "domain": "sbi-verify123.xyz",
+                "status": "failed",
+                "source": null,
+                "rdap_server": "https://rdap.centralnic.com/xyz/",
+                "registrar": null,
+                "creation_date": null,
+                "updated_date": null,
+                "expiration_date": null,
+                "domain_age": null,
+                "domain_status": [],
+                "name_servers": [],
+                "error": "RDAP HTTP error: 404 Client Error: Not Found for url: https://rdap.centralnic.com/xyz/domain/sbi-verify123.xyz"
+            },
+            "dns": {
+                "domain": "sbi-verify123.xyz",
+                "records": {}
+            },
+            "tls": {
+                "domain": "sbi-verify123.xyz",
+                "status": "failed",
+                "issuer": null,
+                "valid_from": null,
+                "valid_to": null,
+                "days_until_expiry": null,
+                "san_domains": [],
+                "fingerprint_sha256": null,
+                "cert_shared_with": [],
+                "error": "Could not resolve domain"
+            },
+            "reputation": {
+                "domain": "sbi-verify123.xyz",
+                "reputation": "clean",
+                "found_on_lists": [],
+                "contextual_sources": [],
+                "evidence": [
+                    {
+                        "source": "Reputation checks",
+                        "type": "no_known_reputation_match",
+                        "severity": "informational"
+                    }
+                ],
+                "sources_checked": [
+                    "PhishTank",
+                    "Spamhaus DBL"
+                ],
+                "details": {
+                    "phishtank": {
+                        "source": "PhishTank",
+                        "status": "success",
+                        "listed": false,
+                        "match_type": null,
+                        "matching_url_count": 0
+                    },
+                    "spamhaus": {
+                        "source": "Spamhaus DBL",
+                        "status": "success",
+                        "listed": false
+                    }
+                }
+            },
+            "risk": {
+                "risk_score": 20,
+                "risk_level": "low",
+                "reasons": [
+                    "Domain age could not be verified",
+                    "Could not establish a valid TLS connection"
+                ]
+            }
+        }
+    },
+    "overall_verdict": {
+        "risk_score": 60,
+        "risk_level": "high",
+        "highest_risk_domain": "sbi-verify123.xyz",
+        "highest_risk_score": 20,
+        "reasons": [
+            "SPF result is fail",
+            "DKIM authentication failed",
+            "DMARC authentication failed"
+        ]
+    }
+}

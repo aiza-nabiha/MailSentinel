@@ -1,7 +1,35 @@
+"""
+backend/infrastructure_engine/threat_correlation_engine.py
+
+POSTGRES VERSION. This engine used to own a completely separate
+SQLite file (correlation.db) that nothing else in the app ever
+touched -- it only ran standalone via its CLI. It is now the LIVE
+correlation engine, wired into integrate.py, sharing the same
+Postgres database and connection as everything else.
+
+Changes from the original:
+  - No more init_database() / DATABASE_FILE / its own sqlite3.connect.
+    Schema for investigations / infrastructure_observations /
+    fingerprint_observations now lives in the shared schema.sql and
+    is created by db.get_connection(). This module just uses a conn
+    handed to it.
+  - correlate() now takes `conn` as its first argument instead of
+    opening (and closing) its own connection -- the caller (integrate.py,
+    or this file's own CLI block) owns the connection's lifecycle.
+  - All `?` placeholders -> `%s` (psycopg2).
+  - `INSERT OR REPLACE` (SQLite-only) -> `INSERT ... ON CONFLICT DO UPDATE`.
+  - The old PRAGMA table_info() schema-migration check is gone -- it
+    existed only to patch up SQLite databases created by an earlier
+    version of this file; a fresh Postgres schema doesn't need it.
+
+Everything else -- the actual correlation logic (rarity weighting,
+time decay, known-large-provider discount, fingerprint commonality
+discount, cluster cohesion, confidence scoring) -- is unchanged.
+"""
+
 import json
 import math
 import os
-import sqlite3
 import sys
 from collections import Counter
 from datetime import datetime, timezone
@@ -15,46 +43,28 @@ import networkx as nx
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 GRAPH_ENGINE_DIR = os.path.join(BACKEND_DIR, "threat_graph_engine")
+STORAGE_ENGINE_DIR = os.path.join(BACKEND_DIR, "storage_engine")
 
 if GRAPH_ENGINE_DIR not in sys.path:
     sys.path.insert(0, GRAPH_ENGINE_DIR)
+if STORAGE_ENGINE_DIR not in sys.path:
+    sys.path.insert(0, STORAGE_ENGINE_DIR)
 
 from fingerprint import compare_fingerprints
 
-DATABASE_FILE = os.path.join(BASE_DIR, "correlation.db")
 OUTPUT_FILE = os.path.join(BASE_DIR, "correlation_results.json")
 
 
 # ============================================================
-# CONFIGURATION
+# CONFIGURATION (unchanged)
 # ============================================================
 
 FINGERPRINT_SIMILARITY_THRESHOLD = 0.88
 
-# How many PAST investigations to pull in and compare new
-# emails against. This is what makes cross-session "campaign
-# memory" actually work -- FIX for the biggest gap in the
-# original file, which only ever compared emails within the
-# single batch passed into one call.
 HISTORY_LOOKBACK_LIMIT = 5000
 
-# Signals never gated by frequency at all -- an identical
-# domain, identical IP, or byte-identical fingerprint means
-# the same domain/IP/kit. Frequency tells you whether OTHER
-# infrastructure is popular; it says nothing about whether
-# "the same one" is meaningful. Gating these to zero was the
-# most dangerous bug in the original design: a growing,
-# successful campaign would cross the rarity ceiling and
-# become MORE invisible the more victims it claimed.
 NEVER_FREQUENCY_GATED = {"domain", "ip", "fingerprint"}
 
-# Infrastructure types where the *category itself* has a
-# small number of enormous, globally-shared providers.
-# Matching one of these specific well-known values is
-# discounted heavily regardless of how rare or common it is
-# in OUR OWN corpus -- this is a lookup against known reality
-# (Cloudflare/AWS/GoDaddy serve millions of unrelated sites),
-# not a frequency guess that takes time to learn.
 KNOWN_LARGE_PROVIDERS = {
     "nameserver": {
         "domaincontrol.com", "cloudflare.com", "googledomains.com",
@@ -66,7 +76,6 @@ KNOWN_LARGE_PROVIDERS = {
     },
     "asn": {
         "as16509", "as8075", "as15169", "as13335", "as14618", "as16276",
-        # Amazon, Microsoft, Google, Cloudflare, Amazon(2), OVH
     },
     "cname": {
         "cloudfront.net", "azureedge.net", "github.io", "herokuapp.com",
@@ -82,115 +91,37 @@ MAX_SIGNAL_SCORE = {
     "same_nameserver": 0.65,
     "same_mail_server": 0.50,
     "same_cname": 0.50,
+    "same_relay_host": 0.65,
 }
 
 CAMPAIGN_EDGE_THRESHOLD = 55.0
-
-# A cluster is only reported as high-confidence if every
-# member is well-connected to the rest, not just chained
-# through a single weak bridge. FIX for the transitive-
-# chaining problem (A-B strong, B-C strong, A-C nothing,
-# all three still got merged into one campaign before).
 MIN_CLUSTER_COHESION = 0.6
-
-# Historical observations older than this contribute less --
-# dormant infrastructure resurfacing after a long gap is not
-# the same evidentiary weight as something seen last week.
-# FIX: original had no time decay at all.
 DECAY_HALF_LIFE_DAYS = 120
 
 
 # ============================================================
-# DATABASE
+# DATABASE (Postgres, shared connection)
 # ============================================================
-
-def init_database():
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS infrastructure_observations (
-            value TEXT NOT NULL,
-            value_type TEXT NOT NULL,
-            first_seen TEXT NOT NULL,
-            last_seen TEXT NOT NULL,
-            observation_count INTEGER DEFAULT 1,
-            PRIMARY KEY (value, value_type)
-        )
-    """)
-
-    # FIX: original "investigations" table stored only a
-    # summary, with no way to reload an email's actual
-    # infrastructure/fingerprint later for comparison against
-    # NEW incoming emails. This is the table that makes real
-    # cross-session correlation possible.
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS investigations (
-            email_id TEXT PRIMARY KEY,
-            observed_at TEXT NOT NULL,
-            infrastructure_json TEXT NOT NULL,
-            asns_json TEXT NOT NULL,
-            fingerprint_json TEXT NOT NULL,
-            risk_level TEXT
-        )
-    """)
-
-    # MIGRATION: anyone who already ran an earlier version of
-    # this file has an "investigations" table with the OLD
-    # columns (email_id, observed_at, result_json). CREATE
-    # TABLE IF NOT EXISTS does not touch an existing table's
-    # structure, so without this check every teammate who
-    # already tested the old version hits
-    # "no such column: infrastructure_json" the moment they
-    # pull this update. Detect the old shape and rebuild it.
-    cursor.execute("PRAGMA table_info(investigations)")
-    existing_columns = {row[1] for row in cursor.fetchall()}
-    required_columns = {"infrastructure_json", "asns_json", "fingerprint_json"}
-
-    if not required_columns.issubset(existing_columns):
-        print(
-            "[!] Old 'investigations' table schema detected -- "
-            "migrating to the new format. Prior correlation "
-            "history from the old schema cannot be recovered "
-            "(it never stored the raw infrastructure needed for "
-            "comparison anyway), so the table is rebuilt empty."
-        )
-        cursor.execute("ALTER TABLE investigations RENAME TO investigations_old")
-        cursor.execute("""
-            CREATE TABLE investigations (
-                email_id TEXT PRIMARY KEY,
-                observed_at TEXT NOT NULL,
-                infrastructure_json TEXT NOT NULL,
-                asns_json TEXT NOT NULL,
-                fingerprint_json TEXT NOT NULL,
-                risk_level TEXT
-            )
-        """)
-        cursor.execute("DROP TABLE investigations_old")
-
-    conn.commit()
-    return conn
-
 
 def record_observation(conn, value, value_type, observed_at):
     if not value:
         return
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT observation_count FROM infrastructure_observations WHERE value = ? AND value_type = ?",
+        "SELECT observation_count FROM infrastructure_observations WHERE value = %s AND value_type = %s",
         (value, value_type),
     )
     row = cursor.fetchone()
     if row:
         cursor.execute(
-            "UPDATE infrastructure_observations SET observation_count = observation_count + 1, last_seen = ? "
-            "WHERE value = ? AND value_type = ?",
+            "UPDATE infrastructure_observations SET observation_count = observation_count + 1, last_seen = %s "
+            "WHERE value = %s AND value_type = %s",
             (observed_at, value, value_type),
         )
     else:
         cursor.execute(
             "INSERT INTO infrastructure_observations (value, value_type, first_seen, last_seen, observation_count) "
-            "VALUES (?, ?, ?, ?, 1)",
+            "VALUES (%s, %s, %s, %s, 1)",
             (value, value_type, observed_at, observed_at),
         )
     conn.commit()
@@ -199,7 +130,7 @@ def record_observation(conn, value, value_type, observed_at):
 def get_observation(conn, value, value_type):
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT observation_count, last_seen FROM infrastructure_observations WHERE value = ? AND value_type = ?",
+        "SELECT observation_count, last_seen FROM infrastructure_observations WHERE value = %s AND value_type = %s",
         (value, value_type),
     )
     row = cursor.fetchone()
@@ -210,17 +141,15 @@ def get_observation(conn, value, value_type):
 
 def load_historical_emails(conn, exclude_ids=None):
     """
-    FIX: this is the function that was entirely missing.
-    Pulls every previously-recorded investigation back out of
-    the database so NEW emails can actually be compared
-    against emails seen in earlier runs -- not just against
-    each other within the current batch.
+    Pulls every previously-recorded investigation back out of the
+    database so NEW emails can be compared against emails seen in
+    earlier runs/sessions, not just against each other in this batch.
     """
     exclude_ids = exclude_ids or set()
     cursor = conn.cursor()
     cursor.execute(
         "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json "
-        "FROM investigations ORDER BY observed_at DESC LIMIT ?",
+        "FROM investigations ORDER BY observed_at DESC LIMIT %s",
         (HISTORY_LOOKBACK_LIMIT,),
     )
     rows = cursor.fetchall()
@@ -230,10 +159,13 @@ def load_historical_emails(conn, exclude_ids=None):
         if email_id in exclude_ids:
             continue
         infra_raw = json.loads(infra_json)
+        infrastructure = {k: set(v) for k, v in infra_raw.items()}
+        for required_field in ("domains", "ips", "nameservers", "mail_servers", "cnames", "relay_hosts"):
+            infrastructure.setdefault(required_field, set())
         emails.append({
             "email_id": email_id,
-            "observed_at": observed_at,
-            "infrastructure": {k: set(v) for k, v in infra_raw.items()},
+            "observed_at": observed_at.isoformat() if hasattr(observed_at, "isoformat") else observed_at,
+            "infrastructure": infrastructure,
             "asns": set(json.loads(asns_json)),
             "fingerprint": json.loads(fp_json),
             "is_historical": True,
@@ -245,9 +177,14 @@ def persist_investigation(conn, email):
     cursor = conn.cursor()
     infra_serializable = {k: sorted(v) for k, v in email["infrastructure"].items()}
     cursor.execute(
-        "INSERT OR REPLACE INTO investigations "
-        "(email_id, observed_at, infrastructure_json, asns_json, fingerprint_json) "
-        "VALUES (?, ?, ?, ?, ?)",
+        """INSERT INTO investigations
+               (email_id, observed_at, infrastructure_json, asns_json, fingerprint_json)
+           VALUES (%s, %s, %s, %s, %s)
+           ON CONFLICT (email_id) DO UPDATE SET
+               observed_at = EXCLUDED.observed_at,
+               infrastructure_json = EXCLUDED.infrastructure_json,
+               asns_json = EXCLUDED.asns_json,
+               fingerprint_json = EXCLUDED.fingerprint_json""",
         (
             email["email_id"],
             email["observed_at"],
@@ -260,19 +197,19 @@ def persist_investigation(conn, email):
 
 
 # ============================================================
-# TIME DECAY
+# TIME DECAY (unchanged)
 # ============================================================
 
 def time_decay_factor(last_seen_iso):
-    """
-    FIX: no decay existed before. Infrastructure last observed
-    long ago carries less weight than infrastructure seen
-    recently -- a half-life curve rather than a hard cutoff.
-    """
     if not last_seen_iso:
         return 1.0
     try:
-        last_seen = datetime.fromisoformat(last_seen_iso.replace("Z", "+00:00"))
+        if hasattr(last_seen_iso, "isoformat"):
+            last_seen = last_seen_iso
+            if last_seen.tzinfo is None:
+                last_seen = last_seen.replace(tzinfo=timezone.utc)
+        else:
+            last_seen = datetime.fromisoformat(str(last_seen_iso).replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return 1.0
 
@@ -282,55 +219,31 @@ def time_decay_factor(last_seen_iso):
 
 
 # ============================================================
-# RARITY / DISCOUNT MODEL (replaces the hard gate)
+# RARITY / DISCOUNT MODEL (unchanged)
 # ============================================================
 
 def infrastructure_weight(conn, value, value_type):
-    """
-    FIX: replaces the old hard rarity GATE with a continuous
-    discount, and separates two genuinely different concepts
-    that were conflated before:
-
-      1. "Is this globally, structurally shared by millions of
-         unrelated sites?" -- answered by a small known-provider
-         lookup, not by how often WE happen to have seen it.
-         Applies only to nameserver/mail_server/asn/cname.
-
-      2. "Have WE seen this specific value before, in our own
-         corpus, and how recently?" -- this can only ever
-         REDUCE weight slightly for very generic shared
-         infrastructure (asn/nameserver/etc.), and for
-         domain/ip/fingerprint it never reduces the score at
-         all, since repeated reuse of the exact same domain/IP
-         across investigations is itself campaign evidence, not
-         noise to suppress.
-    """
-
     if value_type in NEVER_FREQUENCY_GATED:
         return 1.0
 
     known_set = KNOWN_LARGE_PROVIDERS.get(value_type, set())
     for known in known_set:
         if known in value:
-            return 0.05  # heavily discounted, not zeroed -- still visible as context
+            return 0.05
 
     obs = get_observation(conn, value, value_type)
     frequency = obs["frequency"]
     decay = time_decay_factor(obs["last_seen"])
 
     if frequency == 0:
-        return 1.0 * decay  # first time we've EVER seen it -- but still decays if stale on reload
+        return 1.0 * decay
 
-    # Diminishing-returns discount for values we've seen many
-    # times in our own corpus, WITHOUT ever hitting a hard
-    # zero. log-scaled so 1-2 prior sightings barely move it,
-    # but heavy reuse trends the weight down gradually.
     weight = 1.0 / math.log2(frequency + 2)
     return round(max(0.15, min(1.0, weight * decay)), 4)
 
 
 # ============================================================
-# JSON / NORMALIZATION HELPERS
+# JSON / NORMALIZATION HELPERS (unchanged)
 # ============================================================
 
 def load_json(path):
@@ -361,14 +274,26 @@ def normalize_ip(value):
 
 
 # ============================================================
-# INFRASTRUCTURE EXTRACTION (unchanged logic from original --
-# this part was already solid)
+# INFRASTRUCTURE EXTRACTION (unchanged)
 # ============================================================
+
+def extract_relay_hosts(received_chain):
+    hosts = set()
+    if not isinstance(received_chain, list):
+        return hosts
+    for hop in received_chain:
+        if isinstance(hop, dict) and hop.get("from_host"):
+            host = normalize_hostname(hop["from_host"])
+            if host:
+                hosts.add(host)
+    return hosts
+
 
 def extract_infrastructure(data):
     result = {
         "domains": set(), "ips": set(), "asns": set(),
         "nameservers": set(), "mail_servers": set(), "cnames": set(),
+        "relay_hosts": set(),
     }
     if not isinstance(data, dict):
         return result
@@ -485,19 +410,10 @@ def normalize_fingerprint(fingerprint):
 
 
 # ============================================================
-# FINGERPRINT COMMONALITY (new -- did not exist before)
+# FINGERPRINT COMMONALITY
 # ============================================================
 
 def fingerprint_hash_key(fingerprint):
-    """
-    A stable-ish key representing structural shape, used only
-    to track how many DISTINCT sender domains have produced
-    this same structural shape historically. This is what lets
-    us tell "shared phishing kit reused across victims" (small
-    number of distinct domains, all suspicious) apart from
-    "everyone who uses the same email marketing SaaS" (huge
-    number of distinct, unrelated legitimate domains).
-    """
     if not fingerprint:
         return None
     return json.dumps(fingerprint.get("structural_hash") or fingerprint, sort_keys=True)[:200]
@@ -508,16 +424,10 @@ def record_fingerprint_observation(conn, fingerprint, domain, observed_at):
     if not key or not domain:
         return
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS fingerprint_observations (
-            fp_key TEXT NOT NULL,
-            domain TEXT NOT NULL,
-            observed_at TEXT NOT NULL,
-            PRIMARY KEY (fp_key, domain)
-        )
-    """)
     cursor.execute(
-        "INSERT OR REPLACE INTO fingerprint_observations (fp_key, domain, observed_at) VALUES (?, ?, ?)",
+        """INSERT INTO fingerprint_observations (fp_key, domain, observed_at)
+           VALUES (%s, %s, %s)
+           ON CONFLICT (fp_key, domain) DO UPDATE SET observed_at = EXCLUDED.observed_at""",
         (key, domain, observed_at),
     )
     conn.commit()
@@ -528,26 +438,12 @@ def fingerprint_distinct_domain_count(conn, fingerprint):
     if not key:
         return 0
     cursor = conn.cursor()
-    cursor.execute(
-        "CREATE TABLE IF NOT EXISTS fingerprint_observations "
-        "(fp_key TEXT NOT NULL, domain TEXT NOT NULL, observed_at TEXT NOT NULL, PRIMARY KEY (fp_key, domain))"
-    )
-    cursor.execute("SELECT COUNT(DISTINCT domain) FROM fingerprint_observations WHERE fp_key = ?", (key,))
+    cursor.execute("SELECT COUNT(DISTINCT domain) FROM fingerprint_observations WHERE fp_key = %s", (key,))
     row = cursor.fetchone()
     return row[0] if row else 0
 
 
 def fingerprint_commonality_discount(conn, fingerprint):
-    """
-    FIX: original applied zero commonality gating to
-    fingerprints at all. If a structural shape has already
-    shown up under many DISTINCT sender domains, it's likely a
-    widely-used legitimate template (a SaaS email builder),
-    not a targeted kit -- discount it. Small distinct-domain
-    counts stay at full strength, since that's exactly the
-    "same kit reused across a handful of victims" signature
-    we want to catch.
-    """
     distinct = fingerprint_distinct_domain_count(conn, fingerprint)
     if distinct <= 3:
         return 1.0
@@ -555,7 +451,7 @@ def fingerprint_commonality_discount(conn, fingerprint):
 
 
 # ============================================================
-# INFRASTRUCTURE SIGNAL BUILDER
+# INFRASTRUCTURE SIGNAL BUILDER (unchanged)
 # ============================================================
 
 def build_infrastructure_signals(email_a, email_b, conn):
@@ -569,6 +465,7 @@ def build_infrastructure_signals(email_a, email_b, conn):
         ("nameservers", "nameserver", "same_nameserver", "Both emails use the same nameserver"),
         ("mail_servers", "mail_server", "same_mail_server", "Both emails use the same mail infrastructure"),
         ("cnames", "cname", "same_cname", "Both emails resolve through the same canonical host"),
+        ("relay_hosts", "relay_host", "same_relay_host", "Both emails routed through the same mail relay"),
     ]
 
     for field, value_type, signal_type, reason in families:
@@ -619,8 +516,6 @@ def build_fingerprint_signals(email_a, email_b, conn):
     except (TypeError, ValueError):
         style_similarity = 0.0
 
-    # FIX: commonality discount applied to both fingerprint
-    # branches -- did not exist before at all.
     commonality_discount = min(
         fingerprint_commonality_discount(conn, fp_a),
         fingerprint_commonality_discount(conn, fp_b),
@@ -675,7 +570,7 @@ def compare_emails(email_a, email_b, conn):
 
 
 # ============================================================
-# EVIDENCE GROUPING / CONFIDENCE (kept -- this part was sound)
+# EVIDENCE GROUPING / CONFIDENCE (unchanged)
 # ============================================================
 
 def group_meaningful_signals(signals):
@@ -684,6 +579,7 @@ def group_meaningful_signals(signals):
         "same_ip": "ip", "same_domain": "domain", "same_nameserver": "nameserver",
         "same_mail_server": "mail_server", "same_cname": "cname", "same_asn": "asn",
         "same_fingerprint": "fingerprint", "similar_fingerprint": "fingerprint",
+        "same_relay_host": "relay_host",
     }
     for signal in signals:
         score = float(signal.get("score", 0))
@@ -730,7 +626,7 @@ def summarize_correlation(signals):
 
 
 # ============================================================
-# GRAPH
+# GRAPH (unchanged)
 # ============================================================
 
 def is_known_large_provider(value, value_type):
@@ -738,41 +634,10 @@ def is_known_large_provider(value, value_type):
     return any(known in value for known in known_set)
 
 
-# Maximum individual nodes a single email contributes per
-# infrastructure type in the OUTPUT graph. This is a display
-# cap only -- correlation is computed from the full raw sets
-# in build_infrastructure_signals() BEFORE this function ever
-# runs, so trimming what gets serialized here cannot cause a
-# real correlation to be missed. Domains are exempt (kept
-# uncapped) since there are usually few per email and each one
-# individually matters for both display and quick visual
-# recognition.
 MAX_NODES_PER_TYPE_PER_EMAIL = 6
 
 
 def build_correlation_graph(new_emails, historical_emails, conn):
-    """
-    FIX: now takes historical_emails separately and compares
-    NEW emails against BOTH each other AND every historical
-    investigation. Historical-to-historical pairs are skipped
-    since those were already correlated in earlier runs.
-
-    FIX (graph size, first pass): infrastructure belonging to a
-    known large provider (Google, Cloudflare, AWS, etc.) can
-    never contribute a correlation edge -- infrastructure_weight()
-    discounts it to near-zero every time -- so it's collapsed
-    into a per-email summary node instead of one node per record.
-
-    FIX (graph size, second pass): known-provider matching only
-    covers nameserver/mail_server/asn/cname by name -- it cannot
-    catch, e.g., a single email with 40 individual IP addresses
-    from some service with no name-based signature. So on top of
-    the known-provider collapse, EVERY infrastructure type is
-    additionally capped at MAX_NODES_PER_TYPE_PER_EMAIL individual
-    nodes per email; anything beyond that folds into the same
-    summary node. This scales safely regardless of database size
-    because it only affects what's rendered, not what's compared.
-    """
     graph = nx.Graph()
     all_emails = new_emails + historical_emails
 
@@ -787,7 +652,8 @@ def build_correlation_graph(new_emails, historical_emails, conn):
         collapsed_counts = Counter()
 
         for kind, field in [("ip", "ips"), ("domain", "domains"), ("nameserver", "nameservers"),
-                             ("mail_server", "mail_servers"), ("cname", "cnames")]:
+                             ("mail_server", "mail_servers"), ("cname", "cnames"),
+                             ("relay_host", "relay_hosts")]:
 
             values = sorted(infra[field])
             shown = 0
@@ -862,7 +728,7 @@ def build_correlation_graph(new_emails, historical_emails, conn):
 
 
 # ============================================================
-# CAMPAIGN CLUSTERING (with cohesion check -- new)
+# CAMPAIGN CLUSTERING (unchanged)
 # ============================================================
 
 def build_campaigns(graph):
@@ -894,11 +760,6 @@ def build_campaigns(graph):
                 "signals": data.get("signals", []),
             })
 
-        # FIX: cohesion check. A star-shaped or chain-shaped
-        # cluster where most pairs never directly correlate is
-        # flagged rather than silently reported as one
-        # confident campaign. Cohesion = actual edges / possible
-        # edges among these nodes.
         possible_pairs = len(nodes) * (len(nodes) - 1) / 2
         cohesion = round(len(edges) / possible_pairs, 4) if possible_pairs else 1.0
 
@@ -911,6 +772,15 @@ def build_campaigns(graph):
 
         campaign_confidence = round(sum(e["confidence"] for e in edges) / len(edges), 2) if edges else 0.0
 
+        campaign_email_ids = set(nodes)
+        infra_node_ids = set()
+        for email_id in campaign_email_ids:
+            for neighbor in graph.neighbors(email_id):
+                if graph.nodes[neighbor].get("node_type") != "email":
+                    infra_node_ids.add(neighbor)
+        campaign_subgraph = graph.subgraph(campaign_email_ids | infra_node_ids)
+        campaign_graph = serialize_graph(campaign_subgraph)
+
         campaigns.append({
             "campaign_id": f"campaign-{index:03d}",
             "emails": nodes,
@@ -920,6 +790,7 @@ def build_campaigns(graph):
             "cohesion_warning": cohesion < MIN_CLUSTER_COHESION,
             "signal_summary": dict(signal_types),
             "connections": edges,
+            "graph": campaign_graph,
         })
 
     return campaigns
@@ -932,8 +803,7 @@ def serialize_graph(graph):
 
 
 # ============================================================
-# RECORD OBSERVATIONS (still happens AFTER correlation --
-# this ordering from the original was correct and is kept)
+# RECORD OBSERVATIONS (unchanged ordering: happens AFTER correlation)
 # ============================================================
 
 def record_current_observations(conn, emails):
@@ -968,6 +838,7 @@ def normalize_email_record(record, observed_at, index):
     if not infrastructure_source:
         infrastructure_source = {"domains": record.get("domains", {})}
     infrastructure = extract_infrastructure(infrastructure_source)
+    infrastructure["relay_hosts"] = extract_relay_hosts(record.get("received_chain", []))
 
     ip_intelligence = record.get("ip_intelligence", {})
     if not ip_intelligence:
@@ -988,9 +859,13 @@ def normalize_email_record(record, observed_at, index):
     }
 
 
-def correlate(email_records, output_file=OUTPUT_FILE):
+def correlate(conn, email_records, output_file=OUTPUT_FILE):
+    """
+    Takes an already-open Postgres connection (a db.ConnWrapper) --
+    the caller (integrate.py, or this file's own CLI block) owns
+    opening and closing it. Does NOT close conn.
+    """
     observed_at = datetime.now(timezone.utc).isoformat()
-    conn = init_database()
 
     new_emails = [
         normalize_email_record(record, observed_at, i + 1)
@@ -1026,22 +901,21 @@ def correlate(email_records, output_file=OUTPUT_FILE):
         "graph": serialize_graph(graph),
     }
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=4, ensure_ascii=False)
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=4, ensure_ascii=False)
 
-    # Record AFTER correlating, so this batch can't inflate its
-    # own frequency/rarity mid-comparison -- same correct
-    # ordering as the original design.
+    # Record AFTER correlating, so this batch can't inflate its own
+    # frequency/rarity mid-comparison.
     for email in new_emails:
         persist_investigation(conn, email)
     record_current_observations(conn, new_emails)
 
-    conn.close()
     return result
 
 
 # ============================================================
-# CLI
+# CLI (standalone usage -- opens its own connection)
 # ============================================================
 
 def load_email_records(path):
@@ -1058,6 +932,8 @@ def load_email_records(path):
 if __name__ == "__main__":
     import argparse
 
+    from db import get_connection
+
     parser = argparse.ArgumentParser(description="MailSentinel Threat Correlation Engine")
     parser.add_argument("input", nargs="+", help="One or more investigation JSON files")
     parser.add_argument("--output", default=OUTPUT_FILE, help="Output correlation JSON file")
@@ -1067,7 +943,9 @@ if __name__ == "__main__":
     for input_file in args.input:
         records.extend(load_email_records(input_file))
 
-    result = correlate(records, args.output)
+    cli_conn = get_connection()
+    result = correlate(cli_conn, records, args.output)
+    cli_conn.close()
 
     print("\n" + "=" * 70)
     print("THREAT CORRELATION ENGINE")

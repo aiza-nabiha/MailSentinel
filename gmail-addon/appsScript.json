@@ -5,16 +5,18 @@
   "runtimeVersion": "V8",
   "oauthScopes": [
     "https://www.googleapis.com/auth/gmail.addons.execute",
-    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.addons.current.message.readonly",
     "https://www.googleapis.com/auth/script.external_request"
   ],
   "addOns": {
     "common": {
       "name": "MailSentinel",
-      "logoUrl": "https://www.gstatic.com/images/icons/material/system/2x/security_black_24dp.png",
+
+      "logoUrl": "https://raw.githubusercontent.com/aiza-nabiha/MailSentinel/main/gmail-addon/logo.png",
+
       "layoutProperties": {
-        "primaryColor": "#5B8CFF",
-        "secondaryColor": "#7C5CFC"
+        "primaryColor": "#151B3D",
+        "secondaryColor": "#2563EB"
       },
       "homepageTrigger": {
         "runFunction": "onHomepage"
