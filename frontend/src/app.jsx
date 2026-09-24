@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import InvestigationReportPage from "./pages/InvestigationReportPage";
+import { analyzeEmail, getHistory, getInvestigation } from "./utils/api";
 
 const analysisSteps = ["Parsing email", "Extracting indicators", "Checking authentication", "Analyzing infrastructure", "Checking reputation", "Correlating campaigns", "Computing risk"];
 const Mark = () => <div className="brand-mark" aria-hidden="true">⌁</div>;
@@ -24,13 +25,18 @@ function Analyzing({ fileName }) {
   return <main className="analysis-screen"><NetworkBackdrop /><div className="analysis-card"><div className="analysis-radar"><span /><span /><span /><b>⌁</b></div><div className="eyebrow"><span /> INVESTIGATION IN PROGRESS</div><h1>Reading the signals.</h1><p className="analysis-file">{fileName}</p><ol>{analysisSteps.map((item, index) => <li className={index < step ? "done" : index === step ? "current" : ""} key={item}><span>{index < step ? "✓" : index === step ? "◌" : "·"}</span>{item}<small>{index < step ? "complete" : index === step ? "running" : "queued"}</small></li>)}</ol></div></main>;
 }
 
-function History({ openReport, newInvestigation }) { const items = [["HIGH", "fake-bank.xyz", "87", "Today · 09:14"], ["MEDIUM", "parcel-delivery.support", "54", "Yesterday · 16:42"], ["SAFE", "accounts.google.com", "12", "Sep 10 · 11:08"]]; return <main className="workspace-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> INVESTIGATION ARCHIVE</div><h1>Recent investigations</h1><p>Review historic email decisions and their connected infrastructure.</p></div><button className="analyze-button" onClick={newInvestigation}>+ New investigation</button></div><div className="archive-list">{items.map(([level, domain, score, time]) => <button className="archive-row" key={domain} onClick={openReport}><span className={`risk-pill ${level.toLowerCase()}`}>{level}</span><strong>{domain}</strong><span className="archive-time">{time}</span><span className="archive-score">{score}<small>/100</small></span><span>→</span></button>)}</div></main>; }
+function History({ openReport, newInvestigation, userId }) {
+  const [items, setItems] = useState([]), [error, setError] = useState(""), [loading, setLoading] = useState(true);
+  useEffect(() => { let active = true; getHistory(userId).then((data) => active && setItems(data.emails || [])).catch((err) => active && setError(err.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [userId]);
+  return <main className="workspace-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> INVESTIGATION ARCHIVE</div><h1>Recent investigations</h1><p>Review historic email decisions and their connected infrastructure.</p></div><button className="analyze-button" onClick={newInvestigation}>+ New investigation</button></div><div className="archive-list">{loading && <p>Loading investigations…</p>}{error && <p className="upload-error">{error}</p>}{!loading && !error && !items.length && <p>No investigations have been created for this workspace yet.</p>}{items.map((item) => <button className="archive-row" key={item.email_id} onClick={() => openReport(item.email_id)}><span className={`risk-pill ${String(item.verdict || "safe").toLowerCase()}`}>{item.verdict || "safe"}</span><strong>{item.subject || item.email_id}</strong><span className="archive-time">{item.ingested_at || "Date unavailable"}</span><span className="archive-score">{item.overall_risk_score ?? "—"}<small>/100</small></span><span>→</span></button>)}</div></main>;
+}
 
 function Settings() { const [saved, setSaved] = useState(false); return <main className="workspace-page settings-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> WORKSPACE</div><h1>Investigation settings</h1><p>Configure how MailSentinel presents and retains analysis results.</p></div></div><div className="settings-card"><div><h2>Analysis endpoint</h2><p>Connect this workspace to the MailSentinel backend when it is running.</p></div><label>Endpoint<input defaultValue="http://localhost:5001/analyze" /></label><label className="switch-row">Keep investigations in this browser <input type="checkbox" defaultChecked /></label><button className="analyze-button" onClick={() => setSaved(true)}>{saved ? "✓ Settings saved" : "Save settings"}</button></div></main>; }
 
 export default function App() {
   const [theme, setTheme] = useState("dark"), [view, setView] = useState("landing"), [fileName, setFileName] = useState("");
   const [investigationData, setInvestigationData] = useState(null), [analysisError, setAnalysisError] = useState("");
+  const userId = import.meta.env.VITE_DEMO_USER_ID || "demo@gmail.com";
   useEffect(() => document.documentElement.setAttribute("data-theme", theme), [theme]);
   const home = () => { setInvestigationData(null); setView("landing"); };
 
@@ -44,13 +50,7 @@ export default function App() {
       setView("analyzing");
       setFileName(investigationId);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/investigation/${investigationId}`, {
-          headers: {
-            "X-API-Key": import.meta.env.VITE_API_KEY,
-            "ngrok-skip-browser-warning": "true",
-          },
-        });
-        const result = await response.json();
+        const result = await getInvestigation(investigationId);
         setInvestigationData(result);
         setView("report");
       } catch (err) {
@@ -69,18 +69,7 @@ export default function App() {
       const body = file
         ? { raw_eml: await file.text(), user_id: "demo@gmail.com" }
         : { eml_path: "test_emails/example.eml", user_id: "demo@gmail.com" };
-      const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:5001";
-      const response = await fetch(`${apiUrl}/analyze`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": import.meta.env.VITE_API_KEY,
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(body),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Analysis request failed (${response.status})`);
+      const result = await analyzeEmail(body);
       setInvestigationData(result);
       setView("report");
     } catch (err) {
@@ -97,7 +86,7 @@ export default function App() {
       {view === "landing" && <Landing onAnalyze={start} analysisError={analysisError} />}
       {view === "analyzing" && <Analyzing fileName={fileName} />}
       {view === "report" && <InvestigationReportPage apiResponse={investigationData} onNewInvestigation={home} />}
-      {view === "history" && <History openReport={() => setView("report")} newInvestigation={home} />}
+      {view === "history" && <History openReport={async (id) => { try { setInvestigationData(await getInvestigation(id)); setView("report"); } catch (err) { setAnalysisError(err.message); setView("landing"); } }} newInvestigation={home} userId={userId} />}
       {view === "settings" && <Settings />}
     </div>
   );
