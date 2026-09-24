@@ -1,4 +1,19 @@
-# Byte-compiled / optimized / DLL files
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python byte-compiled / optimized files
 __pycache__/
 *.py[codz]
 *$py.class
@@ -6,11 +21,10 @@ __pycache__/
 # C extensions
 *.so
 
-# Distribution / packaging
+# Python distribution / packaging
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -50,28 +64,22 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
+# Django
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Flask stuff:
+# Flask
 instance/
 .webassets-cache
 
-# Scrapy stuff:
+# Scrapy
 .scrapy
 
-# Sphinx documentation
+# Sphinx
 docs/_build/
 
 # PyBuilder
-.pybuilder/
 target/
 
 # Jupyter Notebook
@@ -81,7 +89,7 @@ target/
 profile_default/
 ipython_config.py
 
-# Package managers & environments
+# Python environments
 .python-version
 Pipfile.lock
 uv.lock
@@ -96,7 +104,7 @@ pixi.lock
 !.pixi/config.toml
 __pypackages__/
 
-# Celery stuff
+# Celery
 celerybeat-schedule*
 celerybeat.pid
 
@@ -113,10 +121,69 @@ rabbitmq-data/
 # ActiveMQ
 activemq-data/
 
-# SageMath parsed files
+# SageMath
 *.sage.py
 
-# Environments
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# Cython
+cython_debug/
+
+# Abstra
+.abstra/
+
+# Temporary Python files
+tempCodeRunnerFile.py
+
+# Ruff
+.ruff_cache/
+
+# PyPI configuration
+.pypirc
+
+# Marimo
+marimo/_static/
+marimo/_lsp/
+__marimo__/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# macOS
+.DS_Store
+
+# Visual Studio
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environments / secrets
 .env
 .env.*
 !.env.example
@@ -127,52 +194,6 @@ env/
 ENV/
 env.bak/
 venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# Abstra
-.abstra/
-
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-# Streamlit
-.streamlit/secrets.toml
-
-.DS_Store
 
 # Datasets and generated data
 data/*.csv
@@ -188,13 +209,15 @@ data/**/*.zip
 **/threat_intelligence_results.json
 **/final_investigation.json
 
-# Database files (generic - catches phishing.db etc.)
+# Database files
 *.db
 
-# Large phishing dataset (outside data/ folder, not caught by existing CSV rules)
+# Large phishing dataset outside data/
 backend/storage_engine/phishtank_feed.csv
+backend/infrastructure_engine/phishtank_feed.csv
+phishtank_feed.csv
 
-# Additional cache/result files not caught above
+# Additional cache / result files
 **/tls_results.json
 **/ip_intelligence_cache.json
-**/pipeline_output.json
+**/pipeline_output.jsonfrontend/.env
