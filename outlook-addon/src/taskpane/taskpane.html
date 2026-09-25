@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>MailSentinel</title>
+
+    <link rel="stylesheet" href="taskpane.css" />
+
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <script src="taskpane.js" defer></script>
+</head>
+
+<body>
+    <div class="app">
+
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-icon">M</div>
+                <div>
+                    <h1>MailSentinel</h1>
+                    <p>EMAIL THREAT INTELLIGENCE</p>
+                </div>
+            </div>
+
+            <span class="status-dot" id="connectionDot"></span>
+        </header>
+
+        <main class="main-content">
+
+            <section class="welcome-section">
+                <div class="eyebrow">OUTLOOK SECURITY</div>
+
+                <h2>
+                    Detect the email.<br />
+                    <span>Reconstruct the attack.</span>
+                </h2>
+
+                <p>
+                    Analyze the currently opened email using
+                    content intelligence, authentication checks,
+                    and infrastructure investigation.
+                </p>
+            </section>
+
+            <section class="email-card">
+                <div class="section-heading">
+                    <span class="small-icon">✉</span>
+                    <span>CURRENT EMAIL</span>
+                </div>
+
+                <div class="email-info">
+                    <div class="info-label">Subject</div>
+                    <div class="info-value" id="emailSubject">
+                        Open an email in Outlook
+                    </div>
+                </div>
+
+                <div class="email-info">
+                    <div class="info-label">From</div>
+                    <div class="info-value" id="emailSender">
+                        Waiting for email
+                    </div>
+                </div>
+
+                <div class="email-info">
+                    <div class="info-label">Analysis status</div>
+                    <div class="info-value" id="emailStatus">
+                        Ready to analyze
+                    </div>
+                </div>
+
+                <button id="analyzeBtn" class="primary-btn">
+                    <span id="buttonText">Analyze This Email</span>
+                    <span>→</span>
+                </button>
+
+                <p class="privacy-note">
+                    Only the selected email is analyzed when you
+                    click the button.
+                </p>
+            </section>
+
+            <div id="errorBox" class="error-box hidden"></div>
+
+            <section id="resultsSection" class="hidden">
+
+                <div class="result-heading">
+                    <div>
+                        <div class="eyebrow">INVESTIGATION RESULT</div>
+                        <h2>Threat assessment</h2>
+                    </div>
+
+                    <span id="verdictBadge" class="verdict-badge">
+                        UNKNOWN
+                    </span>
+                </div>
+
+                <div class="risk-card" id="riskCard">
+                    <div>
+                        <div class="risk-label">OVERALL RISK SCORE</div>
+                        <div class="risk-description" id="riskDescription">
+                            Analysis completed
+                        </div>
+                    </div>
+
+                    <div class="risk-score">
+                        <span id="riskScore">--</span>
+                        <small>/100</small>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+
+                    <div class="metric-card">
+                        <div class="metric-label">CONTENT</div>
+                        <div class="metric-value" id="contentScore">--</div>
+                        <div class="metric-subtitle">Threat score</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">AUTHENTICATION</div>
+                        <div class="metric-value" id="authStatus">--</div>
+                        <div class="metric-subtitle">Email checks</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">INFRASTRUCTURE</div>
+                        <div class="metric-value" id="infraStatus">--</div>
+                        <div class="metric-subtitle">Domain intelligence</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">CORRELATION</div>
+                        <div class="metric-value" id="correlationStatus">--</div>
+                        <div class="metric-subtitle">Related evidence</div>
+                    </div>
+
+                </div>
+
+                <section class="findings-card">
+                    <div class="section-heading">
+                        SECURITY FINDINGS
+                    </div>
+
+                    <div id="findingsList">
+                        No findings available.
+                    </div>
+                </section>
+
+                <section class="findings-card">
+                    <div class="section-heading">
+                        EMAIL AUTHENTICATION
+                    </div>
+
+                    <div class="auth-row">
+                        <span>SPF</span>
+                        <span id="spfResult" class="auth-value">--</span>
+                    </div>
+
+                    <div class="auth-row">
+                        <span>DKIM</span>
+                        <span id="dkimResult" class="auth-value">--</span>
+                    </div>
+
+                    <div class="auth-row">
+                        <span>DMARC</span>
+                        <span id="dmarcResult" class="auth-value">--</span>
+                    </div>
+                </section>
+
+                <button id="resetBtn" class="secondary-btn">
+                    Analyze Another Email
+                </button>
+
+            </section>
+
+            <footer class="footer">
+                <span>MailSentinel</span>
+                <span>Evidence-based email security</span>
+            </footer>
+
+        </main>
+    </div>
+</body>
+</html>

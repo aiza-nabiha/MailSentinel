@@ -33,8 +33,14 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from db import get_connection, get_emails_for_user, log_access, get_trigger_metadata, get_raw_archive_for_email
-from integrate import run as run_integration
+from .db import (
+    get_connection,
+    get_emails_for_user,
+    log_access,
+    get_trigger_metadata,
+    get_raw_archive_for_email,
+)
+from .integrate import run as run_integration
 
 load_dotenv()
 

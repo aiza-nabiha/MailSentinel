@@ -1,0 +1,189 @@
+Delivered-To: arushipandey360@gmail.com
+Received: by 2002:a5d:62cb:0:b0:482:dd89:41b9 with SMTP id o11csp2559222wrv;
+        Mon, 14 Sep 2026 01:58:50 -0700 (PDT)
+X-Received: by 2002:a05:620a:90c7:10b0:939:4b31:4669 with SMTP id af79cd13be357-93a299fbeefmr157350485a.29.1789376330547;
+        Mon, 14 Sep 2026 01:58:50 -0700 (PDT)
+ARC-Seal: i=2; a=rsa-sha256; t=1789376330; cv=pass;
+        d=google.com; s=arc-20260327;
+        b=Gsy3zGf/O1bCjgJyoAH9L4BGCJ9+mSaFJxMHGONvjBs31DQE5puEmviOcs4T2bylAK
+         SzVqdh3/m5z66YfHJmPfj2xyeLJ1PWTvID4S/FYlUAKW0QE6dOnFcnRBq7clPtaAMXTK
+         mRhEq5LKhgyQ0AJ6Dhj5OObFEK5iZCm9/tpHsCEuwsNUnBUp5XkDqF2EUbVx2j5JZrUH
+         6yRjPsGOq9OK4ajUUgD4vz9TsiQSceE7D0eOJ1QYCPH6R2ZNlpSS123TmKOzH8hDMKkV
+         aGj9VAKKa2S8tSrz7pv1xvHmDtt2p+/rI4BriExMsKcA4WMrOIZp3B8IELoO1zG6eLKw
+         H+Bw==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=EmZZqFGkFEJlGpJS+zJ+bzX0UkY/2U5ycpZ7fJIJ4Uo=;
+        fh=WlkUtwQ8LoWiV7fz7bxahlPBrtds27gRmE3AEiViTyg=;
+        b=phNjy3PEtjrbEnKXI4vXHyDH2cX4s3ErnDpHUdYIk1K1zYPitpCnDC3hl19XapPXoT
+         XVIANqGd2PR0oNGT5Aq3Y8jzT456S4vXufRt0OMi8Rta6jsAHmazpLUjinh7XUZrPF3e
+         kkphYdIvAZpdhLfwITb6fdxwjErplCtxIHXl601WNfJY/3tlrl8HOYZKnMpuOi/wvRRS
+         efDH0Y7pdcjE8/3mOhZuRX2+uMRSFNXxFTKHdAXhtcfz/TQO3jitpNv24KIOnNrslG8O
+         J7MZzo534MPu2sTs4F6WKa6YLymyFxe0FuPpD8gBCp8WLQkKtk63CRVezvJy52qHj4AS
+         dpJg==;
+        dara=google.com
+ARC-Authentication-Results: i=2; mx.google.com;
+       dkim=pass header.i=@gmail.com header.s=20251104 header.b=FFvUFL+j;
+       arc=pass (i=1);
+       spf=pass (google.com: domain of aizanabiha12@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=aizanabiha12@gmail.com;
+       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;
+       dara=pass header.i=@gmail.com
+Return-Path: <aizanabiha12@gmail.com>
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])
+        by mx.google.com with SMTPS id af79cd13be357-93a2a511fa1sor101845985a.7.2026.09.14.01.58.50
+        for <arushipandey360@gmail.com>
+        (Google Transport Security);
+        Mon, 14 Sep 2026 01:58:50 -0700 (PDT)
+Received-SPF: pass (google.com: domain of aizanabiha12@gmail.com designates 209.85.220.41 as permitted sender) client-ip=209.85.220.41;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@gmail.com header.s=20251104 header.b=FFvUFL+j;
+       arc=pass (i=1);
+       spf=pass (google.com: domain of aizanabiha12@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=aizanabiha12@gmail.com;
+       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;
+       dara=pass header.i=@gmail.com
+ARC-Seal: i=1; a=rsa-sha256; t=1789376330; cv=none;
+        d=google.com; s=arc-20260327;
+        b=MtutSfkSUKaV2KhHoHU7oINIQFN5SYN9dOjBgvJbWJrchP33+WeGoq6H5XzW57j+zC
+         RjGQQEtiStb7pt2iG3hHKDG4PY/ijM8aghhh3rbwi4Dv+VCve5CgQuEXk8s9/8WuO+uR
+         c1xnpck2VBLtOMBdN1WATqfRpwzX7FZo3HNE25WN9ncdkhVTBopmkiKo5AG+pw/V55fz
+         C1ijz2khwNvncOLWwj+4m5EudlNoQaZ7TQ1eYGwiBsEI2kE0CHNYRYfNG3yVTZ9Ud3Yj
+         wMpg61RzYKniAYtpoiG5DWb0llU99L77UqSHsFJUia7wbn/U8+YR2TQU+ax26rtjC9e+
+         Czcg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=EmZZqFGkFEJlGpJS+zJ+bzX0UkY/2U5ycpZ7fJIJ4Uo=;
+        fh=WlkUtwQ8LoWiV7fz7bxahlPBrtds27gRmE3AEiViTyg=;
+        b=YzRiiGrq2AEnhOYlBGu05hVoM983fBt9O7/xHw0PFkCI2E2m5A3eO3Me2J8SxXepjy
+         YTxF761ayw9KgZ+/u0lww6JNXcxRjczVY+sW5zrfzqW4+L24eOnthD0lY1SADiZAg7et
+         GiQAv3oQ4vharhy1ilwstsY0z/eN++mutrJ5MWwN4IhuJhI78vplPg8cvlCCTXdKzLPA
+         Bpq0nAp4odd5GsXS1rmNI4TxQ72OtCoxhbawN7IL6clgk4YXeLL2gYvC5KaQbt6hZMjZ
+         gtiIfnkVW2hr7deRmSWqKgwDBkEedWq8ZEXadasS7A5fmz1n4kOzT7GH+4O4ciIiQeLW
+         aTdQ==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789376330; x=1789981130; dara=google.com;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=EmZZqFGkFEJlGpJS+zJ+bzX0UkY/2U5ycpZ7fJIJ4Uo=;
+        b=FFvUFL+ji8SMdlf9jIRJNIvK7bx29Y9LHlL1OqE+WvGNVwOH3+rtX8RYP6af78fXWN
+         WQJ3VLYVstbJo+Kq+AwUVnebs+Uvw+VwHBkzhfIm1nV0DKr1CtGONlZA7IrugelLhf4W
+         djoayUThwZJ7j6TjK4kKYKLQwV1YqKcTkP6MkPZayP6afchQzrIY0EZoXdeDaL9MVmLV
+         XVjlk+f9TozVmtXZSHAaSHMZxABzTHxsh1py7SF1N8LDLnDI9SckYlTZnVAt288VRshO
+         RjWuaUqS5xCDIGjUC//hB1fZaHFGxzRRnI8IXyx0l9ZU/86U464fpu6PfIVlOi9LNvuq
+         xuDg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789376330; x=1789981130;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=EmZZqFGkFEJlGpJS+zJ+bzX0UkY/2U5ycpZ7fJIJ4Uo=;
+        b=snQzquM9BHnS/wAyleqy91AL+ii14NHeDATodyVgvTcpLUVM1pv4ogOdGdSorKI9mb
+         79G7JfTcxmMGZ6dPXUOEfNQStP/Uz/N6N3IJXTr7GkDtmv1bE7HGKgV4ILKod7SpdmVV
+         WgksNxM5q6sn+IB4tMvzFaNwC5vqMKLwL9iMNtIKZ6HUALp0KLEsCD2MjKefz/RRF6ZP
+         mIGhoPQgZklgeuu/il7JSalqlhgEzMr3jhwcT08EyPkeYEDd6yj8HNC+q3+WPcXD5Wsq
+         quMOtycu5PBD4c0aRRZeEODLYugl5/rb11gSzlcwDi0OwBX2HTZyHxbLRvfpWQJWC/W2
+         TbKA==
+X-Gm-Message-State: AFuF++k0Dd2X0hNCmeXaYaKVdCVVURodGEoiPFk7/KdyXEompe3W7ZU1
+	klStF2ARaNMtBPWew1By+MYD3QDj8zS0DTYO/oPCzMpp0geIOiXIW+sLgEVmn18idRftug0Jhf1
+	Ul+uJ2nZeXe2ltlZfZw7FaL28iGyEZ+U9
+X-Gm-Gg: AYBFou0a2c4c5QGo/nOECt+WcZgB4KKIf2a7uWYXnKGun37MxlXOPB7KjD2AB+vmKHZ
+	JWt8ythZBcK8u7k7sVis3RflHUbLGKZyavizvdd3Zgh7S0zKLVN6NkzKCjGiuAIj+NRxxiGO2ok
+	0SNWxieYYyIA9A000G4bvZGDSALycFunc6kgzxQK9lRKc15Xv/0qdM2jTahO2fQWtcJU90AiNIj
+	VXg2XLkJp9zRHzh1B/0Cr3ig9Kzo3LL6tE21eJWKAMhynUGsLw6JTYz4iSQD+0Y+/KHiooIdaVf
+	ouZIattnF60of94yzpTdFD4MM0QKrEMxBhDqL2Wt5MgpE7XxRPieO3KX3lhe0t10/oSvz1XnGW7
+	dBFIFizr+hCE=
+X-Received: by 2002:a05:620a:2549:b0:939:4a44:5f99 with SMTP id
+ af79cd13be357-93a297cb330mr202050385a.10.1789376325036; Mon, 14 Sep 2026
+ 01:58:45 -0700 (PDT)
+MIME-Version: 1.0
+References: <CACzURjkqTgPmZTVgJCQVcH1visDvLSVZj8VB_yM=bbq8s3ifpA@mail.gmail.com>
+ <CANBc4=bMY6e9UQygOPZiW=4OBfhmzihqqWSCMFiR7oBRpkrD9A@mail.gmail.com>
+In-Reply-To: <CANBc4=bMY6e9UQygOPZiW=4OBfhmzihqqWSCMFiR7oBRpkrD9A@mail.gmail.com>
+From: Aiza Nabiha <aizanabiha12@gmail.com>
+Date: Mon, 14 Sep 2026 14:28:33 +0530
+X-Gm-Features: AcwNN1VVo_l1FCLFrQIlapWtGAcS1AEYem0JusDtLSxu6QqoMrcktfQzDpCqmWc
+Message-ID: <CAP6AYLTduMwkD6NCs5W1-CiqzXFPNFcUWAtvN7rJW9OWrzHfKg@mail.gmail.com>
+Subject: Fwd: Your Account Requires Verification
+To: "arushipandey360@gmail.com" <arushipandey360@gmail.com>
+Content-Type: multipart/alternative; boundary="000000000000392d47065b6da4d1"
+
+--000000000000392d47065b6da4d1
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+---------- Forwarded message ---------
+From: Anshika Pandey <anshika200e@gmail.com>
+Date: Mon, 14 Sept, 2026, 2:27=E2=80=AFpm
+Subject: Fwd: Your Account Requires Verification
+To: Aiza Nabiha <aizanabiha12@gmail.com>
+
+
+
+
+---------- Forwarded message ---------
+From: adarsh pandey <adarshpandey2342003@gmail.com>
+Date: Mon, 14 Sept, 2026, 2:24=E2=80=AFpm
+Subject: Your Account Requires Verification
+To: anshika200e@gmail.com <anshika200e@gmail.com>
+
+
+
+From: Security Team <security-check@example.com>
+
+Hello,
+
+We detected unusual activity on your account and your access may be
+restricted unless you verify your account.
+
+Please review your account information as soon as possible using the
+verification link below:
+
+[VERIFY YOUR ACCOUNT]
+
+If you do not complete the verification, your account may be temporarily
+suspended.
+
+Thank you,
+Security Team
+
+--000000000000392d47065b6da4d1
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"auto"></div><br><div class=3D"gmail_quote gmail_quote_container=
+"><div dir=3D"ltr" class=3D"gmail_attr">---------- Forwarded message ------=
+---<br>From: <strong class=3D"gmail_sendername" dir=3D"auto">Anshika Pandey=
+</strong> <span dir=3D"auto">&lt;<a href=3D"mailto:anshika200e@gmail.com">a=
+nshika200e@gmail.com</a>&gt;</span><br>Date: Mon, 14 Sept, 2026, 2:27=E2=80=
+=AFpm<br>Subject: Fwd: Your Account Requires Verification<br>To: Aiza Nabih=
+a &lt;<a href=3D"mailto:aizanabiha12@gmail.com">aizanabiha12@gmail.com</a>&=
+gt;<br></div><br><br><div dir=3D"auto"><div><br><br><div class=3D"gmail_quo=
+te"><div dir=3D"ltr" class=3D"gmail_attr">---------- Forwarded message ----=
+-----<br>From: <strong class=3D"gmail_sendername" dir=3D"auto">adarsh pande=
+y</strong> <span dir=3D"auto">&lt;<a href=3D"mailto:adarshpandey2342003@gma=
+il.com" target=3D"_blank" rel=3D"noreferrer">adarshpandey2342003@gmail.com<=
+/a>&gt;</span><br>Date: Mon, 14 Sept, 2026, 2:24=E2=80=AFpm<br>Subject: You=
+r Account Requires Verification<br>To: <a href=3D"mailto:anshika200e@gmail.=
+com" target=3D"_blank" rel=3D"noreferrer">anshika200e@gmail.com</a> &lt;<a =
+href=3D"mailto:anshika200e@gmail.com" target=3D"_blank" rel=3D"noreferrer">=
+anshika200e@gmail.com</a>&gt;<br></div><br><br><div dir=3D"auto"><div dir=
+=3D"auto"><br></div><div dir=3D"auto">From: Security Team &lt;<a href=3D"ma=
+ilto:security-check@example.com" rel=3D"noreferrer noreferrer" target=3D"_b=
+lank">security-check@example.com</a>&gt;</div><div dir=3D"auto"><br></div><=
+div dir=3D"auto">Hello,</div><div dir=3D"auto"><br></div><div dir=3D"auto">=
+We detected unusual activity on your account and your access may be restric=
+ted unless you verify your account.</div><div dir=3D"auto"><br></div><div d=
+ir=3D"auto">Please review your account information as soon as possible usin=
+g the verification link below:</div><div dir=3D"auto"><br></div><div dir=3D=
+"auto">[VERIFY YOUR ACCOUNT]</div><div dir=3D"auto"><br></div><div dir=3D"a=
+uto">If you do not complete the verification, your account may be temporari=
+ly suspended.</div><div dir=3D"auto"><br></div><div dir=3D"auto">Thank you,=
+</div><div dir=3D"auto">Security Team</div></div>
+</div></div></div>
+</div>
+
+--000000000000392d47065b6da4d1--
