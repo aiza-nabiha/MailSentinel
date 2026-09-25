@@ -28,7 +28,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from db import get_connection, get_or_create_email_id, get_or_create_user, archive_raw_email
+from .db import (
+    get_connection,
+    get_or_create_email_id,
+    get_or_create_user,
+    archive_raw_email,
+)
 
 THIS_DIR = Path(__file__).parent
 BACKEND_ROOT = THIS_DIR.parent
