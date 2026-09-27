@@ -357,61 +357,70 @@ def run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data
 
 def run(eml_path, db_path=None, user_id=None):
     conn = get_connection(db_path)
-    if user_id:
-        get_or_create_user(conn, user_id)
-
-    email_id, already_existed = get_or_create_email_id(conn, eml_path)
-    if already_existed:
-        print(f"[*] {eml_path} already ingested as {email_id} -- updating existing record")
-    else:
-        print(f"[*] Assigned {email_id} -> {eml_path}")
-
-    header_data = build_email_data(eml_path) if build_email_data else None
-    if header_data:
-        print("[*] Person 2 header parsing: OK")
-
-    pipeline_data = run_pipeline(eml_path) if run_pipeline else None
-    if pipeline_data:
-        print("[*] Person 3 domain + infrastructure pipeline: OK")
-
-    classifier_data, classifier_source = run_classifier(eml_path)
-    if classifier_data:
-        print(f"[*] Classifier ({classifier_source}): OK "
-              f"(verdict: {classifier_data['verdict']}, score: {classifier_data['phishing_score']})")
-
-    fingerprint_data = run_fingerprint(eml_path)
-    if fingerprint_data:
-        print(f"[*] Person 4 fingerprint: OK "
-              f"(brands targeted: {fingerprint_data['typosquat']['targeted_brands']})")
-
-    insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
-                         classifier_data, classifier_source, fingerprint_data, user_id)
-
     try:
-        with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
-            raw_content = f.read()
-        archive_raw_email(conn, email_id, user_id, raw_content, header_data)
-        print("[*] Raw email archived (encrypted) for future training")
-    except RuntimeError as e:
-        print(f"[!] Skipping archive -- encryption not configured: {e}")
-    except Exception as e:
-        print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
+        if user_id:
+            get_or_create_user(conn, user_id)
 
-    if run_threat_correlation:
+        email_id, already_existed = get_or_create_email_id(conn, eml_path)
+        if already_existed:
+            print(f"[*] {eml_path} already ingested as {email_id} -- updating existing record")
+        else:
+            print(f"[*] Assigned {email_id} -> {eml_path}")
+
+        header_data = build_email_data(eml_path) if build_email_data else None
+        if header_data:
+            print("[*] Person 2 header parsing: OK")
+
+        pipeline_data = run_pipeline(eml_path) if run_pipeline else None
+        if pipeline_data:
+            print("[*] Person 3 domain + infrastructure pipeline: OK")
+
+        classifier_data, classifier_source = run_classifier(eml_path)
+        if classifier_data:
+            print(f"[*] Classifier ({classifier_source}): OK "
+                  f"(verdict: {classifier_data['verdict']}, score: {classifier_data['phishing_score']})")
+
+        fingerprint_data = run_fingerprint(eml_path)
+        if fingerprint_data:
+            print(f"[*] Person 4 fingerprint: OK "
+                  f"(brands targeted: {fingerprint_data['typosquat']['targeted_brands']})")
+
+        insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
+                             classifier_data, classifier_source, fingerprint_data, user_id)
+
         try:
-            correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data)
-            my_campaigns = [c for c in correlation_result["campaigns"] if email_id in c["emails"]]
-            if my_campaigns:
-                print(f"[*] Correlation: matched campaign(s) -- {[c['campaign_id'] for c in my_campaigns]}")
-            else:
-                print("[*] Correlation: no campaign matches against prior investigations")
+            with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
+                raw_content = f.read()
+            archive_raw_email(conn, email_id, user_id, raw_content, header_data)
+            print("[*] Raw email archived (encrypted) for future training")
+        except RuntimeError as e:
+            print(f"[!] Skipping archive -- encryption not configured: {e}")
         except Exception as e:
-            print(f"[!] Correlation check failed (non-fatal): {e}")
+            print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
 
-    conn.commit()
-    print(f"[+] {email_id} stored.")
-    conn.close()
-    return email_id
+        if run_threat_correlation:
+            try:
+                correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data)
+                my_campaigns = [c for c in correlation_result["campaigns"] if email_id in c["emails"]]
+                if my_campaigns:
+                    print(f"[*] Correlation: matched campaign(s) -- {[c['campaign_id'] for c in my_campaigns]}")
+                else:
+                    print("[*] Correlation: no campaign matches against prior investigations")
+            except Exception as e:
+                print(f"[!] Correlation check failed (non-fatal): {e}")
+
+        conn.commit()
+        print(f"[+] {email_id} stored.")
+        return email_id
+    finally:
+        # Guarantees this connection is always released, even if
+        # something above raises an uncaught exception. Previously
+        # conn.close() only ran on the fully-successful path, so any
+        # error mid-pipeline leaked a live Postgres connection (and
+        # its client-side memory) for the rest of the worker
+        # process's lifetime -- across enough requests, this alone
+        # could accumulate toward the 512MB ceiling.
+        conn.close()
 
 
 if __name__ == "__main__":
