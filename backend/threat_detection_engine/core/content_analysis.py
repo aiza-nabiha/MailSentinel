@@ -243,12 +243,39 @@ class ContentAnalyzer:
         )
 
 
+_analyzer_singleton = None
+
+
+def get_content_analyzer():
+    """
+    Returns a process-wide cached ContentAnalyzer instance.
+
+    ContentAnalyzer.__init__ calls joblib.load() on the ~7MB model
+    bundle (including a 150k-feature TF-IDF vectorizer), which is
+    expensive in both time and memory. Previously every call to
+    analyze_email_file()/analyze_email_content() constructed a brand
+    new ContentAnalyzer, re-deserializing the model from disk on
+    every single request. Under Gunicorn that meant every /analyze
+    call re-loaded the model, causing repeated memory spikes that
+    were pushing the process over Render's 512MB free-tier ceiling.
+
+    Loading it once per process and reusing it is the standard
+    pattern for serving an ML model in a web app.
+    """
+    global _analyzer_singleton
+
+    if _analyzer_singleton is None:
+        _analyzer_singleton = ContentAnalyzer()
+
+    return _analyzer_singleton
+
+
 def analyze_email_content(
     subject="",
     body=""
 ):
 
-    analyzer = ContentAnalyzer()
+    analyzer = get_content_analyzer()
 
     content = {
         "subject": subject,
@@ -272,7 +299,7 @@ def analyze_email_content(
 
 def analyze_email_file(eml_path):
 
-    analyzer = ContentAnalyzer()
+    analyzer = get_content_analyzer()
 
     return analyzer.analyze_eml(
         eml_path
@@ -366,7 +393,7 @@ if __name__ == "__main__":
         sender.get("return_path_mismatch")
     )
 
-    analyzer = ContentAnalyzer()
+    analyzer = get_content_analyzer()
 
     result = analyzer.analyze_extracted_content(
         content
