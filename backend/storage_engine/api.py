@@ -49,6 +49,20 @@ load_dotenv()
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 
+# Load the ML content-classifier model once, at process startup,
+# instead of on the first incoming request. Without this, the first
+# /analyze call after a cold start/restart pays both the container
+# boot cost and the ~7MB model deserialization cost back-to-back,
+# which is exactly when latency (and memory headroom) matters most.
+try:
+    from threat_detection_engine.core.content_analysis import (
+        get_content_analyzer,
+    )
+
+    get_content_analyzer()
+except Exception as _preload_error:  # pragma: no cover
+    print(f"[!] Content classifier preload failed: {_preload_error}")
+
 oauth = init_google_oauth(app)
 @app.route("/auth/google")
 def google_login():
