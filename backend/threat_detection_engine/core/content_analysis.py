@@ -1,492 +1,653 @@
-from pathlib import Path
 import os
+import threading
+
 import joblib
+import numpy as np
 import pandas as pd
 
 from scipy.sparse import hstack, csr_matrix
-
 from .text_cleaner import clean_email_text
 from .email_features import extract_email_features
 from .explain_content import generate_analysis
-from .email_content_extractor import extract_email_content
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# ==========================================================
+# MODEL PATH
+# ==========================================================
 
-MODEL_PATH = (
-    PROJECT_ROOT
-    / "ml_models"
-    / "content_classifier.joblib"
+BASE_DIR = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "..",
+    )
+)
+
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "ml_models",
+    "content_classifier.joblib",
 )
 
 
+# ==========================================================
+# CONTENT ANALYZER
+# ==========================================================
+
 class ContentAnalyzer:
+    """
+    Load and run the trained MailSentinel content model.
+
+    Existing model bundle structure is preserved.
+    """
 
     def __init__(self, model_path=MODEL_PATH):
 
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(
-                f"Model not found: {model_path}"
-            )
+        self.model_path = model_path
 
-        bundle = joblib.load(model_path)
+        self.vectorizer = None
+        self.scaler = None
+        self.classifier = None
 
-        self.vectorizer = bundle["vectorizer"]
-        self.scaler = bundle["scaler"]
-        self.classifier = bundle["classifier"]
+        self.ml_feature_names = None
+        self.metadata = {}
 
-        if "feature_names" not in bundle:
-            raise ValueError(
-                "V4 model bundle does not contain feature_names."
-            )
+        self._loaded = False
 
-        self.ml_feature_names = list(
-            bundle["feature_names"]
-        )
+        # Prevent simultaneous duplicate initialization.
+        self._load_lock = threading.Lock()
 
-        if hasattr(self.scaler, "feature_names_in_"):
-            scaler_feature_names = list(
-                self.scaler.feature_names_in_
-            )
+    # ======================================================
+    # MODEL LOADING
+    # ======================================================
 
-            if scaler_feature_names != self.ml_feature_names:
-                raise ValueError(
-                    "V4 feature-name mismatch between "
-                    "model bundle and scaler."
+    def load_model(self):
+        """
+        Load model bundle and validate feature names.
+        """
+
+        if self._loaded:
+            return
+
+        with self._load_lock:
+
+            if self._loaded:
+                return
+
+            if not os.path.exists(self.model_path):
+                raise FileNotFoundError(
+                    "Content classifier not found: "
+                    + self.model_path
                 )
-        else:
-            raise ValueError(
-                "Scaler does not contain feature_names_in_."
+
+            bundle = joblib.load(
+                self.model_path
             )
 
-    def analyze_extracted_content(self, content):
+            required_keys = {
+                "vectorizer",
+                "scaler",
+                "classifier",
+                "feature_names",
+            }
 
-        subject = content.get("subject", "")
-        combined_body = content.get("combined_text", "")
+            missing_keys = (
+                required_keys - set(bundle.keys())
+            )
 
+            if missing_keys:
+                raise ValueError(
+                    "Invalid model bundle. Missing keys: "
+                    + ", ".join(sorted(missing_keys))
+                )
+
+            self.vectorizer = bundle["vectorizer"]
+            self.scaler = bundle["scaler"]
+            self.classifier = bundle["classifier"]
+
+            self.ml_feature_names = list(
+                bundle["feature_names"]
+            )
+
+            self.metadata = bundle.get(
+                "metadata",
+                {},
+            )
+
+            # --------------------------------------------------
+            # Validate feature names against scaler
+            # --------------------------------------------------
+
+            scaler_feature_names = getattr(
+                self.scaler,
+                "feature_names_in_",
+                None,
+            )
+
+            if scaler_feature_names is not None:
+
+                scaler_feature_names = list(
+                    scaler_feature_names
+                )
+
+                if (
+                    scaler_feature_names
+                    != self.ml_feature_names
+                ):
+                    raise ValueError(
+                        "Model feature mismatch: scaler "
+                        "feature_names_in_ does not match "
+                        "bundle feature_names."
+                    )
+
+            # --------------------------------------------------
+            # Validate feature count
+            # --------------------------------------------------
+
+            expected_feature_count = getattr(
+                self.scaler,
+                "n_features_in_",
+                None,
+            )
+
+            if (
+                expected_feature_count is not None
+                and expected_feature_count
+                != len(self.ml_feature_names)
+            ):
+                raise ValueError(
+                    "Model feature count mismatch: "
+                    f"scaler expects {expected_feature_count}, "
+                    f"but bundle contains "
+                    f"{len(self.ml_feature_names)} names."
+                )
+
+            # --------------------------------------------------
+            # Check predict_proba availability
+            # --------------------------------------------------
+
+            if not hasattr(
+                self.classifier,
+                "predict_proba",
+            ):
+                raise ValueError(
+                    "Classifier does not support "
+                    "predict_proba()."
+                )
+
+            self._loaded = True
+
+    # ======================================================
+    # TEXT PREPARATION
+    # ======================================================
+
+    @staticmethod
+    def _prepare_text(subject, body):
+        """
+        Prepare text using the same preprocessing
+        format used during model training.
+        """
+
+        subject = str(subject or "")
         cleaned_body = clean_email_text(
-            combined_body
+            body
         )
 
-        combined_text = (
+        return (
             "SUBJECT: "
-            + str(subject)
+            + subject
             + "\nBODY: "
             + cleaned_body
         )
 
-        text_features = self.vectorizer.transform(
-            [combined_text]
-        )
+    # ======================================================
+    # NUMERIC FEATURE PREPARATION
+    # ======================================================
 
-        features = extract_email_features(
-            combined_text,
-            urls=content.get("urls", []),
-            attachments=content.get("attachments", []),
-            html_source=content.get("html_source", ""),
-            mailto_links=content.get("mailto_links", []),
-            html_links=content.get("html_links", [])
-        )
+    def _prepare_numeric_features(self, features):
+        """
+        Select numerical features in the exact trained
+        model feature order.
+        """
 
-        feature_df = pd.DataFrame([features])
+        if not self.ml_feature_names:
+            raise ValueError(
+                "Model feature names are not loaded."
+            )
 
         missing_features = [
-            feature
-            for feature in self.ml_feature_names
-            if feature not in feature_df.columns
+            name
+            for name in self.ml_feature_names
+            if name not in features
         ]
 
         if missing_features:
             raise ValueError(
-                "Missing features required by V4: "
+                "Missing features required by the model: "
                 + ", ".join(missing_features)
             )
 
-        ml_feature_df = feature_df[
-            self.ml_feature_names
-        ]
+        # Build DataFrame in the model's exact feature order.
+        feature_row = {
+            name: features[name]
+            for name in self.ml_feature_names
+        }
 
-        numeric_features = self.scaler.transform(
-            ml_feature_df
+        feature_df = pd.DataFrame(
+            [feature_row],
+            columns=self.ml_feature_names,
         )
 
-        combined_features = hstack(
+        # Reject unexpected non-numeric values rather
+        # than silently coercing them to arbitrary values.
+        for column in feature_df.columns:
+
+            feature_df[column] = pd.to_numeric(
+                feature_df[column],
+                errors="raise",
+            )
+
+        # Prevent NaN and infinity from reaching the model.
+        feature_df = feature_df.replace(
+            [np.inf, -np.inf],
+            np.nan,
+        )
+
+        if feature_df.isnull().values.any():
+            raise ValueError(
+                "Numeric feature extraction produced "
+                "missing or non-finite values."
+            )
+
+        return feature_df
+
+    # ======================================================
+    # MAIN ANALYSIS
+    # ======================================================
+
+    def analyze(
+        self,
+        subject="",
+        body="",
+        content=None,
+    ):
+        """
+        Analyze an email's content.
+
+        Parameters
+        ----------
+        subject:
+            Email subject.
+
+        body:
+            Email body text.
+
+        content:
+            Optional structured dictionary returned by
+            extract_email_content().
+        """
+
+        self.load_model()
+
+        content = content or {}
+
+        # --------------------------------------------------
+        # Resolve subject and body
+        # --------------------------------------------------
+
+        subject = (
+            subject
+            or content.get("subject", "")
+        )
+
+        plain_text = content.get(
+            "plain_text",
+            "",
+        )
+
+        html_text = content.get(
+            "html_text",
+            "",
+        )
+
+        combined_text = content.get(
+            "combined_text",
+            "",
+        )
+
+        if not combined_text:
+            combined_text = (
+                plain_text
+                or html_text
+                or body
+                or ""
+            )
+
+        if not body:
+            body = combined_text
+
+        # --------------------------------------------------
+        # Extract URLs and email features
+        # --------------------------------------------------
+
+        urls = content.get(
+            "urls",
+            [],
+        )
+
+        attachments = content.get(
+            "attachments",
+            [],
+        )
+
+        html_source = content.get(
+            "html_source",
+            "",
+        )
+
+        mailto_links = content.get(
+            "mailto_links",
+            [],
+        )
+
+        html_links = content.get(
+            "html_links",
+            [],
+        )
+
+        features = extract_email_features(
+            subject=subject,
+            body=body,
+            urls=urls,
+            attachments=attachments,
+            html_source=html_source,
+            mailto_links=mailto_links,
+            html_links=html_links,
+        )
+
+        # --------------------------------------------------
+        # Include text for explanation context
+        # --------------------------------------------------
+
+        features["analysis_text"] = (
+            str(subject or "")
+            + "\n"
+            + str(combined_text or "")
+        )
+
+        # --------------------------------------------------
+        # TF-IDF transformation
+        # --------------------------------------------------
+
+        text_for_model = self._prepare_text(
+            subject,
+            combined_text,
+        )
+
+        text_vector = self.vectorizer.transform(
+            [text_for_model]
+        )
+
+        # --------------------------------------------------
+        # Numeric feature transformation
+        # --------------------------------------------------
+
+        feature_df = self._prepare_numeric_features(
+            features
+        )
+
+        scaled_features = self.scaler.transform(
+            feature_df
+        )
+
+        numeric_matrix = csr_matrix(
+            scaled_features
+        )
+
+        # --------------------------------------------------
+        # Combine text and numeric features
+        # --------------------------------------------------
+
+        model_input = hstack(
             [
-                text_features,
-                csr_matrix(numeric_features)
+                text_vector,
+                numeric_matrix,
             ],
-            format="csr"
+            format="csr",
         )
 
-        probability = (
-            self.classifier
-            .predict_proba(
-                combined_features
-            )[0][1]
+        # --------------------------------------------------
+        # Predict probability
+        # --------------------------------------------------
+
+        probabilities = self.classifier.predict_proba(
+            model_input
+        )[0]
+
+        classes = list(
+            self.classifier.classes_
         )
+
+        if 1 not in classes:
+            raise ValueError(
+                "Classifier does not contain class 1 "
+                "for the phishing label."
+            )
+
+        phishing_index = classes.index(1)
+
+        threat_probability = float(
+            probabilities[phishing_index]
+        )
+
+        if not np.isfinite(threat_probability):
+            raise ValueError(
+                "Classifier returned a non-finite "
+                "phishing probability."
+            )
+
+        threat_probability = max(
+            0.0,
+            min(1.0, threat_probability),
+        )
+
+        # --------------------------------------------------
+        # Classification threshold
+        # --------------------------------------------------
 
         prediction = (
-            "threat"
-            if probability >= 0.5
+            "phishing"
+            if threat_probability >= 0.50
             else "legitimate"
         )
 
+        # --------------------------------------------------
+        # Generate explanations
+        # --------------------------------------------------
+
         sender_features = content.get(
             "sender_features",
-            {}
+            {},
         )
 
         analysis = generate_analysis(
-            threat_probability=float(probability),
+            probability=threat_probability,
             features=features,
-            content=content
+            sender_features=sender_features,
         )
+
+        # --------------------------------------------------
+        # Prepare URL intelligence
+        # --------------------------------------------------
 
         url_intelligence = {
-            "url_count": features.get(
-                "url_count",
-                0
-            ),
-            "ip_url_count": features.get(
-                "ip_url_count",
-                0
-            ),
-            "shortener_count": features.get(
-                "shortener_count",
-                0
-            ),
-            "long_url_count": features.get(
-                "long_url_count",
-                0
-            ),
-            "tracking_url_count": features.get(
-                "tracking_url_count",
-                0
-            ),
-            "redirect_url_count": features.get(
-                "redirect_url_count",
-                0
-            ),
-            "link_mismatch_count": features.get(
-                "link_mismatch_count",
-                0
-            ),
-            "url_details": features.get(
-                "url_details",
-                []
-            )
+            "url_count": features["url_count"],
+            "ip_url_count": features["ip_url_count"],
+            "shortener_count": features["shortener_count"],
+            "long_url_count": features["long_url_count"],
+            "tracking_url_count": features["tracking_url_count"],
+            "redirect_url_count": features["redirect_url_count"],
+            "url_details": features["url_details"],
         }
+
+        # --------------------------------------------------
+        # Prepare email structure
+        # --------------------------------------------------
+
+        email_structure = {
+            "html_part_count": content.get(
+                "html_part_count",
+                0,
+            ),
+
+            "plain_part_count": content.get(
+                "plain_part_count",
+                0,
+            ),
+
+            "html_part_present": features[
+                "html_part_present"
+            ],
+
+            "html_tag_count": features[
+                "html_tag_count"
+            ],
+
+            "attachment_count": features[
+                "attachment_count"
+            ],
+
+            "mailto_count": features[
+                "mailto_count"
+            ],
+        }
+
+        # --------------------------------------------------
+        # Exclude descriptive/non-ML fields
+        # --------------------------------------------------
 
         content_features = {
-            name: value
-            for name, value in features.items()
-            if name not in {
+            key: value
+            for key, value in features.items()
+            if key not in {
                 "url_details",
-                "url_count",
-                "ip_url_count",
-                "shortener_count",
-                "long_url_count",
-                "tracking_url_count",
-                "redirect_url_count",
-                "link_mismatch_count"
+                "analysis_text",
             }
         }
+
+        # --------------------------------------------------
+        # Return API-compatible result
+        # --------------------------------------------------
 
         return {
-            "threat_probability": round(
-                float(probability),
-                4
-            ),
+            "threat_probability": threat_probability,
+
             "prediction": prediction,
+
             "analysis": analysis,
+
             "content_features": content_features,
+
             "url_intelligence": url_intelligence,
+
             "sender_features": sender_features,
-            "email_structure": {
-                "plain_part_count": content.get(
-                    "plain_part_count",
-                    0
-                ),
-                "html_part_count": content.get(
-                    "html_part_count",
-                    0
-                ),
-                "url_count": len(
-                    content.get(
-                        "urls",
-                        []
-                    )
-                ),
-                "mailto_count": len(
-                    content.get(
-                        "mailto_links",
-                        []
-                    )
-                ),
-                "attachment_count": len(
-                    content.get(
-                        "attachments",
-                        []
-                    )
-                )
-            }
+
+            "email_structure": email_structure,
         }
 
-    def analyze_eml(self, eml_path):
 
-        content = extract_email_content(
-            eml_path
-        )
+# ==========================================================
+# SINGLETON ANALYZER
+# ==========================================================
 
-        return self.analyze_extracted_content(
-            content
-        )
+_analyzer = None
+_analyzer_lock = threading.Lock()
 
 
-_analyzer_singleton = None
-
-
-def get_content_analyzer():
+def get_analyzer():
     """
-    Returns a process-wide cached ContentAnalyzer instance.
-
-    ContentAnalyzer.__init__ calls joblib.load() on the ~7MB model
-    bundle (including a 150k-feature TF-IDF vectorizer), which is
-    expensive in both time and memory. Previously every call to
-    analyze_email_file()/analyze_email_content() constructed a brand
-    new ContentAnalyzer, re-deserializing the model from disk on
-    every single request. Under Gunicorn that meant every /analyze
-    call re-loaded the model, causing repeated memory spikes that
-    were pushing the process over Render's 512MB free-tier ceiling.
-
-    Loading it once per process and reusing it is the standard
-    pattern for serving an ML model in a web app.
+    Return the cached analyzer instance.
     """
-    global _analyzer_singleton
 
-    if _analyzer_singleton is None:
-        _analyzer_singleton = ContentAnalyzer()
+    global _analyzer
 
-    return _analyzer_singleton
+    if _analyzer is None:
 
+        with _analyzer_lock:
+
+            if _analyzer is None:
+                _analyzer = ContentAnalyzer()
+
+    return _analyzer
+
+
+# ==========================================================
+# PUBLIC API
+# ==========================================================
 
 def analyze_email_content(
     subject="",
-    body=""
+    body="",
+    content=None,
 ):
+    """
+    Public entry point for content analysis.
 
-    analyzer = get_content_analyzer()
+    Supports both:
+        analyze_email_content(subject, body)
 
-    content = {
-        "subject": subject,
-        "combined_text": body,
-        "plain_text": body,
-        "html_source": "",
-        "html_text": "",
-        "html_links": [],
-        "urls": [],
-        "mailto_links": [],
-        "attachments": [],
-        "sender_features": {},
-        "html_part_count": 0,
-        "plain_part_count": 1 if body else 0
-    }
+    and:
+        analyze_email_content(content=extracted_content)
+    """
 
-    return analyzer.analyze_extracted_content(
-        content
+    analyzer = get_analyzer()
+
+    if content is None:
+        content = {
+            "subject": subject or "",
+            "plain_text": body or "",
+            "html_text": "",
+            "html_source": "",
+            "combined_text": body or "",
+            "urls": [],
+            "attachments": [],
+            "mailto_links": [],
+            "html_links": [],
+            "sender_features": {},
+            "html_part_count": 0,
+            "plain_part_count": 1 if body else 0,
+        }
+
+    return analyzer.analyze(
+        subject=subject,
+        body=body,
+        content=content,
     )
+
+# ==========================================================
+# BACKEND COMPATIBILITY FUNCTIONS
+# ==========================================================
+
+def get_content_analyzer():
+    """
+    Return the shared content analyzer and load
+    the existing trained V5 model.
+    """
+    analyzer = get_analyzer()
+    analyzer.load_model()
+    return analyzer
 
 
 def analyze_email_file(eml_path):
+    """
+    Extract an EML file and run the trained
+    content classifier on its contents.
+    """
+    from .email_content_extractor import extract_email_content
 
-    analyzer = get_content_analyzer()
+    extracted_content = extract_email_content(eml_path)
 
-    return analyzer.analyze_eml(
-        eml_path
+    return analyze_email_content(
+        content=extracted_content
     )
-
-
-if __name__ == "__main__":
-
-    EML_PATH = (
-        "data/test_emails/example.eml"
-    )
-
-    print("\n" + "=" * 70)
-    print("REAL EMAIL CONTENT ANALYSIS")
-    print("=" * 70)
-
-    content = extract_email_content(
-        EML_PATH
-    )
-
-    print("\nSubject:")
-    print(content["subject"])
-
-    print("\nEmail structure:")
-    print(
-        "- Plain-text parts:",
-        content["plain_part_count"]
-    )
-    print(
-        "- HTML parts:",
-        content["html_part_count"]
-    )
-    print(
-        "- URLs:",
-        len(content["urls"])
-    )
-    print(
-        "- Mailto links:",
-        len(content["mailto_links"])
-    )
-    print(
-        "- Attachments:",
-        len(content["attachments"])
-    )
-
-    cleaned_preview = clean_email_text(
-        content["combined_text"]
-    )
-
-    print("\n" + "=" * 70)
-    print("CLEANED CONTENT PREVIEW")
-    print("=" * 70)
-    print(cleaned_preview[:3000])
-
-    sender = content["sender_features"]
-
-    print("\n" + "=" * 70)
-    print("SENDER INFORMATION")
-    print("=" * 70)
-
-    print(
-        "- From:",
-        sender.get("from_address")
-    )
-    print(
-        "- From domain:",
-        sender.get("from_domain")
-    )
-    print(
-        "- Reply-To:",
-        sender.get("reply_to_address")
-    )
-    print(
-        "- Reply-To domain:",
-        sender.get("reply_to_domain")
-    )
-    print(
-        "- Reply-To mismatch:",
-        sender.get("reply_to_mismatch")
-    )
-    print(
-        "- Return-Path:",
-        sender.get("return_path_address")
-    )
-    print(
-        "- Return-Path domain:",
-        sender.get("return_path_domain")
-    )
-    print(
-        "- Return-Path mismatch:",
-        sender.get("return_path_mismatch")
-    )
-
-    analyzer = get_content_analyzer()
-
-    result = analyzer.analyze_extracted_content(
-        content
-    )
-
-    analysis = result["analysis"]
-
-    print("\n" + "=" * 70)
-    print("ANALYST ASSESSMENT")
-    print("=" * 70)
-
-    print(
-        "\nML assessment:",
-        analysis["ml_assessment"]
-    )
-
-    print(
-        "\nThreat probability:",
-        result["threat_probability"]
-    )
-
-    print("\nSupporting evidence:")
-
-    for evidence in analysis[
-        "supporting_evidence"
-    ]:
-        print(evidence)
-
-    print("\nContext:")
-
-    for context in analysis["context"]:
-        print(context)
-
-    print("\nAssessment:")
-    print(analysis["assessment"])
-
-    print("\n" + "=" * 70)
-    print("CONTENT FEATURES")
-    print("=" * 70)
-
-    for name, value in result[
-        "content_features"
-    ].items():
-        print(
-            f"- {name}: {value}"
-        )
-
-    print("\n" + "=" * 70)
-    print("URL INTELLIGENCE")
-    print("=" * 70)
-
-    url_intelligence = result[
-        "url_intelligence"
-    ]
-
-    print(
-        "- URL count:",
-        url_intelligence["url_count"]
-    )
-
-    print(
-        "- IP-based URLs:",
-        url_intelligence["ip_url_count"]
-    )
-
-    print(
-        "- Shorteners:",
-        url_intelligence["shortener_count"]
-    )
-
-    print(
-        "- Long URLs:",
-        url_intelligence["long_url_count"]
-    )
-
-    print(
-        "- Tracking URLs:",
-        url_intelligence["tracking_url_count"]
-    )
-
-    print(
-        "- Redirect URLs:",
-        url_intelligence["redirect_url_count"]
-    )
-
-    print(
-        "- Link mismatches:",
-        url_intelligence["link_mismatch_count"]
-    )
-
-    print("\nPer-URL details:")
-
-    for url in url_intelligence[
-        "url_details"
-    ]:
-        print(url)
