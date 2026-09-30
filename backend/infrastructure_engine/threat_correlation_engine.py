@@ -87,6 +87,7 @@ MAX_SIGNAL_SCORE = {
     "same_domain": 0.95,
     "same_fingerprint": 0.95,
     "similar_fingerprint": 0.80,
+    "same_jarm":0.30,
     "same_asn": 0.55,
     "same_nameserver": 0.65,
     "same_mail_server": 0.50,
@@ -148,14 +149,14 @@ def load_historical_emails(conn, exclude_ids=None):
     exclude_ids = exclude_ids or set()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json "
+        "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json, jarm_json"
         "FROM investigations ORDER BY observed_at DESC LIMIT %s",
         (HISTORY_LOOKBACK_LIMIT,),
     )
     rows = cursor.fetchall()
 
     emails = []
-    for email_id, observed_at, infra_json, asns_json, fp_json in rows:
+    for email_id, observed_at, infra_json, asns_json, fp_json, jarm_json in rows:
         if email_id in exclude_ids:
             continue
         infra_raw = json.loads(infra_json)
@@ -168,6 +169,7 @@ def load_historical_emails(conn, exclude_ids=None):
             "infrastructure": infrastructure,
             "asns": set(json.loads(asns_json)),
             "fingerprint": json.loads(fp_json),
+            "jarm_fingerprints":json.loads(jarm_json) if jarm_json else{},
             "is_historical": True,
         })
     return emails
@@ -178,19 +180,21 @@ def persist_investigation(conn, email):
     infra_serializable = {k: sorted(v) for k, v in email["infrastructure"].items()}
     cursor.execute(
         """INSERT INTO investigations
-               (email_id, observed_at, infrastructure_json, asns_json, fingerprint_json)
-           VALUES (%s, %s, %s, %s, %s)
+               (email_id, observed_at, infrastructure_json, asns_json, fingerprint_json, jarm_json)
+           VALUES (%s, %s, %s, %s, %s, %s)
            ON CONFLICT (email_id) DO UPDATE SET
                observed_at = EXCLUDED.observed_at,
                infrastructure_json = EXCLUDED.infrastructure_json,
                asns_json = EXCLUDED.asns_json,
-               fingerprint_json = EXCLUDED.fingerprint_json""",
+               fingerprint_json = EXCLUDED.fingerprint_json,
+               jarm_json=EXCLUDED.jarm_json""",
         (
             email["email_id"],
             email["observed_at"],
             json.dumps(infra_serializable),
             json.dumps(sorted(email["asns"])),
             json.dumps(email.get("fingerprint", {})),
+            json.dumps(email.get("jarm_fingerprints", {}))
         ),
     )
     conn.commit()
@@ -408,6 +412,38 @@ def normalize_fingerprint(fingerprint):
         return {}
     return fingerprint
 
+def extract_jarm_fingerprints(record):
+    """
+    Extract successful JARM fingerprints from domain-level
+    infrastructure results.
+    """
+    jarm_fingerprints = {}
+
+    infrastructure = record.get("infrastructure", {})
+    domains = infrastructure.get("domains", {})
+
+    if not isinstance(domains, dict):
+        return jarm_fingerprints
+
+    for domain, info in domains.items():
+        if not isinstance(info, dict):
+            continue
+
+        jarm = info.get("jarm", {})
+
+        if not isinstance(jarm, dict):
+            continue
+
+        if jarm.get("status") != "success":
+            continue
+
+        jarm_hash = jarm.get("jarm_hash")
+
+        if jarm_hash:
+            jarm_fingerprints[normalize_hostname(domain)] = jarm_hash
+
+    return jarm_fingerprints    
+
 
 # ============================================================
 # FINGERPRINT COMMONALITY
@@ -500,6 +536,36 @@ def build_infrastructure_signals(email_a, email_b, conn):
     return signals
 
 
+def build_jarm_signals(email_a, email_b):
+    signals = []
+
+    jarm_a = email_a.get("jarm_fingerprints", {})
+    jarm_b = email_b.get("jarm_fingerprints", {})
+
+    if not isinstance(jarm_a, dict) or not isinstance(jarm_b, dict):
+        return signals
+
+    for domain_a, hash_a in jarm_a.items():
+        if not hash_a:
+            continue
+
+        for domain_b, hash_b in jarm_b.items():
+            if not hash_b:
+                continue
+
+            if hash_a == hash_b:
+                signals.append({
+                    "type": "same_jarm",
+                    "value": hash_a,
+                    "domain_a": domain_a,
+                    "domain_b": domain_b,
+                    "score": MAX_SIGNAL_SCORE["same_jarm"],
+                    "correlation_eligible": True,
+                    "reason": "Both domains share the same JARM TLS fingerprint"
+                })
+
+    return signals
+
 def build_fingerprint_signals(email_a, email_b, conn):
     signals = []
     fp_a = normalize_fingerprint(email_a.get("fingerprint"))
@@ -564,8 +630,11 @@ def build_fingerprint_signals(email_a, email_b, conn):
 
 def compare_emails(email_a, email_b, conn):
     signals = []
+
     signals.extend(build_infrastructure_signals(email_a, email_b, conn))
     signals.extend(build_fingerprint_signals(email_a, email_b, conn))
+    signals.extend(build_jarm_signals(email_a, email_b))
+
     return signals
 
 
@@ -579,6 +648,7 @@ def group_meaningful_signals(signals):
         "same_ip": "ip", "same_domain": "domain", "same_nameserver": "nameserver",
         "same_mail_server": "mail_server", "same_cname": "cname", "same_asn": "asn",
         "same_fingerprint": "fingerprint", "similar_fingerprint": "fingerprint",
+        "same_jarm":"jarm",
         "same_relay_host": "relay_host",
     }
     for signal in signals:
@@ -849,13 +919,16 @@ def normalize_email_record(record, observed_at, index):
 
     fingerprint = normalize_fingerprint(record.get("fingerprint", {}))
 
+    jarm_fingerprints=extract_jarm_fingerprints(record)
+
     return {
         "email_id": email_id,
         "observed_at": record.get("observed_at", observed_at),
         "infrastructure": infrastructure,
         "asns": asns,
         "fingerprint": fingerprint,
-        "is_historical": False,
+        "jarm_fingerprints":jarm_fingerprints,
+        "is_historical": False
     }
 
 
