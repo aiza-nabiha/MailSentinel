@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 from hop_analyzer import find_earliest_reliable_node
+from shodan_lookup import lookup_shodan_internetdb
 
 
 load_dotenv()
@@ -360,6 +361,10 @@ def investigate_ip(
         abuseipdb_api_key
     )
 
+    shodan_result = lookup_shodan_internetdb(
+        ip_address
+    )
+
     result = {
         "ip": ip_address,
         "status": "success",
@@ -369,7 +374,9 @@ def investigate_ip(
 
         "reverse_dns": reverse_dns_result,
 
-        "reputation": reputation_result
+        "reputation": reputation_result,
+
+        "shodan": shodan_result
     }
 
     cache[ip_address] = result
