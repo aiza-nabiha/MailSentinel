@@ -25,9 +25,57 @@ function Topbar({ theme, setTheme, onHome, view, setView }) {
 const NetworkBackdrop = () => <div className="network-backdrop" aria-hidden="true"><i /><i /><i /><i /><b /><b /><b /><b /></div>;
 
 function Landing({ onAnalyze, analysisError }) {
-  const [dragging, setDragging] = useState(false), [fileName, setFileName] = useState(""), [error, setError] = useState(""), [selectedFile, setSelectedFile] = useState(null);
-  const choose = (file) => { if (!file) return; if (!file.name.toLowerCase().endsWith(".eml")) { setError("MailSentinel needs the original .eml message to retain forensic headers."); return; } setError(""); setFileName(file.name); setSelectedFile(file); };
-  return <main className="landing"><NetworkBackdrop /><section className="command-hero product-hero"><div className="hero-copy"><div className="eyebrow"><span /> EMAIL THREAT INTELLIGENCE</div><h1>Detect the email.<br /><em>Reconstruct</em> the attack.</h1><p>Analyze suspicious emails using content intelligence, authentication, infrastructure analysis and campaign correlation — all from one investigation.</p><div className="hero-actions"><button className="hero-primary" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}>Upload .EML <b>→</b></button><button className="hero-secondary" onClick={() => onAnalyze(null)}>Analyze with Gmail</button></div></div><div className="product-preview"><div className="preview-top"><span className="mono">MAILSENTINEL / LIVE ANALYSIS</span><span className="preview-dot">●</span></div><div className="preview-verdict"><div><small>RISK VERDICT</small><strong>ANALYZE AN EMAIL</strong><span>Investigation data appears here</span></div><div className="preview-score">—<small>/ 100</small></div></div><div className="preview-path"><span>EMAIL</span><b>→</b><span>URL</span><b>→</b><span>DOMAIN</span><b>→</b><span>IP</span><b>→</b><span>ASN</span></div><div className="preview-related"><span>◌</span> Related investigations are shown when matching infrastructure is found.</div></div></section><section className="signal-band"><div><small>01 / INGEST</small><strong>Preserve headers</strong><span>Original .eml evidence</span></div><div><small>02 / ANALYZE</small><strong>Expose signals</strong><span>Explainable threat score</span></div><div><small>03 / CORRELATE</small><strong>Connect campaigns</strong><span>Infrastructure graph</span></div></section><section className="upload-section" id="upload"><div className="upload-copy"><div className="eyebrow"><span /> START AN INVESTIGATION</div><h2>Bring the original.<br />Follow the evidence.</h2><p>Upload an exported email to retain the headers that explain where it actually came from.</p></div><label className={`drop-zone ${dragging ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files[0]); }}><input type="file" accept=".eml,message/rfc822" onChange={(e) => choose(e.target.files[0])} /><div className="upload-orb">↑</div><strong>{fileName || "Drop a .eml file here"}</strong><span>{fileName ? "Ready for investigation" : "or click to browse from your device"}</span>{(error || analysisError) && <small className="upload-error">{error || analysisError}</small>}<button type="button" className="analyze-button" onClick={(e) => { e.preventDefault(); onAnalyze(selectedFile); }}>Analyze email <b>→</b></button></label></section><section className="why-section"><div className="section-kicker">INTELLIGENCE YOU CAN DEFEND</div><h2>One message.<br /><em>Every</em> connection.</h2><div className="feature-grid capability-grid"><article><div className="capability-icon">◈</div><h3>Explainable risk</h3><div className="capability-lines"><span>Content</span><span>Authentication</span><span>URL</span><span>Infrastructure</span></div><a href="#upload">View evidence →</a></article><article><div className="capability-icon">⌁</div><h3>Forensic relay trace</h3><p>Map received hops and distinguish the trusted boundary from claimed routing data.</p><a href="#upload">Trace route →</a></article><article><div className="capability-icon">◎</div><h3>Campaign intelligence</h3><p>Connect investigations only when the analysis finds shared infrastructure.</p><a href="#upload">Explore connections →</a></article></div></section></main>;
+  const [dragging, setDragging] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const choose = (file) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".eml")) {
+      setError("Upload an .eml file to preserve the original forensic headers.");
+      return;
+    }
+    setError("");
+    setFileName(file.name);
+    setSelectedFile(file);
+  };
+
+  return <main className="landing modern-home">
+    <section className="modern-hero">
+      <div className="modern-hero-copy">
+        <div className="modern-eyebrow"><span /> EMAIL THREAT INTELLIGENCE</div>
+        <h1>Make sense<br />of the <em>signals.</em></h1>
+        <p>Trace suspicious email from the original message to the infrastructure behind it. One clear investigation, with every finding explained.</p>
+        <div className="modern-actions">
+          <button className="modern-primary" onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}>Analyze an email <b>↗</b></button>
+          <button className="modern-secondary" onClick={() => onAnalyze(null)}>Explore a sample <span>→</span></button>
+        </div>
+        <div className="modern-assurance"><span>✓</span> Original headers preserved <i /> Explainable findings <i /> Connected evidence</div>
+      </div>
+      <div className="modern-visual">
+        <img src="/forensics-hero.png" alt="A connected map of digital infrastructure" />
+        <div className="modern-visual-shade" />
+        <div className="modern-visual-top"><span>LIVE INVESTIGATION VIEW</span><b><i /> READY</b></div>
+        <div className="modern-visual-card"><small>ANALYSIS PATH</small><strong>Email <i>→</i> Domain <i>→</i> Network</strong><span>One connected view of the evidence</span></div>
+        <div className="modern-visual-index">01 <span>/ 04</span></div>
+      </div>
+      <div className="modern-hero-foot"><span>MAILSENTINEL / SECURITY, CONNECTED</span><a href="#capabilities">Discover the platform ↓</a></div>
+    </section>
+
+    <section className="modern-capabilities" id="capabilities">
+      <div className="modern-section-heading"><div><div className="modern-eyebrow"><span /> A CLEARER VIEW OF EVERY MESSAGE</div><h2>Find the story<br />behind the <em>email.</em></h2></div><p>Move beyond a single risk score. MailSentinel connects the signals, evidence, and infrastructure that explain what happened.</p></div>
+      <div className="modern-feature-grid">
+        <article><span className="modern-feature-no">01 / AUTHENTICITY</span><div className="modern-feature-icon">◎</div><h3>Verify the sender</h3><p>Review SPF, DKIM, DMARC, and the trusted relay path to understand who sent the message.</p><a href="#upload">Inspect the headers <b>↗</b></a></article>
+        <article><span className="modern-feature-no">02 / INFRASTRUCTURE</span><div className="modern-feature-icon">⌁</div><h3>Trace the route</h3><p>Follow links, domains, IP addresses, and hosting details from one connected investigation.</p><a href="#upload">Trace an email <b>↗</b></a></article>
+        <article><span className="modern-feature-no">03 / CAMPAIGNS</span><div className="modern-feature-icon">⟷</div><h3>Connect the cases</h3><p>Reveal shared infrastructure and related investigations when matching signals are found.</p><a href="#upload">Explore correlation <b>↗</b></a></article>
+      </div>
+    </section>
+
+    <section className="modern-process"><div className="modern-process-title"><div className="modern-eyebrow"><span /> FROM INBOX TO INFRASTRUCTURE</div><h2>One message.<br /><em>Full context.</em></h2></div><div className="modern-process-steps"><div><b>01</b><strong>Preserve</strong><span>Start with the original .eml evidence.</span></div><div><b>02</b><strong>Analyze</strong><span>Inspect content, identity, and infrastructure.</span></div><div><b>03</b><strong>Understand</strong><span>See the verdict, reasons, and connections.</span></div></div></section>
+
+    <section className="modern-upload" id="upload"><div className="modern-upload-copy"><div className="modern-eyebrow"><span /> START AN INVESTIGATION</div><h2>Bring the original.<br /><em>Follow the evidence.</em></h2><p>Choose a suspicious email saved in .eml format. MailSentinel preserves its headers as it builds your investigation.</p><div className="modern-private"><span>◈</span> Built for evidence you can inspect</div></div><label className={`modern-dropzone ${dragging ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files[0]); }}><input type="file" accept=".eml,message/rfc822" onChange={(e) => choose(e.target.files[0])} /><div className="modern-upload-icon">↑</div><strong>{fileName || "Drop your .eml file here"}</strong><span>{fileName ? "Ready to analyze" : "or browse files on your device"}</span>{(error || analysisError) && <small className="upload-error">{error || analysisError}</small>}<button type="button" className="modern-primary" onClick={(e) => { e.preventDefault(); onAnalyze(selectedFile); }}>Analyze email <b>↗</b></button><small className="modern-file-note">SUPPORTED FORMAT <b>.EML</b></small></label></section>
+    <footer className="modern-footer"><div><span className="modern-footer-mark">⌁</span><b>MailSentinel</b></div><span>EMAIL THREAT INTELLIGENCE</span><button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Back to top ↑</button></footer>
+  </main>;
 }
 
 function Analyzing({ fileName }) {
