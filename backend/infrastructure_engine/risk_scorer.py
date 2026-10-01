@@ -1,18 +1,4 @@
-"""
-Combines WHOIS, TLS, reputation, IP intelligence, hop reliability,
-and SPF/DKIM/DMARC authentication signals into risk scores.
 
-This file used to be two separate files (risk_scorer.py and
-infrastructure_risk.py) -- merged into one so there's a single
-place to look for all risk-scoring logic, and one function
-(compute_final_risk) that combines both into ONE final score per
-email instead of two separate ones.
-
-compute_risk() and assess_infrastructure() keep their exact original
-names and signatures, so nothing that already calls them needs to
-change -- only pipeline.py's import line needs to point here now
-instead of at the old infrastructure_risk.py file.
-"""
 
 
 # ==================================================================
@@ -226,6 +212,28 @@ def _score_ip_intelligence(ip_data):
                 reasons.append(
                     f"IP has some AbuseIPDB risk ({abuse_score})"
                 )
+
+    shodan = ip_data.get("shodan", {})
+
+    if shodan.get("status") == "success":
+
+        notable_ports = shodan.get("notable_ports") or []
+        vulns = shodan.get("vulns") or []
+
+        if vulns:
+            score += 30
+            reasons.append(
+                f"Sending IP has {len(vulns)} known CVE(s) exposed "
+                f"per Shodan ({', '.join(vulns[:3])}"
+                f"{'...' if len(vulns) > 3 else ''})"
+            )
+
+        for entry in notable_ports:
+            score += 15
+            reasons.append(
+                f"Sending IP has port {entry['port']} exposed -- "
+                f"{entry['note']}"
+            )
 
     return score, reasons
 
@@ -494,24 +502,6 @@ def assess_infrastructure(
     }
 
 
-# ==================================================================
-# COMBINED FINAL SCORE -- domain risk + infrastructure risk, merged
-# into ONE verdict. Wire this into pipeline.py whenever you're
-# ready to replace the two separate scores with one; until then,
-# compute_risk() and assess_infrastructure() still work exactly as
-# they did before, independently.
-# ==================================================================
-
-CORROBORATION_THRESHOLD = 25
-CORROBORATION_BONUS = 10
-
-
-def compute_final_risk(
-    domain_data_by_domain,
-    reliable_hop_analysis=None,
-    ip_intelligence=None,
-    authentication=None
-):
     """
     domain_data_by_domain: dict mapping each domain found in the
     email to its {"whois", "tls", "reputation"} data.
@@ -607,70 +597,60 @@ def compute_final_risk(
 if __name__ == "__main__":
 
     domain_data = {
-        "sbi-verify123.xyz": {
-            "whois": {"domain_age": {"days": 4}},
-            "tls": {
-                "days_until_expiry": 60,
-                "issuer": "Let's Encrypt",
-                "status": "success",
-                "cert_shared_with": []
-            },
-            "reputation": {
-                "found_on_lists": ["PhishTank"],
-                "details": {"spamhaus": {"reasons": []}}
-            }
-        },
-        "facebook.com": {
-            "whois": {"domain_age": {"days": 8000}},
-            "tls": {
-                "days_until_expiry": 300,
-                "issuer": "DigiCert",
-                "status": "success",
-                "cert_shared_with": []
-            },
-            "reputation": {
-                "found_on_lists": [],
-                "details": {"spamhaus": {"reasons": []}}
-            }
-        }
-    }
-
-    authentication = {
-        "spf": {"result": "fail"},
-        "dkim": [{"result": "fail"}],
-        "dmarc": {"result": "fail"}
-    }
-
-    ip_intelligence = {
-        "reputation": {"status": "success", "abuse_score": 85},
-        "ipinfo": {
+        "whois": {"domain_age": {"days": 4}},
+        "tls": {
+            "days_until_expiry": 60,
+            "issuer": "Let's Encrypt",
             "status": "success",
-            "asn": "AS12345",
-            "as_name": "Cheap Hosting Ltd",
-            "country": "XX"
+            "cert_shared_with": []
+        },
+        "reputation": {
+            "found_on_lists": ["PhishTank"],
+            "details": {"spamhaus": {"reasons": []}}
         }
     }
 
-    reliable_hop_analysis = {
-        "reliability": "SUSPICIOUS",
-        "ip": "203.0.113.7",
-        "hostname": "bulk-mailer-node7.cheaphost.net"
-    }
-
-    result = compute_final_risk(
-        domain_data,
-        reliable_hop_analysis=reliable_hop_analysis,
-        ip_intelligence=ip_intelligence,
-        authentication=authentication
+    domain_result = compute_risk(
+        "sbi-verify123.xyz",
+        domain_data
     )
 
-    print(f"\nFINAL RISK SCORE: {result['final_risk_score']}/100 "
-          f"({result['final_risk_level'].upper()})")
-
-    print("\nReasons:")
-    for r in result["reasons"]:
+    print(f"\nDOMAIN RISK: {domain_result['risk_score']}/100 "
+          f"({domain_result['risk_level'].upper()})")
+    for r in domain_result["reasons"]:
         print(f"  - {r}")
 
-    print(f"\nWorst domain: {result['breakdown']['worst_domain']} "
-          f"(score {result['breakdown']['domain_score']})")
-    print(f"Infrastructure score: {result['breakdown']['infrastructure_score']}")
+    infra_result = assess_infrastructure(
+        reliable_hop_analysis={
+            "reliability": "SUSPICIOUS",
+            "ip": "203.0.113.7",
+            "hostname": "bulk-mailer-node7.cheaphost.net"
+        },
+        ip_intelligence={
+            "reputation": {"status": "success", "abuse_score": 85},
+            "ipinfo": {
+                "status": "success",
+                "asn": "AS12345",
+                "as_name": "Cheap Hosting Ltd",
+                "country": "XX"
+            },
+            "shodan": {
+                "status": "success",
+                "notable_ports": [
+                    {"port": 3389, "note": "RDP exposed"}
+                ],
+                "vulns": ["CVE-2021-1234"]
+            }
+        },
+        authentication={
+            "spf": {"result": "fail"},
+            "dkim": [{"result": "fail"}],
+            "dmarc": {"result": "fail"}
+        }
+    )
+
+    print(f"\nINFRASTRUCTURE RISK: {infra_result['risk_score']}/100 "
+          f"({infra_result['risk_level'].upper()})")
+    for r in infra_result["reasons"]:
+        print(f"  - {r}")
+    

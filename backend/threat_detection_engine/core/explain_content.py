@@ -1,452 +1,782 @@
-def get_ml_assessment(threat_probability):
+# ==========================================================
+# RISK ASSESSMENT
+# ==========================================================
 
-    if threat_probability < 0.30:
-        return "Very low risk"
+def get_ml_assessment(probability):
+    """
+    Convert model probability into a readable risk band.
 
-    elif threat_probability < 0.50:
-        return "Low risk"
+    These are model-based risk bands, not verified
+    real-world probabilities of maliciousness.
+    """
 
-    elif threat_probability < 0.70:
-        return "Medium risk"
+    try:
+        probability = float(probability)
+    except (TypeError, ValueError):
+        probability = 0.0
 
-    elif threat_probability < 0.85:
-        return "High risk"
-
-    else:
-        return "Very high risk"
-
-
-def generate_supporting_evidence(features):
-
-    strong_indicators = []
-    supporting_indicators = []
-    clean_checks = []
-
-    credential_count = features.get(
-        "credential_count",
-        0
+    probability = max(
+        0.0,
+        min(1.0, probability),
     )
 
-    if credential_count > 0:
+    if probability < 0.30:
+        risk_level = "Very low"
 
-        strong_indicators.append(
-            f"⚠ Credential/account verification language detected "
-            f"({credential_count} signal(s))"
-        )
+    elif probability < 0.50:
+        risk_level = "Low"
 
-    else:
+    elif probability < 0.70:
+        risk_level = "Medium"
 
-        clean_checks.append(
-            "✓ No credential/account request detected"
-        )
-
-    link_mismatch_count = features.get(
-        "link_mismatch_count",
-        0
-    )
-
-    if link_mismatch_count > 0:
-
-        strong_indicators.append(
-            f"⚠ Link-domain mismatch detected "
-            f"({link_mismatch_count} link(s))"
-        )
+    elif probability < 0.85:
+        risk_level = "High"
 
     else:
+        risk_level = "Very high"
 
-        clean_checks.append(
-            "✓ No link-domain mismatch detected"
-        )
-
-    ip_url_count = features.get(
-        "ip_url_count",
-        0
-    )
-
-    if ip_url_count > 0:
-
-        strong_indicators.append(
-            f"⚠ IP-based URL detected "
-            f"({ip_url_count} URL(s))"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No IP-based URL detected"
-        )
-
-    shortener_count = features.get(
-        "shortener_count",
-        0
-    )
-
-    if shortener_count > 0:
-
-        supporting_indicators.append(
-            f"⚠ URL shortener(s) detected "
-            f"({shortener_count})"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No URL shortener detected"
-        )
-
-    urgency_count = features.get(
-        "urgency_count",
-        0
-    )
-
-    if urgency_count > 0:
-
-        supporting_indicators.append(
-            f"⚠ Urgency language detected "
-            f"({urgency_count} signal(s))"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No urgency language detected"
-        )
-
-    if (
-        urgency_count > 0
-        and credential_count > 0
-    ):
-
-        strong_indicators.append(
-            "⚠ Urgency combined with credential/account language"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No urgency + credential combination detected"
-        )
-
-    attachment_count = features.get(
-        "attachment_count",
-        0
-    )
-
-    if attachment_count > 0:
-
-        supporting_indicators.append(
-            f"⚠ Attachment(s) detected "
-            f"({attachment_count})"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No attachment detected"
-        )
-
-    financial_count = features.get(
-        "financial_count",
-        0
-    )
-
-    if financial_count > 0:
-
-        supporting_indicators.append(
-            f"⚠ Financial/payment language detected "
-            f"({financial_count} signal(s))"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No financial/payment language detected"
-        )
-
-    non_ascii_count = features.get(
-        "non_ascii_count",
-        0
-    )
-
-    if non_ascii_count > 0:
-
-        supporting_indicators.append(
-            f"⚠ Non-ASCII characters detected "
-            f"({non_ascii_count})"
-        )
-
-    else:
-
-        clean_checks.append(
-            "✓ No unusual non-ASCII characters detected"
-        )
-
-    evidence = []
-
-    if strong_indicators:
-
-        evidence.append(
-            "Strong risk indicators:"
-        )
-
-        evidence.extend(
-            strong_indicators
-        )
-
-    if supporting_indicators:
-
-        evidence.append(
-            "Supporting indicators:"
-        )
-
-        evidence.extend(
-            supporting_indicators
-        )
-
-    if clean_checks:
-
-        evidence.append(
-            "Checks with no observed signal:"
-        )
-
-        evidence.extend(
-            clean_checks
-        )
-
-    return evidence
+    return {
+        "probability": round(probability, 4),
+        "risk_level": risk_level,
+        "percentage": round(probability * 100, 2),
+    }
 
 
-def detect_marketing_context(content):
+# ==========================================================
+# MARKETING CONTEXT
+# ==========================================================
 
-    text = " ".join(
-        [
-            str(content.get("subject", "")),
-            str(content.get("combined_text", "")),
-            str(content.get("html_text", ""))
-        ]
-    ).lower()
-
-    marketing_signals = [
+MARKETING_SIGNALS = {
+    "unsubscribe": (
         "unsubscribe",
+        "opt out",
+        "opt-out",
+    ),
+
+    "preferences": (
         "manage preferences",
+        "update preferences",
+        "email preferences",
+    ),
+
+    "newsletter": (
+        "newsletter",
+        "weekly newsletter",
+        "monthly newsletter",
+    ),
+
+    "event": (
         "webinar",
         "register here",
         "save your spot",
         "join us",
         "you will learn",
-        "newsletter",
+        "save your seat",
+    ),
+
+    "marketing": (
         "marketing",
+        "promotional",
+        "special offer",
+        "new product",
+        "product update",
         "view in browser",
-        "update preferences",
-        "opt out"
-    ]
+    ),
+}
+
+
+def detect_marketing_context(text):
+    """
+    Identify common marketing-related language.
+
+    Marketing signals are contextual clues only.
+    They do not establish that an email is legitimate.
+    """
+
+    text = str(text or "").lower()
 
     detected_signals = []
 
-    for signal in marketing_signals:
+    for category, phrases in MARKETING_SIGNALS.items():
+        matched = any(
+            phrase in text
+            for phrase in phrases
+        )
 
-        if signal in text:
+        if matched:
+            detected_signals.append(category)
 
-            detected_signals.append(
-                signal
-            )
+    return {
+        "is_marketing_style": (
+            len(detected_signals) >= 2
+        ),
 
-    return detected_signals
+        "marketing_signal_count": len(
+            detected_signals
+        ),
+
+        "marketing_signals": detected_signals,
+    }
 
 
-def generate_context(content, features):
+# ==========================================================
+# EVIDENCE HELPERS
+# ==========================================================
 
-    context = []
+def _safe_int(value):
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
-    marketing_signals = detect_marketing_context(
-        content
+
+def _safe_float(value):
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _add_evidence(
+    evidence,
+    title,
+    description,
+    severity="info",
+):
+    evidence.append(
+        {
+            "title": title,
+            "description": description,
+            "severity": severity,
+        }
     )
 
-    if len(marketing_signals) >= 2:
 
-        context.append(
-            "• Marketing-style email"
-        )
+# ==========================================================
+# SUPPORTING EVIDENCE
+# ==========================================================
 
-    url_count = features.get(
-        "url_count",
-        0
+def generate_supporting_evidence(features):
+    """
+    Generate evidence from extracted email features.
+    """
+
+    features = features or {}
+
+    evidence = []
+
+    # ------------------------------------------------------
+    # Credential-related language
+    # ------------------------------------------------------
+
+    credential_count = _safe_int(
+        features.get("credential_count")
     )
 
-    tracking_url_count = features.get(
-        "tracking_url_count",
-        0
+    if credential_count > 0:
+        _add_evidence(
+            evidence,
+            "Account or credential-related language",
+            (
+                f"Found {credential_count} credential-related "
+                "keyword occurrence(s). Review any requests "
+                "to sign in, verify an account, or provide "
+                "authentication information."
+            ),
+            "warning",
+        )
+
+    # ------------------------------------------------------
+    # Link mismatch
+    # ------------------------------------------------------
+
+    mismatch_count = _safe_int(
+        features.get("link_mismatch_count")
     )
 
-    redirect_url_count = features.get(
-        "redirect_url_count",
-        0
+    if mismatch_count > 0:
+        _add_evidence(
+            evidence,
+            "Displayed link and destination differ",
+            (
+                f"Found {mismatch_count} link(s) where the "
+                "displayed URL domain differs from the "
+                "actual destination domain."
+            ),
+            "high",
+        )
+
+    # ------------------------------------------------------
+    # IP-based URLs
+    # ------------------------------------------------------
+
+    ip_url_count = _safe_int(
+        features.get("ip_url_count")
     )
 
-    long_url_count = features.get(
-        "long_url_count",
-        0
+    if ip_url_count > 0:
+        _add_evidence(
+            evidence,
+            "IP-address-based URL",
+            (
+                f"Found {ip_url_count} URL(s) using an IP "
+                "address as the hostname instead of a "
+                "conventional domain name."
+            ),
+            "warning",
+        )
+
+    # ------------------------------------------------------
+    # Urgency
+    # ------------------------------------------------------
+
+    urgency_count = _safe_int(
+        features.get("urgency_count")
     )
 
-    if tracking_url_count > 0:
-
-        context.append(
-            f"• {tracking_url_count} tracking URL(s)"
+    if urgency_count > 0:
+        _add_evidence(
+            evidence,
+            "Urgency-related language",
+            (
+                f"Found {urgency_count} urgency-related "
+                "keyword occurrence(s)."
+            ),
+            "warning",
         )
 
-    elif url_count > 0:
+    # ------------------------------------------------------
+    # URL shorteners
+    # ------------------------------------------------------
 
-        context.append(
-            f"• {url_count} embedded URLs"
-        )
-
-    if redirect_url_count > 0:
-
-        context.append(
-            f"• {redirect_url_count} redirect URL(s)"
-        )
-
-    if long_url_count > 0:
-
-        context.append(
-            f"• {long_url_count} long URL(s)"
-        )
-
-    sender_features = content.get(
-        "sender_features",
-        {}
+    shortener_count = _safe_int(
+        features.get("shortener_count")
     )
 
-    if sender_features.get(
-        "return_path_mismatch"
-    ) == 1:
-
-        context.append(
-            "• Return-Path uses external email infrastructure"
+    if shortener_count > 0:
+        _add_evidence(
+            evidence,
+            "Shortened URLs",
+            (
+                f"Found {shortener_count} shortened URL(s). "
+                "The final destination may not be apparent "
+                "from the shortened link."
+            ),
+            "info",
         )
 
-    if features.get(
-        "html_part_present",
-        0
-    ) == 1:
+    # ------------------------------------------------------
+    # Attachments
+    # ------------------------------------------------------
 
-        context.append(
-            "• HTML-formatted email"
-        )
-
-    attachment_count = features.get(
-        "attachment_count",
-        0
+    attachment_count = _safe_int(
+        features.get("attachment_count")
     )
 
     if attachment_count > 0:
+        _add_evidence(
+            evidence,
+            "Email attachment present",
+            (
+                f"Found {attachment_count} attachment(s). "
+                "Review the file type and sender before "
+                "opening."
+            ),
+            "info",
+        )
+
+    # ------------------------------------------------------
+    # Financial language
+    # ------------------------------------------------------
+
+    financial_count = _safe_int(
+        features.get("financial_count")
+    )
+
+    if financial_count > 0:
+        _add_evidence(
+            evidence,
+            "Financial-related language",
+            (
+                f"Found {financial_count} financial-related "
+                "keyword occurrence(s)."
+            ),
+            "info",
+        )
+
+    # ------------------------------------------------------
+    # Non-ASCII characters
+    # ------------------------------------------------------
+
+    non_ascii_count = _safe_int(
+        features.get("non_ascii_count")
+    )
+
+    if non_ascii_count > 0:
+        _add_evidence(
+            evidence,
+            "Non-ASCII characters present",
+            (
+                f"Found {non_ascii_count} non-ASCII "
+                "character(s). These can occur in ordinary "
+                "multilingual emails as well as deceptive "
+                "text, so context matters."
+            ),
+            "info",
+        )
+
+    # ------------------------------------------------------
+    # Tracking URLs
+    # ------------------------------------------------------
+
+    tracking_count = _safe_int(
+        features.get("tracking_url_count")
+    )
+
+    if tracking_count > 0:
+        _add_evidence(
+            evidence,
+            "Tracking-related URLs",
+            (
+                f"Found {tracking_count} URL(s) with "
+                "tracking-related parameters or paths."
+            ),
+            "info",
+        )
+
+    # ------------------------------------------------------
+    # Redirect URLs
+    # ------------------------------------------------------
+
+    redirect_count = _safe_int(
+        features.get("redirect_url_count")
+    )
+
+    if redirect_count > 0:
+        _add_evidence(
+            evidence,
+            "Redirect-related URLs",
+            (
+                f"Found {redirect_count} URL(s) containing "
+                "redirect-related query parameters."
+            ),
+            "info",
+        )
+
+    # ------------------------------------------------------
+    # No strong evidence
+    # ------------------------------------------------------
+
+    strong_count = (
+        credential_count
+        + mismatch_count
+        + ip_url_count
+    )
+
+    if strong_count == 0:
+        _add_evidence(
+            evidence,
+            "No strong content indicators detected",
+            (
+                "The current feature extraction did not "
+                "identify credential-related language, "
+                "displayed-link mismatches, or IP-based URLs. "
+                "This does not establish that the email is safe."
+            ),
+            "info",
+        )
+
+    return evidence
+
+
+# ==========================================================
+# EMAIL CONTEXT
+# ==========================================================
+
+def generate_context(
+    features,
+    sender_features=None,
+    marketing_context=None,
+):
+    """
+    Generate contextual observations about the email.
+    """
+
+    features = features or {}
+    sender_features = sender_features or {}
+
+    context = []
+
+    # ------------------------------------------------------
+    # Marketing language
+    # ------------------------------------------------------
+
+    marketing_context = marketing_context or {}
+
+    if marketing_context.get("is_marketing_style"):
+        signals = marketing_context.get(
+            "marketing_signals",
+            [],
+        )
 
         context.append(
-            f"• {attachment_count} attachment(s)"
+            {
+                "title": "Marketing-style language detected",
+                "description": (
+                    "The message contains multiple common "
+                    "marketing-related signals: "
+                    + ", ".join(signals)
+                    + ". This is context, not proof of legitimacy."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # URL count
+    # ------------------------------------------------------
+
+    url_count = _safe_int(
+        features.get("url_count")
+    )
+
+    if url_count > 0:
+        context.append(
+            {
+                "title": "URLs found",
+                "description": (
+                    f"The message contains {url_count} "
+                    "unique URL(s) extracted from its text "
+                    "and HTML links."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # Tracking
+    # ------------------------------------------------------
+
+    tracking_count = _safe_int(
+        features.get("tracking_url_count")
+    )
+
+    if tracking_count > 0:
+        context.append(
+            {
+                "title": "Tracking information",
+                "description": (
+                    f"{tracking_count} URL(s) contain "
+                    "tracking-related parameters or paths. "
+                    "Tracking is common in legitimate "
+                    "mailing systems and is not conclusive."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # Redirects
+    # ------------------------------------------------------
+
+    redirect_count = _safe_int(
+        features.get("redirect_url_count")
+    )
+
+    if redirect_count > 0:
+        context.append(
+            {
+                "title": "Redirect-related parameters",
+                "description": (
+                    f"{redirect_count} URL(s) contain "
+                    "redirect-related parameters."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # Long URLs
+    # ------------------------------------------------------
+
+    long_url_count = _safe_int(
+        features.get("long_url_count")
+    )
+
+    if long_url_count > 0:
+        context.append(
+            {
+                "title": "Long URLs",
+                "description": (
+                    f"{long_url_count} URL(s) have a length "
+                    "of at least 150 characters. Long URLs "
+                    "may contain tracking or encoded data."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # Return-Path mismatch
+    # ------------------------------------------------------
+
+    return_path_mismatch = _safe_int(
+        sender_features.get("return_path_mismatch")
+    )
+
+    if return_path_mismatch:
+        return_domain = sender_features.get(
+            "return_path_domain",
+            "",
+        )
+
+        from_domain = sender_features.get(
+            "from_domain",
+            "",
+        )
+
+        context.append(
+            {
+                "title": "Return-Path domain differs",
+                "description": (
+                    f"The From domain ({from_domain}) differs "
+                    f"from the Return-Path domain "
+                    f"({return_domain}). Mailing services "
+                    "and email infrastructure can legitimately "
+                    "use separate domains. Review with other "
+                    "authentication and content signals."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # Reply-To mismatch
+    # ------------------------------------------------------
+
+    reply_to_mismatch = _safe_int(
+        sender_features.get("reply_to_mismatch")
+    )
+
+    if reply_to_mismatch:
+        reply_domain = sender_features.get(
+            "reply_to_domain",
+            "",
+        )
+
+        from_domain = sender_features.get(
+            "from_domain",
+            "",
+        )
+
+        context.append(
+            {
+                "title": "Reply-To domain differs",
+                "description": (
+                    f"The From domain ({from_domain}) differs "
+                    f"from the Reply-To domain ({reply_domain}). "
+                    "This may be intentional, but the reply "
+                    "destination should be reviewed."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # HTML
+    # ------------------------------------------------------
+
+    if _safe_int(features.get("html_part_present")):
+        context.append(
+            {
+                "title": "HTML content present",
+                "description": (
+                    "The email contains an HTML body. "
+                    "HTML formatting is common in both "
+                    "legitimate and malicious emails."
+                ),
+            }
+        )
+
+    # ------------------------------------------------------
+    # Attachments
+    # ------------------------------------------------------
+
+    attachment_count = _safe_int(
+        features.get("attachment_count")
+    )
+
+    if attachment_count > 0:
+        context.append(
+            {
+                "title": "Attachments present",
+                "description": (
+                    f"The email contains {attachment_count} "
+                    "attachment(s)."
+                ),
+            }
         )
 
     return context
 
 
+# ==========================================================
+# FINAL ASSESSMENT
+# ==========================================================
+
 def generate_final_assessment(
-    threat_probability,
+    probability,
     features,
-    content
+    sender_features=None,
+    marketing_context=None,
 ):
+    """
+    Generate a cautious, explainable assessment.
 
-    marketing_signals = detect_marketing_context(
-        content
+    The ML probability is treated as a model score.
+    Marketing context never overrides the score or
+    independently establishes email legitimacy.
+    """
+
+    probability = _safe_float(probability)
+
+    features = features or {}
+    sender_features = sender_features or {}
+    marketing_context = marketing_context or {}
+
+    credential_count = _safe_int(
+        features.get("credential_count")
     )
 
-    strong_phishing_signal = (
-
-        features.get(
-            "link_mismatch_count",
-            0
-        ) > 0
-
-        or
-
-        features.get(
-            "ip_url_count",
-            0
-        ) > 0
-
-        or
-
-        (
-            features.get(
-                "credential_count",
-                0
-            ) > 0
-
-            and
-
-            features.get(
-                "urgency_count",
-                0
-            ) > 0
-        )
+    mismatch_count = _safe_int(
+        features.get("link_mismatch_count")
     )
 
-    if (
-        threat_probability < 0.50
-        and not strong_phishing_signal
-        and len(marketing_signals) >= 2
-    ):
+    ip_url_count = _safe_int(
+        features.get("ip_url_count")
+    )
 
+    strong_indicators = (
+        credential_count > 0
+        or mismatch_count > 0
+        or ip_url_count > 0
+    )
+
+    # ------------------------------------------------------
+    # High model score
+    # ------------------------------------------------------
+
+    if probability >= 0.70:
         return (
-            "Likely legitimate marketing email"
+            "The email has a high model-assessed phishing "
+            "risk. Review the identified indicators, "
+            "sender information, authentication results, "
+            "and URL destinations before interacting "
+            "with the message."
         )
 
-    if (
-        threat_probability < 0.50
-        and not strong_phishing_signal
-    ):
+    # ------------------------------------------------------
+    # Medium model score
+    # ------------------------------------------------------
 
+    if probability >= 0.50:
         return (
-            "No strong phishing indicators detected"
+            "The email has a medium-to-elevated model score. "
+            "Review its links, sender metadata, authentication "
+            "results, and any requests for sensitive "
+            "information before taking action."
         )
 
-    if threat_probability >= 0.70:
+    # ------------------------------------------------------
+    # Lower model score with indicators
+    # ------------------------------------------------------
 
+    if strong_indicators:
         return (
-            "Potentially malicious email "
-            "requiring further investigation"
+            "The model score is below the phishing threshold, "
+            "but one or more potentially relevant indicators "
+            "were detected. A lower model score does not "
+            "rule out phishing. Review the evidence before "
+            "interacting with the email."
         )
+
+    # ------------------------------------------------------
+    # Marketing-style email
+    # ------------------------------------------------------
+
+    if marketing_context.get("is_marketing_style"):
+        return (
+            "The message contains marketing-style language "
+            "and has a lower model score. These observations "
+            "do not independently verify the sender or "
+            "establish that the email is legitimate. "
+            "Review the sender and destinations before "
+            "interacting with links."
+        )
+
+    # ------------------------------------------------------
+    # Default
+    # ------------------------------------------------------
 
     return (
-        "Suspicious email — further investigation recommended"
+        "The model assigned a lower phishing score and "
+        "the current content features did not identify "
+        "the selected strong indicators. This is not a "
+        "guarantee of safety. Verify unexpected requests "
+        "and links independently."
     )
 
 
+# ==========================================================
+# COMPLETE ANALYSIS
+# ==========================================================
+
 def generate_analysis(
-    threat_probability,
+    probability,
     features,
-    content
+    sender_features=None,
 ):
+    """
+    Generate the structured explanation used by
+    content_analysis.py.
+    """
+
+    features = features or {}
+    sender_features = sender_features or {}
+
+    marketing_context = detect_marketing_context(
+        ""
+    )
+
+    # Callers can provide content in the feature dictionary.
+    analysis_text = features.get(
+        "analysis_text",
+        "",
+    )
+
+    if analysis_text:
+        marketing_context = detect_marketing_context(
+            analysis_text
+        )
+
+    ml_assessment = get_ml_assessment(
+        probability
+    )
+
+    evidence = generate_supporting_evidence(
+        features
+    )
+
+    context = generate_context(
+        features,
+        sender_features,
+        marketing_context,
+    )
+
+    final_assessment = generate_final_assessment(
+        probability,
+        features,
+        sender_features,
+        marketing_context,
+    )
 
     return {
-        "ml_assessment":
-            get_ml_assessment(
-                threat_probability
-            ),
-
-        "supporting_evidence":
-            generate_supporting_evidence(
-                features
-            ),
-
-        "context":
-            generate_context(
-                content,
-                features
-            ),
-
-        "assessment":
-            generate_final_assessment(
-                threat_probability,
-                features,
-                content
-            )
+        "ml_assessment": ml_assessment,
+        "supporting_evidence": evidence,
+        "context": context,
+        "marketing_context": marketing_context,
+        "final_assessment": final_assessment,
     }
