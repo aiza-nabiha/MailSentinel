@@ -9,7 +9,9 @@ lerna-debug.log*
 
 # Node / frontend
 node_modules/
+**/node_modules/
 dist/
+out/
 dist-ssr/
 *.local
 
@@ -186,6 +188,7 @@ __marimo__/
 # Environments / secrets
 .env
 .env.*
+.env.example
 !.env.example
 .envrc
 venv/
