@@ -64,7 +64,30 @@ def google_callback():
         "picture": userinfo.get("picture")
     }
 
-    return redirect("http://localhost:5173/")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    return redirect(FRONTEND_URL)
+@app.route("/auth/me")
+def auth_me():
+    user = session.get("user")
+
+    if not user:
+        return jsonify({"authenticated": False}), 200
+
+    return jsonify({
+        "authenticated": True,
+        "user": user
+    }), 200
+
+
+@app.route("/auth/logout")
+def auth_logout():
+    session.clear()
+    return redirect(
+        os.getenv(
+            "FRONTEND_URL",
+            "http://localhost:5173"
+        )
+    )
 
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
