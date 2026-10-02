@@ -20,14 +20,11 @@ const Mark = () => (
 );
 
 function Topbar({ theme, setTheme, onHome, view, setView, user }) {
-  const logout = () => {
-    window.location.href = "http://127.0.0.1:5001/auth/logout";
-  };
-
   return (
     <header className="topbar">
       <button className="brand" onClick={onHome}>
         <Mark />
+
         <span className="brand-name">
           Mail<span>Sentinel</span>
         </span>
@@ -57,21 +54,55 @@ function Topbar({ theme, setTheme, onHome, view, setView, user }) {
           }
         >
           <span>{theme === "dark" ? "☀" : "☾"}</span>
-          <span>{theme === "dark" ? "Light" : "Dark"}</span>
+
+          <span>
+            {theme === "dark" ? "Light" : "Dark"}
+          </span>
         </button>
 
         {user ? (
           <div className="user-menu">
-            <span className="user-email">
-              {user.email}
-            </span>
-
             <button
-              className="theme-toggle"
-              onClick={logout}
+              type="button"
+              className="profile-avatar"
+              title={user.email}
+              onClick={() => {
+                const menu = document.getElementById("profile-menu");
+                if (menu) {
+                  menu.style.display =
+                    menu.style.display === "block" ? "none" : "block";
+                }
+              }}
             >
-              LOGOUT
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.name || user.email}
+                  className="profile-avatar-image"
+                />
+              ) : (
+                user.email?.charAt(0).toUpperCase()
+              )}
             </button>
+
+            <div
+              id="profile-menu"
+              className="profile-menu"
+              style={{ display: "none" }}
+            >
+              <div className="profile-name">{user.name}</div>
+              <div className="profile-email">{user.email}</div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href =
+                    "http://127.0.0.1:5001/auth/logout";
+                }}
+              >
+                LOGOUT
+              </button>
+            </div>
           </div>
         ) : (
           <button
@@ -608,6 +639,33 @@ export default function App() {
     import.meta.env.VITE_DEMO_USER_ID ||
     "demo@gmail.com";
 
+  // Check Google login session
+  useEffect(() => {
+    fetch("http://127.0.0.1:5001/auth/me", {
+      credentials: "include",
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to get user session");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        console.log("AUTH RESPONSE JSON:", JSON.stringify(data, null, 2));
+
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch((error) => {
+        console.error("AUTH CHECK ERROR:", error);
+        setUser(null);
+      });
+  }, []);
+
   useEffect(() => {
     document.documentElement.setAttribute(
       "data-theme",
@@ -619,44 +677,6 @@ export default function App() {
     setInvestigationData(null);
     setView("landing");
   };
-
-  /*
-   * Check whether Google OAuth login has created
-   * a session in the backend.
-   */
-  useEffect(() => {
-    const checkLoggedInUser = async () => {
-      try {
-        const response = await fetch(
-          "http://127.0.0.1:5001/auth/me",
-          {
-            credentials: "include",
-          }
-        );
-
-        if (!response.ok) {
-          setUser(null);
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.authenticated && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error(
-          "Failed to fetch logged-in user:",
-          error
-        );
-        setUser(null);
-      }
-    };
-
-    checkLoggedInUser();
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(
@@ -768,6 +788,7 @@ export default function App() {
               setInvestigationData(
                 await getInvestigation(id)
               );
+
               setView("report");
             } catch (err) {
               setAnalysisError(err.message);
