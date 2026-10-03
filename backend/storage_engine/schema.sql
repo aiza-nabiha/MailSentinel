@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS classifier_results (
     source          TEXT,
     url_intelligence_json TEXT,
     sender_features_json TEXT,
-    email_structure_json TEXT
+    email_structure_json TEXT,
+    threat_contributions_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS header_results (

@@ -1,3 +1,5 @@
+import os
+import tempfile
 import re
 
 from html import unescape
@@ -459,12 +461,23 @@ def extract_content_from_message(message):
         # --------------------------------------------------
 
         if disposition == "attachment" or filename:
-            attachments.append(
-                {
-                    "filename": filename,
-                    "content_type": content_type,
-                }
-            )
+            attachment_data = {
+                "filename": filename,
+                "content_type": content_type,
+            }
+
+            # Keep image attachment bytes available for OCR / QR analysis.
+            if content_type.startswith("image/"):
+                try:
+                    payload = part.get_payload(decode=True)
+
+                    if payload:
+                        attachment_data["content"] = payload
+
+                except Exception:
+                    pass
+
+            attachments.append(attachment_data)
 
             continue
 
