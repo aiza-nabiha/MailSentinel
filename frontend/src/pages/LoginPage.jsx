@@ -14,9 +14,7 @@ export default function LoginPage() {
 
         <h1>Sign in to MailSentinel</h1>
 
-        <p>
-          Choose your email provider to continue.
-        </p>
+        <p>Choose your email provider to continue.</p>
 
         <div className="provider-list">
           <button
@@ -27,19 +25,11 @@ export default function LoginPage() {
             Continue with Gmail
           </button>
 
-          <button
-            type="button"
-            className="provider-option"
-            disabled
-          >
+          <button type="button" className="provider-option" disabled>
             Continue with Yahoo
           </button>
 
-          <button
-            type="button"
-            className="provider-option"
-            disabled
-          >
+          <button type="button" className="provider-option" disabled>
             Continue with Rediffmail
           </button>
         </div>
