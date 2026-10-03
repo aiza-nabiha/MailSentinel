@@ -304,7 +304,7 @@ def _resolve_safe_eml_path(user_supplied_path):
     return candidate
 
 
-def _build_investigation_result(conn, email_id, include_raw_content=False):
+def _build_investigation_result(conn, email_id, include_raw_content=False, requesting_user_id=None):
     email_row = conn.execute(
         "SELECT email_id, subject, from_header, overall_risk_score, verdict, ingested_at FROM emails WHERE email_id = %s",
         (email_id,),
@@ -366,8 +366,18 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
     campaign_correlation = None
     if campaign_row:
         campaign_id, confidence, cohesion, cohesion_warning, signal_summary_json = campaign_row
+        # Correlation detection itself stays GLOBAL -- the same
+        # campaign hitting several different accounts is real signal
+        # strength, so threat_correlation_engine.py matches across
+        # everyone's investigations, not just this user's own. But
+        # what gets SHOWN here is split: full detail (which email,
+        # what signals) only for matches inside this user's own
+        # account; anything belonging to another user collapses into
+        # just a count, with no email_id or user identity exposed.
         member_rows = conn.execute(
-            "SELECT email_id FROM campaign_membership WHERE campaign_id = %s AND email_id != %s",
+            """SELECT cm.email_id, e.user_id FROM campaign_membership cm
+               JOIN emails e ON e.email_id = cm.email_id
+               WHERE cm.campaign_id = %s AND cm.email_id != %s""",
             (campaign_id, email_id),
         ).fetchall()
         edge_rows = conn.execute(
@@ -393,9 +403,13 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
             return types, edge_confidence
 
         matches = []
-        for r in member_rows:
-            signal_types, edge_confidence = _edge_info_for(r[0])
-            matches.append({"email_id": r[0], "signals": signal_types, "confidence": edge_confidence})
+        other_accounts = set()
+        for matched_email_id, owner_user_id in member_rows:
+            if requesting_user_id is not None and owner_user_id == requesting_user_id:
+                signal_types, edge_confidence = _edge_info_for(matched_email_id)
+                matches.append({"email_id": matched_email_id, "signals": signal_types, "confidence": edge_confidence})
+            else:
+                other_accounts.add(owner_user_id)
 
         campaign_correlation = {
             "campaign_id": campaign_id,
@@ -403,7 +417,13 @@ def _build_investigation_result(conn, email_id, include_raw_content=False):
             "cohesion": cohesion,
             "cohesion_warning": cohesion_warning,
             "matched_investigations": len(member_rows),
+            # Your own other investigations in this campaign -- full
+            # detail, same shape as before.
             "matches": matches,
+            # Signal strength from OTHER accounts, with zero
+            # identifying detail -- no email_id, no user_id, just a
+            # count, so one user can never see who else got hit.
+            "other_accounts_affected": len(other_accounts),
             "graph": campaign_graph,
         }
 
@@ -521,7 +541,7 @@ def analyze(user_id, identity_source):
     conn = get_connection()
     ip_address = get_remote_address()
     log_access(conn, "/analyze", user_id, ip_address, 200, email_id=email_id)
-    result = _build_investigation_result(conn, email_id, include_raw_content=True)
+    result = _build_investigation_result(conn, email_id, include_raw_content=True, requesting_user_id=user_id)
     conn.close()
 
     if identity_source == "addon":
@@ -559,7 +579,7 @@ def get_investigation(user_id, email_id):
         conn.close()
         return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
 
-    result = _build_investigation_result(conn, email_id, include_raw_content=include_raw)
+    result = _build_investigation_result(conn, email_id, include_raw_content=include_raw, requesting_user_id=user_id)
     conn.close()
 
     return jsonify(result), 200
