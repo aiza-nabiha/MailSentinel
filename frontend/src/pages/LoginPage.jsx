@@ -1,6 +1,11 @@
+import { baseUrl } from "../utils/api";
+
 export default function LoginPage() {
   const loginWithGoogle = () => {
-    window.location.href = "http://127.0.0.1:5001/auth/google";
+    // Full page navigation (not fetch) -- this has to leave the SPA
+    // so Google's own login screen can take over, then redirect back
+    // to FRONTEND_URL once the backend sets the session cookie.
+    window.location.href = `${baseUrl}/auth/google`;
   };
 
   return (

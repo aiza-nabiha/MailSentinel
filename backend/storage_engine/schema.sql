@@ -148,8 +148,20 @@ CREATE TABLE IF NOT EXISTS investigations (
     infrastructure_json  TEXT NOT NULL,
     asns_json            TEXT NOT NULL,
     fingerprint_json     TEXT NOT NULL,
-    risk_level           TEXT
+    risk_level           TEXT,
+    jarm_json            TEXT
 );
+
+-- jarm_json was added to threat_correlation_engine.py's INSERT/UPDATE
+-- (same_jarm correlation signal) without ever being added here. On a
+-- brand-new database the CREATE TABLE above now covers it, but
+-- CREATE TABLE IF NOT EXISTS is a no-op against a database where
+-- `investigations` already exists (i.e. every deployed environment
+-- so far) -- so this ALTER is what actually gets the column added
+-- there. get_connection() runs this whole file on every connect, so
+-- this takes effect on the next deploy with no separate migration
+-- step required.
+ALTER TABLE investigations ADD COLUMN IF NOT EXISTS jarm_json TEXT;
 
 -- Tracks how many DISTINCT sender domains have produced a given
 -- structural fingerprint shape, for the commonality discount
@@ -205,3 +217,31 @@ CREATE TABLE IF NOT EXISTS campaign_graphs (
 CREATE INDEX IF NOT EXISTS idx_campaign_membership_email ON campaign_membership(email_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_edges_source ON campaign_edges(source_email_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_edges_target ON campaign_edges(target_email_id);
+
+
+-- ============================================================
+-- phishing_pot historical corpus (domain_reputation.py)
+-- ============================================================
+-- One-time, offline load of domains seen in the rf-peixoto/
+-- phishing_pot public dataset (8,614 real phishing .eml samples),
+-- via backend/scripts/load_phishing_pot.py. This is a static
+-- historical blocklist, NOT live campaign correlation -- stays
+-- completely separate from threat_correlation_engine.py's tables
+-- above. domain_reputation.check_phishing_pot_corpus() reads it the
+-- same way it reads Spamhaus/PhishTank, just as one more source.
+--
+-- Tiny table by design: a few thousand unique domains at most, not
+-- 8,614 rows per raw email -- the raw .eml files themselves never
+-- go into the database or into git.
+
+CREATE TABLE IF NOT EXISTS known_phishing_indicators (
+    value           TEXT NOT NULL,
+    value_type      TEXT NOT NULL,   -- 'sender_domain' | 'url_domain'
+    source          TEXT NOT NULL DEFAULT 'phishing_pot',
+    sample_count    INTEGER NOT NULL DEFAULT 1,
+    first_seen      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (value, value_type, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_known_phishing_value ON known_phishing_indicators(value);

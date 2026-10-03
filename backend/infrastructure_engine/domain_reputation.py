@@ -585,6 +585,93 @@ def check_url_reputation(url):
 
 
 # ==================================================================
+# PHISHING_POT HISTORICAL CORPUS
+# ==================================================================
+#
+# This is a static, one-time-loaded blocklist built from the
+# rf-peixoto/phishing_pot public dataset (8,614 real phishing .eml
+# samples). It is NOT live campaign correlation -- it's the same
+# category of signal as Spamhaus DBL below, just sourced from a
+# historical corpus instead of a live feed. The actual load happens
+# offline via backend/scripts/load_phishing_pot.py, which populates
+# the known_phishing_indicators table; this function only reads it.
+
+def check_phishing_pot_corpus(domain):
+    """
+    Check a domain against known_phishing_indicators -- domains
+    (sender or URL) seen in the phishing_pot historical corpus.
+    """
+
+    domain = (
+        domain
+        .strip()
+        .lower()
+        .rstrip(".")
+    )
+
+    if not domain:
+
+        return {
+            "source": "phishing_pot corpus",
+            "status": "error",
+            "listed": False,
+            "error": "Invalid domain"
+        }
+
+    try:
+
+        import sys
+        import os
+
+        storage_engine_dir = os.path.join(
+            os.path.dirname(__file__), "..", "storage_engine"
+        )
+
+        if storage_engine_dir not in sys.path:
+            sys.path.insert(0, storage_engine_dir)
+
+        from db import get_connection
+
+        conn = get_connection()
+
+        try:
+
+            row = conn.execute(
+                """SELECT sample_count, value_type FROM known_phishing_indicators
+                   WHERE value = %s""",
+                (domain,),
+            ).fetchone()
+
+        finally:
+            conn.close()
+
+        if row:
+
+            return {
+                "source": "phishing_pot corpus",
+                "status": "success",
+                "listed": True,
+                "sample_count": row[0],
+                "value_type": row[1]
+            }
+
+        return {
+            "source": "phishing_pot corpus",
+            "status": "success",
+            "listed": False
+        }
+
+    except Exception as e:
+
+        return {
+            "source": "phishing_pot corpus",
+            "status": "error",
+            "listed": False,
+            "error": str(e)
+        }
+
+
+# ==================================================================
 # DOMAIN-LEVEL REPUTATION
 # ==================================================================
 
@@ -619,6 +706,8 @@ def check_domain_reputation(domain):
 
     spamhaus_result = check_spamhaus(domain)
 
+    phishing_pot_result = check_phishing_pot_corpus(domain)
+
     found_on_lists = []
     contextual_sources = []
 
@@ -629,6 +718,14 @@ def check_domain_reputation(domain):
             "Spamhaus DBL"
         )
 
+    # phishing_pot is also a domain-level blocklist (historical, not
+    # live) -- same treatment as Spamhaus.
+    if phishing_pot_result.get("listed"):
+
+        found_on_lists.append(
+            "phishing_pot corpus"
+        )
+
     # PhishTank domain association is contextual evidence only.
     if phishtank_context.get("listed"):
         contextual_sources.append("PhishTank")
@@ -637,7 +734,7 @@ def check_domain_reputation(domain):
     # Determine domain reputation
     # --------------------------------------------------------------
 
-    if spamhaus_result.get("listed"):
+    if spamhaus_result.get("listed") or phishing_pot_result.get("listed"):
 
         reputation = "high risk"
 
@@ -659,6 +756,14 @@ def check_domain_reputation(domain):
         ):
             source_errors.append(
                 "Spamhaus DBL"
+            )
+
+        if (
+            phishing_pot_result.get("status")
+            == "error"
+        ):
+            source_errors.append(
+                "phishing_pot corpus"
             )
 
         if source_errors:
@@ -685,6 +790,19 @@ def check_domain_reputation(domain):
                 "reasons",
                 []
             )
+        })
+
+    if phishing_pot_result.get("listed"):
+
+        evidence.append({
+            "source": "phishing_pot corpus",
+            "type": "domain_blocklist",
+            "severity": "high",
+            "details": [
+                f"Seen in {phishing_pot_result.get('sample_count', 1)} "
+                f"phishing_pot sample(s) as a "
+                f"{phishing_pot_result.get('value_type', 'domain')}"
+            ]
         })
 
     if phishtank_context.get("listed"):
@@ -725,6 +843,12 @@ def check_domain_reputation(domain):
             "Spamhaus DBL"
         )
 
+    if phishing_pot_result.get("status") == "success":
+
+        sources_checked.append(
+            "phishing_pot corpus"
+        )
+
     return {
         "domain": domain,
 
@@ -744,7 +868,10 @@ def check_domain_reputation(domain):
             "phishtank": phishtank_context,
 
             # Actual domain-level reputation.
-            "spamhaus": spamhaus_result
+            "spamhaus": spamhaus_result,
+
+            # Historical corpus match (static, offline-loaded).
+            "phishing_pot": phishing_pot_result
         }
     }
 
@@ -862,7 +989,8 @@ def investigate_domain_reputation(
 
             "intelligence_providers": [
                 "PhishTank",
-                "Spamhaus DBL"
+                "Spamhaus DBL",
+                "phishing_pot corpus"
             ]
         },
 

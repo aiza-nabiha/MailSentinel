@@ -86,7 +86,15 @@ function buildResultCard(r) {
       CardService.newTextButton()
         .setText('VIEW FULL INVESTIGATION')
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-        .setOpenLink(CardService.newOpenLink().setUrl(getWebsiteUrl() + '?investigation=' + encodeURIComponent(r.email_id)))
+        // report_url (minted by /analyze for this Gmail account) logs
+        // the browser straight into this same account's session on
+        // click -- no separate website login, and History on the
+        // site will already show this account's past investigations.
+        // Falls back to a bare link (pre-login-wall behavior) if an
+        // older backend didn't send one.
+        .setOpenLink(CardService.newOpenLink().setUrl(
+          r.report_url || (getWebsiteUrl() + '?investigation=' + encodeURIComponent(r.email_id))
+        ))
     ))
     .build();
 }
