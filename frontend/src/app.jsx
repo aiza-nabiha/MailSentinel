@@ -1,7 +1,7 @@
 import LoginPage from "./pages/LoginPage";
 import { useEffect, useState } from "react";
 import InvestigationReportPage from "./pages/InvestigationReportPage";
-import { analyzeEmail, getHistory, getInvestigation } from "./utils/api";
+import { analyzeEmail, getHistory, getInvestigation, getCurrentUser, logoutUrl } from "./utils/api";
 
 const analysisSteps = [
   "Parsing email",
@@ -96,8 +96,7 @@ function Topbar({ theme, setTheme, onHome, view, setView, user }) {
               <button
                 type="button"
                 onClick={() => {
-                  window.location.href =
-                    "http://127.0.0.1:5001/auth/logout";
+                  window.location.href = logoutUrl();
                 }}
               >
                 LOGOUT
@@ -451,24 +450,27 @@ function Analyzing({ fileName }) {
   );
 }
 
-function History({ openReport, newInvestigation, userId }) {
+function History({ openReport, newInvestigation, onAuthRequired }) {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // No userId dependency anymore -- getHistory() reads whoever the
+  // session cookie says is logged in, server-side. Each signed-in
+  // user only ever sees their own rows.
   useEffect(() => {
     let active = true;
 
-    getHistory(userId)
+    getHistory()
       .then((data) => {
         if (active) {
           setItems(data.emails || []);
         }
       })
       .catch((err) => {
-        if (active) {
-          setError(err.message);
-        }
+        if (!active) return;
+        if (err.status === 401) { onAuthRequired(); return; }
+        setError(err.message);
       })
       .finally(() => {
         if (active) {
@@ -479,7 +481,7 @@ function History({ openReport, newInvestigation, userId }) {
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, []);
 
   return (
     <main className="workspace-page">
@@ -635,36 +637,18 @@ export default function App() {
     useState(null);
   const [analysisError, setAnalysisError] = useState("");
 
-  const userId =
-    import.meta.env.VITE_DEMO_USER_ID ||
-    "demo@gmail.com";
-
-  // Check Google login session
+  // Who's signed in, per the session cookie -- fetched once on load
+  // and re-fetched after returning from Google OAuth or an add-in's
+  // magic link (both land back here with the cookie already set).
+  const refreshUser = () => {
+    getCurrentUser()
+      .then((data) => setUser(data.authenticated && data.user ? data.user : null))
+      .catch(() => setUser(null));
+  };
+  useEffect(() => { refreshUser(); }, []);
   useEffect(() => {
-    fetch("http://127.0.0.1:5001/auth/me", {
-      credentials: "include",
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to get user session");
-        }
-
-        return response.json();
-      })
-      .then((data) => {
-        console.log("AUTH RESPONSE JSON:", JSON.stringify(data, null, 2));
-
-        if (data.authenticated && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      })
-      .catch((error) => {
-        console.error("AUTH CHECK ERROR:", error);
-        setUser(null);
-      });
-  }, []);
+    if (view === "login" && user) refreshUser();
+  }, [view]);
 
   useEffect(() => {
     document.documentElement.setAttribute(
@@ -705,12 +689,14 @@ export default function App() {
           err
         );
 
-        setView("landing");
+        setView(err.status === 401 ? "login" : "landing");
       }
     })();
   }, []);
 
   const start = async (file) => {
+    if (!user) { setView("login"); return; }
+
     setAnalysisError("");
     setInvestigationData(null);
 
@@ -721,17 +707,11 @@ export default function App() {
     setView("analyzing");
 
     try {
+      // No user_id here -- the backend reads it from the session, so
+      // this always lands against whoever is actually logged in.
       const body = file
-        ? {
-            raw_eml: await file.text(),
-            user_id:
-              user?.email || "demo@gmail.com",
-          }
-        : {
-            eml_path: "test_emails/example.eml",
-            user_id:
-              user?.email || "demo@gmail.com",
-          };
+        ? { raw_eml: await file.text() }
+        : { eml_path: "test_emails/example.eml" };
 
       const result = await analyzeEmail(body);
 
@@ -739,6 +719,8 @@ export default function App() {
       setView("report");
     } catch (err) {
       console.error("Analysis failed:", err);
+
+      if (err.status === 401) { setView("login"); return; }
 
       setAnalysisError(
         err.message ||
@@ -750,6 +732,8 @@ export default function App() {
     }
   };
 
+  const goHistory = () => setView(user ? "history" : "login");
+
   return (
     <div className="app-shell">
       <Topbar
@@ -757,7 +741,7 @@ export default function App() {
         setTheme={setTheme}
         onHome={home}
         view={view}
-        setView={setView}
+        setView={(v) => (v === "history" ? goHistory() : setView(v))}
         user={user}
       />
 
@@ -791,12 +775,13 @@ export default function App() {
 
               setView("report");
             } catch (err) {
+              if (err.status === 401) { setView("login"); return; }
               setAnalysisError(err.message);
               setView("landing");
             }
           }}
           newInvestigation={home}
-          userId={user?.email || userId}
+          onAuthRequired={() => setView("login")}
         />
       )}
 
