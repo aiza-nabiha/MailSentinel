@@ -148,8 +148,20 @@ CREATE TABLE IF NOT EXISTS investigations (
     infrastructure_json  TEXT NOT NULL,
     asns_json            TEXT NOT NULL,
     fingerprint_json     TEXT NOT NULL,
-    risk_level           TEXT
+    risk_level           TEXT,
+    jarm_json            TEXT
 );
+
+-- jarm_json was added to threat_correlation_engine.py's INSERT/UPDATE
+-- (same_jarm correlation signal) without ever being added here. On a
+-- brand-new database the CREATE TABLE above now covers it, but
+-- CREATE TABLE IF NOT EXISTS is a no-op against a database where
+-- `investigations` already exists (i.e. every deployed environment
+-- so far) -- so this ALTER is what actually gets the column added
+-- there. get_connection() runs this whole file on every connect, so
+-- this takes effect on the next deploy with no separate migration
+-- step required.
+ALTER TABLE investigations ADD COLUMN IF NOT EXISTS jarm_json TEXT;
 
 -- Tracks how many DISTINCT sender domains have produced a given
 -- structural fingerprint shape, for the commonality discount

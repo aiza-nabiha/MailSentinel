@@ -149,7 +149,7 @@ def load_historical_emails(conn, exclude_ids=None):
     exclude_ids = exclude_ids or set()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json, jarm_json"
+        "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json, jarm_json "
         "FROM investigations ORDER BY observed_at DESC LIMIT %s",
         (HISTORY_LOOKBACK_LIMIT,),
     )
