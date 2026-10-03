@@ -22,6 +22,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from flask import Flask, request, jsonify
 from flask import session, redirect, url_for
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 from auth.google_auth import init_google_oauth
@@ -45,9 +46,17 @@ from .integrate import run as run_integration
 load_dotenv()
 
 app = Flask(__name__)
-load_dotenv()
-
+CORS(
+    app,
+    supports_credentials=True,
+    origins=["http://127.0.0.1:5173"]
+)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+app.config.update(
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False,
+)
+oauth = init_google_oauth(app)
 
 # Load the ML content-classifier model once, at process startup,
 # instead of on the first incoming request. Without this, the first
@@ -63,7 +72,6 @@ try:
 except Exception as _preload_error:  # pragma: no cover
     print(f"[!] Content classifier preload failed: {_preload_error}")
 
-oauth = init_google_oauth(app)
 @app.route("/auth/google")
 def google_login():
     redirect_uri = url_for("google_callback", _external=True)
@@ -72,7 +80,9 @@ def google_login():
 
 @app.route("/auth/google/callback")
 def google_callback():
+
     token = oauth.google.authorize_access_token()
+
     userinfo = token.get("userinfo")
 
     if not userinfo:
@@ -83,9 +93,37 @@ def google_callback():
         "name": userinfo.get("name"),
         "picture": userinfo.get("picture")
     }
+    print("GOOGLE USER:", session.get("user"))
+    print("SESSION:", dict(session))
+    return redirect(
+        os.getenv(
+            "FRONTEND_URL",
+            "http://127.0.0.1:5173/"
+        )
+    )
+@app.route("/auth/me")
+def auth_me():
+    user = session.get("user")
 
-    return redirect("http://localhost:5173/")
+    if not user:
+        return jsonify({"authenticated": False})
 
+    return jsonify({
+        "authenticated": True,
+        "user": user
+    })
+
+
+@app.route("/auth/logout")
+def auth_logout():
+    session.clear()
+
+    return redirect(
+        os.getenv(
+            "FRONTEND_URL",
+            "http://127.0.0.1:5173/"
+        )
+    )
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
 
@@ -127,8 +165,6 @@ def serve_assets(filename):
 def serve_favicon():
     return send_from_directory(FRONTEND_DIST, "favicon.svg")
 
-
-CORS(app, resources={r"/*": {"origins": "*"}})
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["100 per hour"], storage_uri="memory://")
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
