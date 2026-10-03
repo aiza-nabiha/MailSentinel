@@ -8,12 +8,6 @@ import UrlReputationList from "../components/UrlReputationList";
 import { mapApiResponseToReportShape } from "../utils/mapApiResponse";
 
 const value = (item, fallback = "Not available") => item ?? fallback;
-const formatIdentifier = (item) =>
-  typeof item === "string"
-    ? item
-    : item && typeof item === "object"
-      ? JSON.stringify(item)
-      : String(item);
 const Status = ({ label, result }) => (
   <div className="auth-row">
     <span>{label}</span>
@@ -82,11 +76,13 @@ export default function InvestigationReportPage({
     rawPhishingScore != null
       ? `${(rawPhishingScore <= 1 ? rawPhishingScore * 100 : rawPhishingScore).toFixed(1)}% phishing score`
       : "No content score returned";
-  const infraFinding = data.infrastructure_evidence.length
-    ? `${data.infrastructure_evidence.length} infrastructure indicators`
-    : domain
+  const infraFinding =
+    (data.infrastructure_evidence.length
+      ? `${data.infrastructure_evidence.length} infrastructure indicators`
+      : null) ||
+    (domain
       ? `Domain: ${domain.domain}`
-      : "No infrastructure indicators returned";
+      : "No infrastructure indicators returned");
 
   return (
     <main className="report investigation-report">
@@ -342,10 +338,7 @@ export default function InvestigationReportPage({
                     </strong>
                   </div>
                   {domain.cert_shared_with.length > 0 && (
-                    <div
-                      className="important-signal"
-                      style={{ color: "var(--high)" }}
-                    >
+                    <div className="important-signal">
                       <small>SHARED CERTIFICATE WITH</small>
                       <strong>{domain.cert_shared_with.join(", ")}</strong>
                     </div>
@@ -380,18 +373,6 @@ export default function InvestigationReportPage({
                         : "Not available"}
                     </strong>
                   </div>
-                  <div>
-                    <small>COUNTRY</small>
-                    <strong>{value(domain.country)}</strong>
-                  </div>
-                  <div>
-                    <small>BLOCKLIST HITS</small>
-                    <strong>
-                      {domain.found_on_lists?.length
-                        ? domain.found_on_lists.join(", ")
-                        : "None"}
-                    </strong>
-                  </div>
                 </div>
                 <div className="infrastructure-identifiers">
                   <div className="section-kicker">
@@ -401,7 +382,13 @@ export default function InvestigationReportPage({
                     <div>
                       <small>Nameservers</small>
                       <span className="mono">
-                        {domain.nameservers.map(formatIdentifier).join(", ")}
+                        {domain.nameservers
+                          .map((item) =>
+                            typeof item === "string"
+                              ? item
+                              : JSON.stringify(item),
+                          )
+                          .join(", ")}
                       </span>
                     </div>
                   )}
@@ -409,7 +396,13 @@ export default function InvestigationReportPage({
                     <div>
                       <small>Mail Server (MX)</small>
                       <span className="mono">
-                        {domain.mail_servers.map(formatIdentifier).join(", ")}
+                        {domain.mail_servers
+                          .map((item) =>
+                            typeof item === "string"
+                              ? item
+                              : JSON.stringify(item),
+                          )
+                          .join(", ")}
                       </span>
                     </div>
                   )}
@@ -422,9 +415,25 @@ export default function InvestigationReportPage({
                   {domain.tls_fingerprint_sha256 && (
                     <div>
                       <small>TLS Fingerprint</small>
-                      <span className="mono">{`${domain.tls_fingerprint_sha256.slice(0, 16)}...`}</span>
+                      <span className="mono">
+                        {`${domain.tls_fingerprint_sha256.slice(0, 16)}...`}
+                      </span>
                     </div>
                   )}
+                </div>
+                <div className="score-categories">
+                  <div>
+                    <small>COUNTRY</small>
+                    <strong>{value(domain.country)}</strong>
+                  </div>
+                  <div>
+                    <small>BLOCKLIST HITS</small>
+                    <strong>
+                      {domain.found_on_lists?.length
+                        ? domain.found_on_lists.join(", ")
+                        : "None"}
+                    </strong>
+                  </div>
                 </div>
               </>
             ) : (
@@ -456,6 +465,20 @@ export default function InvestigationReportPage({
                     ? ` · ⚠ ${data.campaign_correlation.cohesion_warning}`
                     : ""}
                 </div>
+                {data.campaign_correlation.other_accounts_affected > 0 && (
+                  <div className="corr-banner corr-banner-cross-account">
+                    ⚠ This same campaign infrastructure was also seen on{" "}
+                    <strong>
+                      {data.campaign_correlation.other_accounts_affected} other
+                      MailSentinel account
+                      {data.campaign_correlation.other_accounts_affected === 1
+                        ? ""
+                        : "s"}
+                    </strong>{" "}
+                    — details are not shown to protect those accounts' privacy,
+                    but the shared infrastructure strengthens this verdict.
+                  </div>
+                )}
                 <CampaignGraph
                   nodes={data.campaign_correlation.nodes}
                   edges={data.campaign_correlation.edges}
@@ -563,10 +586,12 @@ export default function InvestigationReportPage({
                     ? apiResponse.campaign_correlation
                     : tab === "Infrastructure"
                       ? apiResponse.infrastructure_risk
-                      : {
-                          subject: apiResponse.subject,
-                          from: apiResponse.from_header,
-                        },
+                      : tab === "URLs & Domains"
+                        ? apiResponse.domains
+                        : {
+                            subject: apiResponse.subject,
+                            from: apiResponse.from_header,
+                          },
                 null,
                 2,
               )}
