@@ -323,8 +323,9 @@ def _build_investigation_result(conn, email_id, include_raw_content=False, reque
         (email_id,),
     ).fetchone()
     classifier_row = conn.execute(
-        """SELECT phishing_score, verdict, reasons_json, source, url_intelligence_json
-           FROM classifier_results WHERE email_id = %s""",
+        """SELECT phishing_score, verdict, reasons_json, source,
+                url_intelligence_json, threat_contributions_json
+        FROM classifier_results WHERE email_id = %s""",
         (email_id,),
     ).fetchone()
     fingerprint_row = conn.execute(
@@ -446,6 +447,14 @@ def _build_investigation_result(conn, email_id, include_raw_content=False, reque
             "reasons": _json.loads(classifier_row[2]) if classifier_row and classifier_row[2] else [],
             "source": classifier_row[3] if classifier_row else None,
         },
+        "threat_contributions": (
+            _json.loads(classifier_row[5])
+            if classifier_row and classifier_row[5]
+            else {
+                "items": [],
+                "total_percentage": 0,
+            }
+        ),
         "fingerprint": {
             "structural_hash": fingerprint_row[0] if fingerprint_row else None,
             "skeleton_type": fingerprint_row[1] if fingerprint_row else None,

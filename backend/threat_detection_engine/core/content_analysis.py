@@ -1,4 +1,5 @@
 import os
+import tempfile
 import threading
 
 import joblib
@@ -6,9 +7,17 @@ import numpy as np
 import pandas as pd
 
 from scipy.sparse import hstack, csr_matrix
+
 from .text_cleaner import clean_email_text
 from .email_features import extract_email_features
 from .explain_content import generate_analysis
+
+from ...infrastructure_engine.qr_ocr_extract import (
+    extract_ocr_text,
+    extract_qr_urls,
+)
+
+from .shap_explainer import ContentSHAPExplainer
 
 
 # ==========================================================
@@ -47,6 +56,7 @@ class ContentAnalyzer:
         self.model_path = model_path
 
         self.vectorizer = None
+        self.shap_explainer = None
         self.scaler = None
         self.classifier = None
 
@@ -108,6 +118,14 @@ class ContentAnalyzer:
 
             self.ml_feature_names = list(
                 bundle["feature_names"]
+            )
+
+            self.shap_explainer = ContentSHAPExplainer(
+                vectorizer=self.vectorizer,
+                scaler=self.scaler,
+                classifier=self.classifier,
+                feature_names=self.ml_feature_names,
+                top_k=10,
             )
 
             self.metadata = bundle.get(
@@ -341,6 +359,132 @@ class ContentAnalyzer:
             [],
         )
 
+        # OCR / QR analysis for image attachments
+
+        ocr_text_parts = []
+        ocr_urls = []
+        qr_urls = []
+
+        for attachment in attachments:
+
+            content_type = str(
+                attachment.get("content_type", "")
+            ).lower()
+
+            attachment_bytes = attachment.get("content")
+
+            if (
+                not content_type.startswith("image/")
+                or not attachment_bytes
+            ):
+                continue
+
+            temp_path = None
+
+            try:
+                suffix = os.path.splitext(
+                    attachment.get("filename") or ""
+                )[1]
+
+                if not suffix:
+                    suffix = ".img"
+
+                with tempfile.NamedTemporaryFile(
+                    suffix=suffix,
+                    delete=False,
+                ) as temp_file:
+                    temp_file.write(attachment_bytes)
+                    temp_path = temp_file.name
+
+                # OCR → content ML
+                extracted_ocr = extract_ocr_text(temp_path)
+
+                if extracted_ocr:
+                    extracted_ocr = str(extracted_ocr).strip()
+
+                    ocr_text_parts.append(
+                        extracted_ocr
+                    )
+
+                    # Extract URLs reconstructed from OCR text.
+                    from ...infrastructure_engine.qr_ocr_extract import (
+                        extract_urls_from_text,
+                    )
+
+                    extracted_ocr_urls = extract_urls_from_text(
+                        extracted_ocr
+                    )
+
+                    if extracted_ocr_urls:
+                        ocr_urls.extend(
+                            str(url).strip()
+                            for url in extracted_ocr_urls
+                            if url
+                        )
+
+                # QR → URL analysis
+                extracted_qr = extract_qr_urls(temp_path)
+
+                if extracted_qr:
+                    qr_urls.extend(
+                        str(url).strip()
+                        for url in extracted_qr
+                        if url
+                    )
+
+            except Exception:
+                # OCR/QR failure should not break normal email analysis.
+                continue
+
+            finally:
+                if temp_path and os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except OSError:
+                        pass
+
+        # --------------------------------------------------
+        # Merge OCR text and QR URLs into email analysis
+        # --------------------------------------------------
+
+        if ocr_text_parts:
+            ocr_text = "\n".join(ocr_text_parts)
+
+            combined_text = (
+                str(combined_text or "")
+                + "\n"
+                + ocr_text
+            ).strip()
+
+            body = (
+                str(body or "")
+                + "\n"
+                + ocr_text
+            ).strip()
+
+        # --------------------------------------------------
+        # Merge OCR-derived and QR-derived URLs
+        # --------------------------------------------------
+
+        image_urls = list(
+            dict.fromkeys(
+                [
+                    *ocr_urls,
+                    *qr_urls,
+                ]
+            )
+        )
+
+        if image_urls:
+            urls = list(
+                dict.fromkeys(
+                    [
+                        *urls,
+                        *image_urls,
+                    ]
+                )
+            )
+
         html_source = content.get(
             "html_source",
             "",
@@ -418,6 +562,25 @@ class ContentAnalyzer:
         )
 
         # --------------------------------------------------
+        # SHAP explanation
+        # --------------------------------------------------
+
+        shap_explanation = None
+
+        try:
+            if self.shap_explainer is not None:
+                shap_explanation = (
+                    self.shap_explainer.explain(
+                        model_input
+                    )
+                )
+
+        except Exception as exc:
+            shap_explanation = {
+                "error": str(exc),
+            }
+
+        # --------------------------------------------------
         # Predict probability
         # --------------------------------------------------
 
@@ -491,6 +654,18 @@ class ContentAnalyzer:
             "url_details": features["url_details"],
         }
 
+        url_intelligence["ocr_urls"] = list(
+            dict.fromkeys(ocr_urls)
+        )
+
+        url_intelligence["qr_urls"] = list(
+            dict.fromkeys(qr_urls)
+        )
+
+        url_intelligence["image_url_count"] = len(
+            set(ocr_urls + qr_urls)
+        )
+
         # --------------------------------------------------
         # Prepare email structure
         # --------------------------------------------------
@@ -542,6 +717,8 @@ class ContentAnalyzer:
 
         return {
             "threat_probability": threat_probability,
+
+            "shap_explanation": shap_explanation,
 
             "prediction": prediction,
 
