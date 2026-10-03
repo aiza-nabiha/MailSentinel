@@ -62,6 +62,8 @@ from domain_reputation import (
 
 from tls_lookup import extract_tls
 
+from jarmfingerprint import extract_jarm
+
 from risk_scorer import compute_risk, assess_infrastructure
 
 from fingerprint import generate_fingerprint
@@ -85,6 +87,11 @@ def investigate_domain(domain):
         "whois": {},
         "dns": {},
         "tls": {},
+        "jarm":{
+            "status":"pending",
+            "jarm_hash":None,
+            "error":None
+        },
         "reputation": {}
     }
 
@@ -135,6 +142,12 @@ def investigate_domain(domain):
             "error": str(e)
         }
 
+
+# --------------------------------------------------------------
+# JARM TLS FINGERPRINT
+# --------------------------------------------------------------
+
+    
     # --------------------------------------------------------------
     # Reputation
     # --------------------------------------------------------------
@@ -623,6 +636,70 @@ def run_pipeline(eml_path):
         domain_scores,
         default=0
     )
+
+    # --------------------------------------------------------------
+    # Step 3A: Selective JARM TLS Fingerprinting
+    # --------------------------------------------------------------
+
+    JARM_RISK_THRESHOLD = 60
+    MAX_JARM_SCANS = 3
+
+    suspicious_domains = []
+
+    for domain in domains:
+
+        risk_score = (
+            all_domains_data[domain]
+            .get("risk", {})
+            .get("risk_score", 0)
+        )
+
+        if risk_score >= JARM_RISK_THRESHOLD:
+            suspicious_domains.append(domain)
+
+    # Limit expensive JARM scans per email
+    suspicious_domains = suspicious_domains[:MAX_JARM_SCANS]
+
+    print(
+        f"[*] JARM candidates: {len(suspicious_domains)}"
+    )
+
+    for domain in domains:
+
+        if domain not in suspicious_domains:
+
+            all_domains_data[domain]["jarm"] = {
+                "status": "skipped",
+                "jarm_hash": None,
+                "error": None,
+                "reason": "Domain did not meet JARM risk threshold"
+            }
+
+            continue
+
+        print(f"[*] Running JARM for suspicious domain: {domain}")
+
+        try:
+
+            jarm_result = extract_jarm(domain)
+
+            all_domains_data[domain]["jarm"] = (
+                jarm_result or {
+                    "domain": domain,
+                    "status": "failed",
+                    "jarm_hash": None,
+                    "error": "Empty JARM result"
+                }
+            )
+
+        except Exception as e:
+
+            all_domains_data[domain]["jarm"] = {
+                "domain": domain,
+                "status": "failed",
+                "jarm_hash": None,
+                "error": str(e)
+            }
 
     # --------------------------------------------------------------
     # Start with infrastructure risk

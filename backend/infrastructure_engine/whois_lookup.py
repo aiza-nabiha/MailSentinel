@@ -22,10 +22,20 @@ def get_rdap_bootstrap():
     return response.json()
 
 
+# TLD-specific RDAP fallback endpoints
+TLD_RDAP_OVERRIDES = {
+    "io": "https://rdap.identitydigital.services/rdap"
+}
+
 def get_rdap_server(domain):
 
     tld = domain.rstrip(".").split(".")[-1].lower()
 
+    # 1. Check known TLD-specific fallback
+    if tld in TLD_RDAP_OVERRIDES:
+        return TLD_RDAP_OVERRIDES[tld]
+
+    # 2. Standard IANA bootstrap lookup
     try:
 
         data = get_rdap_bootstrap()
@@ -42,10 +52,8 @@ def get_rdap_server(domain):
                 for tld_value in tlds
             ]
 
-            if tld in normalized_tlds:
-
-                if urls:
-                    return urls[0]
+            if tld in normalized_tlds and urls:
+                return urls[0]
 
     except (
         requests.exceptions.RequestException,
@@ -57,7 +65,6 @@ def get_rdap_server(domain):
         pass
 
     return None
-
 
 def get_event_date(data, event_type):
     """
