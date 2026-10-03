@@ -59,7 +59,13 @@ export function mapApiResponseToReportShape(api) {
       };
     }),
     campaign_correlation: api.campaign_correlation ? {
-      matched_investigations: matches.length,
+      // matched_investigations is the backend's real total (your own
+      // matches + other accounts' matches combined) -- NOT matches.length,
+      // which only covers your own (full-detail) matches now that
+      // cross-user matches are anonymized into other_accounts_affected.
+      matched_investigations: api.campaign_correlation.matched_investigations ?? matches.length,
+      your_matches: matches.length,
+      other_accounts_affected: api.campaign_correlation.other_accounts_affected ?? 0,
       confidence: api.campaign_correlation.confidence ?? null,
       cohesion: api.campaign_correlation.cohesion ?? null,
       cohesion_warning: api.campaign_correlation.cohesion_warning ?? null,
