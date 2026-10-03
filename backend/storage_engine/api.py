@@ -27,7 +27,9 @@ from dotenv import load_dotenv
 
 from auth.google_auth import init_google_oauth
 import tempfile
+from functools import wraps
 from pathlib import Path
+from itsdangerous import URLSafeTimedSerializer, BadData
 
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, send_from_directory
@@ -37,6 +39,7 @@ from flask_limiter.util import get_remote_address
 from .db import (
     get_connection,
     get_emails_for_user,
+    get_or_create_user,
     log_access,
     get_trigger_metadata,
     get_raw_archive_for_email,
@@ -46,17 +49,45 @@ from .integrate import run as run_integration
 load_dotenv()
 
 app = Flask(__name__)
+
+# FRONTEND_URL is where OAuth and add-on magic links redirect back to,
+# and the one origin CORS trusts with credentials (cookies). Was
+# hardcoded to http://127.0.0.1:5173 before, which only ever worked
+# for local dev -- a deployed frontend (Vercel, etc.) was silently
+# never going to get a session cookie.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://127.0.0.1:5173")
+
 CORS(
     app,
     supports_credentials=True,
-    origins=["http://127.0.0.1:5173"]
+    origins=[FRONTEND_URL]
 )
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+
+# Cross-site cookies (frontend and backend on different origins, e.g.
+# Vercel + Render) need SameSite=None + Secure. Locally over http that
+# combination makes browsers drop the cookie entirely, so only turn it
+# on once FLASK_ENV=production is set.
+IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production"
 app.config.update(
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_SAMESITE="None" if IS_PRODUCTION else "Lax",
+    SESSION_COOKIE_SECURE=IS_PRODUCTION,
 )
 oauth = init_google_oauth(app)
+
+# Signs short-lived "addon session" tokens -- see mint_addon_session_token()
+# and /auth/addon-session below. These let the Gmail/Outlook add-ins hand
+# a browser tab straight into a logged-in website session, without the
+# user re-doing Google OAuth, by trusting the identity the mail platform
+# itself already verified (Session.getActiveUser() in Apps Script,
+# Office.context.mailbox.userProfile.emailAddress in Outlook).
+_addon_token_serializer = URLSafeTimedSerializer(app.secret_key)
+ADDON_TOKEN_SALT = "addon-magic-link"
+ADDON_TOKEN_MAX_AGE_SECONDS = 600  # 10 minutes -- just long enough to click through
+
+
+def mint_addon_session_token(email, email_id=None):
+    return _addon_token_serializer.dumps({"email": email, "email_id": email_id}, salt=ADDON_TOKEN_SALT)
 
 # Load the ML content-classifier model once, at process startup,
 # instead of on the first incoming request. Without this, the first
@@ -93,14 +124,19 @@ def google_callback():
         "name": userinfo.get("name"),
         "picture": userinfo.get("picture")
     }
-    print("GOOGLE USER:", session.get("user"))
-    print("SESSION:", dict(session))
-    return redirect(
-        os.getenv(
-            "FRONTEND_URL",
-            "http://127.0.0.1:5173/"
-        )
-    )
+    session.permanent = True
+
+    # Register/touch the user row now, at login time, rather than
+    # waiting for their first /analyze -- so /history works even
+    # before they've analyzed anything.
+    conn = get_connection()
+    get_or_create_user(conn, userinfo["email"])
+    conn.commit()
+    conn.close()
+
+    return redirect(FRONTEND_URL)
+
+
 @app.route("/auth/me")
 def auth_me():
     user = session.get("user")
@@ -117,13 +153,92 @@ def auth_me():
 @app.route("/auth/logout")
 def auth_logout():
     session.clear()
+    return redirect(FRONTEND_URL)
 
-    return redirect(
-        os.getenv(
-            "FRONTEND_URL",
-            "http://127.0.0.1:5173/"
+
+@app.route("/auth/addon-session", methods=["GET"])
+def auth_addon_session():
+    """
+    Landing point for the "VIEW FULL INVESTIGATION" / "Open full
+    report" link the add-ins put in their results -- the token was
+    minted by mint_addon_session_token() right after /analyze ran for
+    that same email address, so verifying it here is equivalent to a
+    login: it sets the same session cookie google_callback() would,
+    scoped to that one mailbox's identity, then hands the browser off
+    to the normal website (now logged in, History included).
+    """
+    token = request.args.get("token", "")
+    try:
+        data = _addon_token_serializer.loads(
+            token, salt=ADDON_TOKEN_SALT, max_age=ADDON_TOKEN_MAX_AGE_SECONDS
         )
-    )
+    except BadData:
+        return "This link has expired. Re-run the analysis from the add-in.", 401
+
+    email = data.get("email")
+    if not email:
+        return "Invalid link.", 400
+
+    session["user"] = {"email": email, "name": email, "picture": None}
+    session.permanent = True
+
+    conn = get_connection()
+    get_or_create_user(conn, email)
+    conn.commit()
+    conn.close()
+
+    email_id = data.get("email_id")
+    target = f"{FRONTEND_URL}?investigation={email_id}" if email_id else FRONTEND_URL
+    return redirect(target)
+
+
+def login_required(view_fn):
+    """
+    Pulls the signed-in user's email out of the Flask session (set by
+    google_callback, or by auth_addon_session on the add-in's behalf)
+    and passes it to the view as the first positional arg. This is
+    the ONLY source of truth for "who is this" for website-facing
+    reads -- a user_id in the request body/query is never trusted,
+    because that just lets anyone read/write any other user's data by
+    passing a different email.
+    """
+    @wraps(view_fn)
+    def wrapper(*args, **kwargs):
+        user = session.get("user")
+        if not user or not user.get("email"):
+            return jsonify({"error": "Not signed in"}), 401
+        return view_fn(user["email"], *args, **kwargs)
+    return wrapper
+
+
+def identity_required(view_fn):
+    """
+    Like login_required, but also accepts a second trust channel for
+    /analyze: a valid X-API-Key (a secret only our own Gmail/Outlook
+    add-ins hold) plus a user_id in the request body. That user_id is
+    trusted ONLY because it comes from the mail platform's own
+    already-authenticated identity (never typed in by a browser user)
+    -- see GmailEmailAnalyzer.gs and taskpane.js. Passes
+    (user_id, source) to the view, where source is "session" or
+    "addon", so /analyze knows whether to mint a magic-link token.
+    """
+    @wraps(view_fn)
+    def wrapper(*args, **kwargs):
+        user = session.get("user")
+        if user and user.get("email"):
+            return view_fn(user["email"], "session", *args, **kwargs)
+
+        provided_key = request.headers.get("X-API-Key", "")
+        if API_SECRET_KEY and hmac.compare_digest(provided_key, API_SECRET_KEY):
+            data = request.get_json(silent=True) or {}
+            addon_user_id = data.get("user_id")
+            if addon_user_id and isinstance(addon_user_id, str):
+                return view_fn(addon_user_id, "addon", *args, **kwargs)
+
+        return jsonify({"error": "Not signed in"}), 401
+    return wrapper
+
+
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
 
@@ -349,18 +464,22 @@ def health():
 
 @app.route("/analyze", methods=["POST"])
 @limiter.limit("20 per minute")
-def analyze():
+@identity_required
+def analyze(user_id, identity_source):
     auth_error = _require_api_key()
     if auth_error:
         conn = get_connection()
-        log_access(conn, "/analyze", None, get_remote_address(), 401, "auth failed")
+        log_access(conn, "/analyze", user_id, get_remote_address(), 401, "auth failed")
         conn.close()
         return auth_error
 
     data = request.get_json(silent=True) or {}
     eml_path_raw = data.get("eml_path")
     raw_eml = data.get("raw_eml")
-    user_id = data.get("user_id")
+    # user_id comes from identity_required -- the website session for
+    # a manual upload, or a user_id an add-in read from the mail
+    # platform's own verified identity. Never a value a browser user
+    # could just type into the request body themselves.
 
     if not eml_path_raw and not raw_eml:
         return jsonify({"error": "Provide either eml_path or raw_eml"}), 400
@@ -405,11 +524,21 @@ def analyze():
     result = _build_investigation_result(conn, email_id, include_raw_content=True)
     conn.close()
 
+    if identity_source == "addon":
+        # The add-in has no browser session of its own to show this
+        # report in -- hand it a one-click link that logs the
+        # eventual browser tab into this same mailbox's account (see
+        # /auth/addon-session) and lands directly on this investigation,
+        # with that account's full history available right after.
+        token = mint_addon_session_token(user_id, email_id=email_id)
+        result["report_url"] = f"{request.url_root.rstrip('/')}/auth/addon-session?token={token}"
+
     return jsonify(result), 200
 
 
 @app.route("/investigation/<email_id>", methods=["GET"])
-def get_investigation(email_id):
+@login_required
+def get_investigation(user_id, email_id):
     auth_error = _require_api_key()
     if auth_error:
         return auth_error
@@ -417,28 +546,39 @@ def get_investigation(email_id):
     include_raw = request.args.get("full", "").lower() in ("true", "1", "yes")
 
     conn = get_connection()
+    owner_row = conn.execute(
+        "SELECT user_id FROM emails WHERE email_id = %s", (email_id,)
+    ).fetchone()
+    if owner_row is None:
+        conn.close()
+        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
+    if owner_row[0] != user_id:
+        # Exists, but belongs to someone else -- 404 instead of 403 so
+        # this doesn't confirm to a guesser that the email_id is real.
+        log_access(conn, "/investigation", user_id, get_remote_address(), 404, "not owner", email_id=email_id)
+        conn.close()
+        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
+
     result = _build_investigation_result(conn, email_id, include_raw_content=include_raw)
     conn.close()
-
-    if result is None:
-        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
 
     return jsonify(result), 200
 
 
 @app.route("/history", methods=["GET"])
 @limiter.limit("30 per minute")
-def history():
+@login_required
+def history(user_id):
     auth_error = _require_api_key()
     if auth_error:
         conn = get_connection()
-        log_access(conn, "/history", request.args.get("user_id"), get_remote_address(), 401, "auth failed")
+        log_access(conn, "/history", user_id, get_remote_address(), 401, "auth failed")
         conn.close()
         return auth_error
 
-    user_id = request.args.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Missing required query param: user_id"}), 400
+    # user_id comes from the session, not a query param -- otherwise
+    # anyone could pass ?user_id=someone-else@gmail.com and read their
+    # history.
 
     conn = get_connection()
     rows = get_emails_for_user(conn, user_id)
