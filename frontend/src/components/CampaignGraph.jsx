@@ -113,7 +113,15 @@ function graphLayout(graph) {
             : "Correlated infrastructure"
           : "Observed in this investigation",
     }));
-  return { nodes, edges };
+  return {
+    nodes,
+    edges,
+    meta: {
+      total: rest.length,
+      visible: visible.length,
+      overflow: overflow.length,
+    },
+  };
 }
 
 export default function CampaignGraph({ nodes, edges, graph }) {
@@ -121,6 +129,7 @@ export default function CampaignGraph({ nodes, edges, graph }) {
   const liveGraph = graphLayout(graph);
   const displayNodes = liveGraph?.nodes || nodes;
   const displayEdges = liveGraph?.edges || edges;
+  const meta = liveGraph?.meta;
   const node = (id) => displayNodes.find((n) => n.id === id);
 
   const colorFor = (type) =>
@@ -196,6 +205,20 @@ export default function CampaignGraph({ nodes, edges, graph }) {
           </g>
         ))}
       </svg>
+      {meta && meta.overflow > 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: 12,
+            color: "var(--text2)",
+            fontFamily: "IBM Plex Mono, monospace",
+            marginTop: 6,
+          }}
+        >
+          Showing top {meta.visible} of {meta.total} correlated indicators —{" "}
+          {meta.overflow} more collapsed for readability
+        </div>
+      )}
       {tooltip && (
         <div
           style={{
