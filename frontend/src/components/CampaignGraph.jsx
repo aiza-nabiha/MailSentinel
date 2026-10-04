@@ -13,6 +13,25 @@ const iconFor = (type) =>
     collapsed_infrastructure_summary: "…",
   })[type] || "•";
 
+// For a normal node, `value` is a plain string (a domain, IP, etc.).
+// For a "collapsed_infrastructure_summary" node, the backend puts a
+// COUNT DICT there instead -- e.g. {mail_server: 3, nameserver: 2},
+// one entry per infrastructure kind that got collapsed (too many to
+// show individually, or known large providers like Google/Cloudflare
+// that are excluded from correlation). Rendering that dict directly
+// as a label crashed with "Objects are not valid as a React child"
+// (minified error #31) -- this turns it into readable text instead.
+const nodeLabel = (node) => {
+  if (node.value && typeof node.value === "object") {
+    const parts = Object.entries(node.value).map(
+      ([kind, count]) =>
+        `${count} ${kind.replace(/_/g, " ")}${count === 1 ? "" : "s"}`
+    );
+    return parts.length ? parts.join(", ") : "Additional infrastructure";
+  }
+  return node.value || node.id;
+};
+
 function graphLayout(graph) {
   if (!graph?.nodes?.length) return null;
   const center = { x: 450, y: 220 };
@@ -49,7 +68,7 @@ function graphLayout(graph) {
       x: center.x + Math.cos(angle) * radius,
       y: center.y + Math.sin(angle) * radius,
       icon: iconFor(node.node_type),
-      label: node.value || node.id,
+      label: nodeLabel(node),
       core: false,
     };
   });
