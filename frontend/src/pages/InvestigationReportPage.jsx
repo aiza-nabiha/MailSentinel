@@ -3,7 +3,7 @@ import RiskGauge from "../components/RiskGauge";
 import EvidenceCard from "../components/EvidenceCard";
 import RelayPath from "../components/RelayPath";
 import CampaignGraph from "../components/CampaignGraph";
-import { mapApiResponseToReportShape } from "../utils/mapApiResponse";
+import { mapApiResponseToReportShape, formatTimestamp } from "../utils/mapApiResponse";
 
 const value = (item, fallback = "Not available") => item ?? fallback;
 // classifier.reasons items can be a plain string OR an object shaped
@@ -32,7 +32,7 @@ export default function InvestigationReportPage({ apiResponse, onNewInvestigatio
   const infraFinding = data.infrastructure_evidence[0] || (domain ? `Domain: ${domain.domain}` : "No infrastructure indicators returned");
 
   return <main className="report investigation-report">
-    <div className="breadcrumb"><button onClick={onNewInvestigation}>← Investigations</button><span className="mono">CASE #{String(data.investigation_id).slice(-8).toUpperCase()}</span><span>{data.analyzed_at || "Date unavailable"}</span>{triggeredBy && <span className="mono">Triggered by {value(triggeredBy.user_id, "unknown user")} · {value(triggeredBy.ip_address, "unknown IP")} · {value(triggeredBy.triggered_at, "unknown time")}</span>}</div>
+    <div className="breadcrumb"><button onClick={onNewInvestigation}>← Investigations</button><span className="mono">CASE #{String(data.investigation_id).slice(-8).toUpperCase()}</span><span>{formatTimestamp(data.analyzed_at) || "Date unavailable"}</span>{triggeredBy && <span className="mono">Triggered by {value(triggeredBy.user_id, "unknown user")} · {value(triggeredBy.ip_address, "unknown IP")} · {value(triggeredBy.triggered_at, "unknown time")}</span>}</div>
     <section className="case-header"><div className="case-gauge"><RiskGauge score={data.risk_score} level={data.risk_level} /></div><div className="case-copy"><div className={`risk-label ${data.risk_level.toLowerCase()}`}>{data.risk_level.toUpperCase()} RISK</div><h1>{data.threat_label}</h1><div className="mail-metadata"><div><small>SUBJECT</small><strong>{value(apiResponse.subject)}</strong></div><div><small>FROM</small><strong className="mono">{value(apiResponse.from_header)}</strong></div></div></div><div className="case-actions"><button className="export-button" onClick={() => window.print()}>Export report</button><button className="new-report-button" onClick={() => setTab("Email")}>View raw email</button></div></section>
     <nav className="investigation-tabs">{tabs.map((name) => <button className={tab === name ? "active" : ""} onClick={() => setTab(name)} key={name}>{name}</button>)}</nav>
     {tab === "Overview" && <>
