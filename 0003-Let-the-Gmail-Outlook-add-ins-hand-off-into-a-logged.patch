@@ -1,0 +1,325 @@
+From 8f43a3b6441a9395cd6d5078be619809f1cf817e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 12:51:41 +0000
+Subject: [PATCH 3/3] Let the Gmail/Outlook add-ins hand off into a logged-in
+ website session
+
+Website manual uploads still require real Google OAuth login. But the
+add-ins already know who the user is -- Gmail Apps Script's
+Session.getActiveUser().getEmail() and Outlook's
+Office.context.mailbox.userProfile.emailAddress are both identities
+the mail platform itself already verified, not something a browser
+user typed in. There was no bridge from that identity into the
+website's session, so "VIEW FULL INVESTIGATION" would just hit the
+new login wall.
+
+- identity_required (api.py): /analyze now accepts either the browser
+  session (website) or an X-API-Key + body user_id pair (add-ins) as
+  proof of identity -- the API key is a secret only our own add-ins
+  hold, so a client-claimed user_id is trusted only in that channel,
+  never from an arbitrary browser request.
+- When an add-in call succeeds, /analyze mints a short-lived (10 min)
+  signed token (itsdangerous) binding that email + the new
+  investigation id, returned as report_url.
+- New /auth/addon-session verifies that token, sets the same session
+  cookie Google OAuth would, registers the user in Neon if new, and
+  redirects into the website already logged in -- so History shows
+  that account's real past investigations immediately, no separate
+  login step.
+- GmailEmailAnalyzer.gs's "VIEW FULL INVESTIGATION" button and the
+  new taskpane.js/.html "Open Full Report & History" link both use
+  report_url when present.
+- taskpane.js now actually sends user_id (previously missing
+  entirely), read the same way from Office.context.mailbox.userProfile.
+---
+ backend/storage_engine/api.py            | 110 ++++++++++++++++++++---
+ gmail-addon/GmailEmailAnalyzer.gs        |  10 ++-
+ outlook-addon/src/taskpane/taskpane.html |   4 +
+ outlook-addon/src/taskpane/taskpane.js   |  41 ++++++++-
+ 4 files changed, 153 insertions(+), 12 deletions(-)
+
+diff --git a/backend/storage_engine/api.py b/backend/storage_engine/api.py
+index f29cd12..2a5287c 100644
+--- a/backend/storage_engine/api.py
++++ b/backend/storage_engine/api.py
+@@ -28,6 +28,7 @@ from auth.google_auth import init_google_oauth
+ import tempfile
+ from functools import wraps
+ from pathlib import Path
++from itsdangerous import URLSafeTimedSerializer, BadData
+ 
+ from dotenv import load_dotenv
+ from flask import Flask, request, jsonify, send_from_directory
+@@ -64,6 +65,20 @@ IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production"
+ app.config["SESSION_COOKIE_SAMESITE"] = "None" if IS_PRODUCTION else "Lax"
+ app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+ 
++# Signs short-lived "addon session" tokens -- see mint_addon_session_token()
++# and /auth/addon-session below. These let the Gmail/Outlook add-ins hand
++# a browser tab straight into a logged-in website session, without the
++# user re-doing Google OAuth, by trusting the identity the mail platform
++# itself already verified (Session.getActiveUser() in Apps Script,
++# Office.context.mailbox.userProfile.emailAddress in Outlook).
++_addon_token_serializer = URLSafeTimedSerializer(app.secret_key)
++ADDON_TOKEN_SALT = "addon-magic-link"
++ADDON_TOKEN_MAX_AGE_SECONDS = 600  # 10 minutes -- just long enough to click through
++
++
++def mint_addon_session_token(email, email_id=None):
++    return _addon_token_serializer.dumps({"email": email, "email_id": email_id}, salt=ADDON_TOKEN_SALT)
++
+ # Load the ML content-classifier model once, at process startup,
+ # instead of on the first incoming request. Without this, the first
+ # /analyze call after a cold start/restart pays both the container
+@@ -125,14 +140,51 @@ def auth_logout():
+     return jsonify({"ok": True}), 200
+ 
+ 
++@app.route("/auth/addon-session", methods=["GET"])
++def auth_addon_session():
++    """
++    Landing point for the "VIEW FULL INVESTIGATION" / "Open full
++    report" link the add-ins put in their results -- the token was
++    minted by mint_addon_session_token() right after /analyze ran for
++    that same email address, so verifying it here is equivalent to a
++    login: it sets the same session cookie google_callback() would,
++    scoped to that one mailbox's identity, then hands the browser off
++    to the normal website (now logged in, History included).
++    """
++    token = request.args.get("token", "")
++    try:
++        data = _addon_token_serializer.loads(
++            token, salt=ADDON_TOKEN_SALT, max_age=ADDON_TOKEN_MAX_AGE_SECONDS
++        )
++    except BadData:
++        return "This link has expired. Re-run the analysis from the add-in.", 401
++
++    email = data.get("email")
++    if not email:
++        return "Invalid link.", 400
++
++    session["user"] = {"email": email, "name": email, "picture": None}
++    session.permanent = True
++
++    conn = get_connection()
++    get_or_create_user(conn, email)
++    conn.commit()
++    conn.close()
++
++    email_id = data.get("email_id")
++    target = f"{FRONTEND_URL}?investigation={email_id}" if email_id else FRONTEND_URL
++    return redirect(target)
++
++
+ def login_required(view_fn):
+     """
+     Pulls the signed-in user's email out of the Flask session (set by
+-    google_callback) and passes it to the view as the first
+-    positional arg. This is the ONLY source of truth for "who is
+-    this" now -- a user_id in the request body/query is never
+-    trusted, because that just lets anyone read/write any other
+-    user's data by passing a different email.
++    google_callback, or by auth_addon_session on the add-in's behalf)
++    and passes it to the view as the first positional arg. This is
++    the ONLY source of truth for "who is this" for website-facing
++    reads -- a user_id in the request body/query is never trusted,
++    because that just lets anyone read/write any other user's data by
++    passing a different email.
+     """
+     @wraps(view_fn)
+     def wrapper(*args, **kwargs):
+@@ -142,6 +194,34 @@ def login_required(view_fn):
+         return view_fn(user["email"], *args, **kwargs)
+     return wrapper
+ 
++
++def identity_required(view_fn):
++    """
++    Like login_required, but also accepts a second trust channel for
++    /analyze: a valid X-API-Key (a secret only our own Gmail/Outlook
++    add-ins hold) plus a user_id in the request body. That user_id is
++    trusted ONLY because it comes from the mail platform's own
++    already-authenticated identity (never typed in by a browser user)
++    -- see GmailEmailAnalyzer.gs and taskpane.js. Passes
++    (user_id, source) to the view, where source is "session" or
++    "addon", so /analyze knows whether to mint a magic-link token.
++    """
++    @wraps(view_fn)
++    def wrapper(*args, **kwargs):
++        user = session.get("user")
++        if user and user.get("email"):
++            return view_fn(user["email"], "session", *args, **kwargs)
++
++        provided_key = request.headers.get("X-API-Key", "")
++        if API_SECRET_KEY and hmac.compare_digest(provided_key, API_SECRET_KEY):
++            data = request.get_json(silent=True) or {}
++            addon_user_id = data.get("user_id")
++            if addon_user_id and isinstance(addon_user_id, str):
++                return view_fn(addon_user_id, "addon", *args, **kwargs)
++
++        return jsonify({"error": "Not signed in"}), 401
++    return wrapper
++
+ FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+ 
+ 
+@@ -372,8 +452,8 @@ def health():
+ 
+ @app.route("/analyze", methods=["POST"])
+ @limiter.limit("20 per minute")
+-@login_required
+-def analyze(user_id):
++@identity_required
++def analyze(user_id, identity_source):
+     auth_error = _require_api_key()
+     if auth_error:
+         conn = get_connection()
+@@ -384,9 +464,10 @@ def analyze(user_id):
+     data = request.get_json(silent=True) or {}
+     eml_path_raw = data.get("eml_path")
+     raw_eml = data.get("raw_eml")
+-    # user_id comes from the session (login_required), never from the
+-    # request body -- a client-supplied user_id here would let anyone
+-    # analyze/read into anyone else's account.
++    # user_id comes from identity_required -- the website session for
++    # a manual upload, or a user_id an add-in read from the mail
++    # platform's own verified identity. Either way, never a value a
++    # browser user could just type into the request body themselves.
+ 
+     if not eml_path_raw and not raw_eml:
+         return jsonify({"error": "Provide either eml_path or raw_eml"}), 400
+@@ -431,6 +512,15 @@ def analyze(user_id):
+     result = _build_investigation_result(conn, email_id, include_raw_content=True)
+     conn.close()
+ 
++    if identity_source == "addon":
++        # The add-in has no browser session of its own to show this
++        # report in -- hand it a one-click link that logs the
++        # eventual browser tab into this same mailbox's account (see
++        # /auth/addon-session) and lands directly on this investigation,
++        # with that account's full history available right after.
++        token = mint_addon_session_token(user_id, email_id=email_id)
++        result["report_url"] = f"{request.url_root.rstrip('/')}/auth/addon-session?token={token}"
++
+     return jsonify(result), 200
+ 
+ 
+diff --git a/gmail-addon/GmailEmailAnalyzer.gs b/gmail-addon/GmailEmailAnalyzer.gs
+index 861e20a..9466258 100644
+--- a/gmail-addon/GmailEmailAnalyzer.gs
++++ b/gmail-addon/GmailEmailAnalyzer.gs
+@@ -86,7 +86,15 @@ function buildResultCard(r) {
+       CardService.newTextButton()
+         .setText('VIEW FULL INVESTIGATION')
+         .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+-        .setOpenLink(CardService.newOpenLink().setUrl(getWebsiteUrl() + '?investigation=' + encodeURIComponent(r.email_id)))
++        // report_url (minted by /analyze for this Gmail account) logs
++        // the browser straight into this same account's session on
++        // click -- no separate website login, and History on the
++        // site will already show this account's past investigations.
++        // Falls back to a bare link (pre-login-wall behavior) if an
++        // older backend didn't send one.
++        .setOpenLink(CardService.newOpenLink().setUrl(
++          r.report_url || (getWebsiteUrl() + '?investigation=' + encodeURIComponent(r.email_id))
++        ))
+     ))
+     .build();
+ }
+diff --git a/outlook-addon/src/taskpane/taskpane.html b/outlook-addon/src/taskpane/taskpane.html
+index 1a9c960..a706e17 100644
+--- a/outlook-addon/src/taskpane/taskpane.html
++++ b/outlook-addon/src/taskpane/taskpane.html
+@@ -172,6 +172,10 @@
+                     </div>
+                 </section>
+ 
++                <a id="reportLink" href="#" target="_blank" rel="noopener" class="primary-btn hidden" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">
++                    Open Full Report &amp; History →
++                </a>
++
+                 <button id="resetBtn" class="secondary-btn">
+                     Analyze Another Email
+                 </button>
+diff --git a/outlook-addon/src/taskpane/taskpane.js b/outlook-addon/src/taskpane/taskpane.js
+index 2647f13..933ce23 100644
+--- a/outlook-addon/src/taskpane/taskpane.js
++++ b/outlook-addon/src/taskpane/taskpane.js
+@@ -117,6 +117,17 @@ async function analyzeCurrentEmail() {
+             );
+         }
+ 
++        // Office.context.mailbox.userProfile.emailAddress is the
++        // signed-in Outlook account's address, already verified by
++        // Microsoft for this add-in -- never something the taskpane
++        // itself makes up. The backend trusts this user_id ONLY when
++        // paired with the API key above (see identity_required in
++        // api.py), and uses it to scope this analysis, and later the
++        // report + history, to this mailbox.
++        const userId =
++            Office.context.mailbox.userProfile &&
++            Office.context.mailbox.userProfile.emailAddress;
++
+         const response = await fetch(
+             API_BASE_URL.replace(/\/+$/, "") + "/analyze",
+             {
+@@ -128,7 +139,8 @@ async function analyzeCurrentEmail() {
+                 },
+ 
+                 body: JSON.stringify({
+-                    raw_eml: rawEmail
++                    raw_eml: rawEmail,
++                    user_id: userId
+                 })
+             }
+         );
+@@ -154,6 +166,7 @@ async function analyzeCurrentEmail() {
+         }
+ 
+         displayResults(data);
++        displayReportLink(data);
+ 
+         document.getElementById("emailStatus").textContent =
+             "Analysis completed";
+@@ -372,6 +385,29 @@ function displayResults(data) {
+ }
+ 
+ 
++// ======================================================
++// REPORT LINK
++// ======================================================
++
++function displayReportLink(data) {
++    const link = document.getElementById("reportLink");
++
++    // report_url is only present when /analyze recognized this as an
++    // add-in call (API key + user_id) -- it's a one-click,
++    // short-lived (10 min) link that logs the browser into this same
++    // mailbox's website session and opens this investigation, with
++    // that account's history available right after. Office.js can't
++    // read cross-origin cookies, so this has to be a real link the
++    // user clicks, not an automatic redirect.
++    if (data.report_url) {
++        link.href = data.report_url;
++        link.classList.remove("hidden");
++    } else {
++        link.classList.add("hidden");
++    }
++}
++
++
+ // ======================================================
+ // FINDINGS
+ // ======================================================
+@@ -503,6 +539,9 @@ function resetResults() {
+     document.getElementById("resultsSection")
+         .classList.add("hidden");
+ 
++    document.getElementById("reportLink")
++        .classList.add("hidden");
++
+     document.getElementById("emailStatus").textContent =
+         "Ready to analyze";
+ 
+-- 
+2.43.0
+

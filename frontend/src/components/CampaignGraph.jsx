@@ -19,6 +19,7 @@ function graphLayout(graph) {
   const emailNodes = graph.nodes.filter((node) => node.node_type === "email");
   const current =
     emailNodes.find((node) => !node.is_historical) || emailNodes[0];
+  if (!current) return null;
   const ordered = [
     current,
     ...graph.nodes.filter((node) => node.id !== current.id),
@@ -88,8 +89,8 @@ export default function CampaignGraph({ nodes, edges, graph }) {
     <div className="graph-wrap" style={{ position: "relative" }}>
       <svg viewBox="0 0 900 420" style={{ width: "100%", height: 420 }}>
         {displayEdges.map((e, i) => {
-          const a = node(e.a),
-            b = node(e.b);
+          const a = node(e.a), b = node(e.b);
+          if (!a || !b) return null;
           return (
             <line
               key={i}

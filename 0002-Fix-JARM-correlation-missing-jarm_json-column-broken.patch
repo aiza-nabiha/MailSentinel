@@ -1,0 +1,74 @@
+From 7856a0d74c32d972299753f02c1cfe53bf6ce730 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 13:21:33 +0000
+Subject: [PATCH 2/2] Fix JARM correlation: missing jarm_json column + broken
+ SELECT query
+
+Answers the "did the JARM column ever get made" question directly:
+no. threat_correlation_engine.py's persist_investigation()/
+load_historical_investigations() read and write a jarm_json column on
+investigations, added in 35a8eab ("Added jarmfingerprint"), but
+schema.sql's CREATE TABLE IF NOT EXISTS was never updated to include
+it. Since the table already exists in every deployed database, that
+IF NOT EXISTS is a no-op there -- so every JARM-correlation write has
+been failing with "column jarm_json does not exist" in production.
+
+- schema.sql: added jarm_json to the CREATE TABLE (covers a fresh
+  database) plus an idempotent ALTER TABLE ... ADD COLUMN IF NOT
+  EXISTS (covers every database that already has the table, which is
+  every deployed environment so far) -- get_connection() runs this
+  file on every connect, so this self-heals on the next deploy with
+  no separate migration step.
+- threat_correlation_engine.py: load_historical_investigations()'s
+  SELECT was also silently broken independent of the missing column --
+  two adjacent string literals ("...jarm_json" "FROM investigations...")
+  concatenated with no space, producing invalid SQL
+  ("...jarm_jsonFROM investigations..."). Added the missing space.
+---
+ .../threat_correlation_engine.py                   |  2 +-
+ backend/storage_engine/schema.sql                  | 14 +++++++++++++-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/backend/infrastructure_engine/threat_correlation_engine.py b/backend/infrastructure_engine/threat_correlation_engine.py
+index 56e6394..8fee747 100644
+--- a/backend/infrastructure_engine/threat_correlation_engine.py
++++ b/backend/infrastructure_engine/threat_correlation_engine.py
+@@ -149,7 +149,7 @@ def load_historical_emails(conn, exclude_ids=None):
+     exclude_ids = exclude_ids or set()
+     cursor = conn.cursor()
+     cursor.execute(
+-        "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json, jarm_json"
++        "SELECT email_id, observed_at, infrastructure_json, asns_json, fingerprint_json, jarm_json "
+         "FROM investigations ORDER BY observed_at DESC LIMIT %s",
+         (HISTORY_LOOKBACK_LIMIT,),
+     )
+diff --git a/backend/storage_engine/schema.sql b/backend/storage_engine/schema.sql
+index 28efb9c..6e58afc 100644
+--- a/backend/storage_engine/schema.sql
++++ b/backend/storage_engine/schema.sql
+@@ -148,9 +148,21 @@ CREATE TABLE IF NOT EXISTS investigations (
+     infrastructure_json  TEXT NOT NULL,
+     asns_json            TEXT NOT NULL,
+     fingerprint_json     TEXT NOT NULL,
+-    risk_level           TEXT
++    risk_level           TEXT,
++    jarm_json            TEXT
+ );
+ 
++-- jarm_json was added to threat_correlation_engine.py's INSERT/UPDATE
++-- (same_jarm correlation signal) without ever being added here. On a
++-- brand-new database the CREATE TABLE above now covers it, but
++-- CREATE TABLE IF NOT EXISTS is a no-op against a database where
++-- `investigations` already exists (i.e. every deployed environment
++-- so far) -- so this ALTER is what actually gets the column added
++-- there. get_connection() runs this whole file on every connect, so
++-- this takes effect on the next deploy with no separate migration
++-- step required.
++ALTER TABLE investigations ADD COLUMN IF NOT EXISTS jarm_json TEXT;
++
+ -- Tracks how many DISTINCT sender domains have produced a given
+ -- structural fingerprint shape, for the commonality discount
+ -- (widely-used legit template vs. a phishing kit reused across a
+-- 
+2.43.0
+

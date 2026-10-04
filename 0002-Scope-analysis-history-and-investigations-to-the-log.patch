@@ -1,0 +1,569 @@
+From 6c5213a5291972b20ece313ddd006ac677071849 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 12:35:49 +0000
+Subject: [PATCH 2/3] Scope analysis, history, and investigations to the
+ logged-in user
+
+Previously user_id was a client-supplied value trusted as-is on
+/analyze and /history, and /investigation/<id> had no ownership
+check at all -- anyone could read anyone else's data. Google OAuth
+set a session but nothing downstream used it.
+
+- Add login_required decorator deriving user_id from session["user"]
+  (set at /auth/google/callback), the only trusted source now.
+- /analyze, /history, /investigation/<id> all require login and are
+  scoped to the session user; /investigation/<id> 404s (not 403) on
+  a valid id owned by someone else.
+- google_callback now registers the user row at login time and
+  redirects to FRONTEND_URL (env var) instead of a hardcoded
+  localhost; added /auth/me and /auth/logout.
+- CORS switched from origins="*" (incompatible with cookies) to the
+  explicit FRONTEND_URL with supports_credentials=True.
+- Frontend: api.js sends credentials:"include" and drops user_id
+  from every call; app.jsx loads the real session user, gates
+  Analyze/History behind login, and the topbar shows the actual
+  signed-in user with working logout. LoginPage uses VITE_API_URL
+  instead of a hardcoded backend URL.
+---
+ backend/storage_engine/api.py       | 104 ++++++++++++++++++++++++----
+ backend/storage_engine/integrate.py | 101 +++++++++++++++------------
+ frontend/src/app.jsx                |  72 ++++++++++++++-----
+ frontend/src/pages/LoginPage.jsx    |   7 +-
+ frontend/src/utils/api.js           |  18 ++++-
+ requirements.txt                    |   2 +-
+ 6 files changed, 223 insertions(+), 81 deletions(-)
+
+diff --git a/backend/storage_engine/api.py b/backend/storage_engine/api.py
+index d929757..f29cd12 100644
+--- a/backend/storage_engine/api.py
++++ b/backend/storage_engine/api.py
+@@ -26,6 +26,7 @@ from dotenv import load_dotenv
+ 
+ from auth.google_auth import init_google_oauth
+ import tempfile
++from functools import wraps
+ from pathlib import Path
+ 
+ from dotenv import load_dotenv
+@@ -36,6 +37,7 @@ from flask_limiter.util import get_remote_address
+ from .db import (
+     get_connection,
+     get_emails_for_user,
++    get_or_create_user,
+     log_access,
+     get_trigger_metadata,
+     get_raw_archive_for_email,
+@@ -49,6 +51,19 @@ load_dotenv()
+ 
+ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+ 
++# FRONTEND_URL is where the browser gets redirected back to after
++# Google OAuth, and is also the one origin CORS trusts with
++# credentials (cookies). Both default to local dev.
++FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
++
++# Cross-site cookies (frontend and backend on different origins, e.g.
++# Vercel + Render) need SameSite=None + Secure. Locally over http
++# that combination makes browsers drop the cookie, so only turn it on
++# when explicitly running in production.
++IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production"
++app.config["SESSION_COOKIE_SAMESITE"] = "None" if IS_PRODUCTION else "Lax"
++app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
++
+ # Load the ML content-classifier model once, at process startup,
+ # instead of on the first incoming request. Without this, the first
+ # /analyze call after a cold start/restart pays both the container
+@@ -75,7 +90,7 @@ def google_callback():
+     token = oauth.google.authorize_access_token()
+     userinfo = token.get("userinfo")
+ 
+-    if not userinfo:
++    if not userinfo or not userinfo.get("email"):
+         return "Google authentication failed.", 401
+ 
+     session["user"] = {
+@@ -83,8 +98,49 @@ def google_callback():
+         "name": userinfo.get("name"),
+         "picture": userinfo.get("picture")
+     }
++    session.permanent = True
++
++    # Register/touch the user row now, at login time, rather than
++    # waiting for their first /analyze -- so /history works even
++    # before they've analyzed anything.
++    conn = get_connection()
++    get_or_create_user(conn, userinfo["email"])
++    conn.commit()
++    conn.close()
++
++    return redirect(FRONTEND_URL)
++
++
++@app.route("/auth/me", methods=["GET"])
++def auth_me():
++    user = session.get("user")
++    if not user:
++        return jsonify({"user": None}), 200
++    return jsonify({"user": user}), 200
++
++
++@app.route("/auth/logout", methods=["POST"])
++def auth_logout():
++    session.pop("user", None)
++    return jsonify({"ok": True}), 200
+ 
+-    return redirect("http://localhost:5173/")
++
++def login_required(view_fn):
++    """
++    Pulls the signed-in user's email out of the Flask session (set by
++    google_callback) and passes it to the view as the first
++    positional arg. This is the ONLY source of truth for "who is
++    this" now -- a user_id in the request body/query is never
++    trusted, because that just lets anyone read/write any other
++    user's data by passing a different email.
++    """
++    @wraps(view_fn)
++    def wrapper(*args, **kwargs):
++        user = session.get("user")
++        if not user or not user.get("email"):
++            return jsonify({"error": "Not signed in"}), 401
++        return view_fn(user["email"], *args, **kwargs)
++    return wrapper
+ 
+ FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+ 
+@@ -128,7 +184,10 @@ def serve_favicon():
+     return send_from_directory(FRONTEND_DIST, "favicon.svg")
+ 
+ 
+-CORS(app, resources={r"/*": {"origins": "*"}})
++# origins="*" can't be combined with credentials (cookies) -- browsers
++# reject it outright. Session-cookie auth needs the real frontend
++# origin named explicitly.
++CORS(app, resources={r"/*": {"origins": [FRONTEND_URL]}}, supports_credentials=True)
+ 
+ limiter = Limiter(get_remote_address, app=app, default_limits=["100 per hour"], storage_uri="memory://")
+ app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+@@ -313,18 +372,21 @@ def health():
+ 
+ @app.route("/analyze", methods=["POST"])
+ @limiter.limit("20 per minute")
+-def analyze():
++@login_required
++def analyze(user_id):
+     auth_error = _require_api_key()
+     if auth_error:
+         conn = get_connection()
+-        log_access(conn, "/analyze", None, get_remote_address(), 401, "auth failed")
++        log_access(conn, "/analyze", user_id, get_remote_address(), 401, "auth failed")
+         conn.close()
+         return auth_error
+ 
+     data = request.get_json(silent=True) or {}
+     eml_path_raw = data.get("eml_path")
+     raw_eml = data.get("raw_eml")
+-    user_id = data.get("user_id")
++    # user_id comes from the session (login_required), never from the
++    # request body -- a client-supplied user_id here would let anyone
++    # analyze/read into anyone else's account.
+ 
+     if not eml_path_raw and not raw_eml:
+         return jsonify({"error": "Provide either eml_path or raw_eml"}), 400
+@@ -373,7 +435,8 @@ def analyze():
+ 
+ 
+ @app.route("/investigation/<email_id>", methods=["GET"])
+-def get_investigation(email_id):
++@login_required
++def get_investigation(user_id, email_id):
+     auth_error = _require_api_key()
+     if auth_error:
+         return auth_error
+@@ -381,28 +444,39 @@ def get_investigation(email_id):
+     include_raw = request.args.get("full", "").lower() in ("true", "1", "yes")
+ 
+     conn = get_connection()
++    owner_row = conn.execute(
++        "SELECT user_id FROM emails WHERE email_id = %s", (email_id,)
++    ).fetchone()
++    if owner_row is None:
++        conn.close()
++        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
++    if owner_row[0] != user_id:
++        # Exists, but belongs to someone else -- 404 instead of 403 so
++        # this doesn't confirm to a guesser that the email_id is real.
++        log_access(conn, "/investigation", user_id, get_remote_address(), 404, "not owner", email_id=email_id)
++        conn.close()
++        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
++
+     result = _build_investigation_result(conn, email_id, include_raw_content=include_raw)
+     conn.close()
+ 
+-    if result is None:
+-        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
+-
+     return jsonify(result), 200
+ 
+ 
+ @app.route("/history", methods=["GET"])
+ @limiter.limit("30 per minute")
+-def history():
++@login_required
++def history(user_id):
+     auth_error = _require_api_key()
+     if auth_error:
+         conn = get_connection()
+-        log_access(conn, "/history", request.args.get("user_id"), get_remote_address(), 401, "auth failed")
++        log_access(conn, "/history", user_id, get_remote_address(), 401, "auth failed")
+         conn.close()
+         return auth_error
+ 
+-    user_id = request.args.get("user_id")
+-    if not user_id:
+-        return jsonify({"error": "Missing required query param: user_id"}), 400
++    # user_id comes from the session, not a query param -- otherwise
++    # anyone could pass ?user_id=someone-else@gmail.com and read their
++    # history.
+ 
+     conn = get_connection()
+     rows = get_emails_for_user(conn, user_id)
+diff --git a/backend/storage_engine/integrate.py b/backend/storage_engine/integrate.py
+index 71cf7cc..a4361a8 100644
+--- a/backend/storage_engine/integrate.py
++++ b/backend/storage_engine/integrate.py
+@@ -357,61 +357,70 @@ def run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data
+ 
+ def run(eml_path, db_path=None, user_id=None):
+     conn = get_connection(db_path)
+-    if user_id:
+-        get_or_create_user(conn, user_id)
++    try:
++        if user_id:
++            get_or_create_user(conn, user_id)
+ 
+-    email_id, already_existed = get_or_create_email_id(conn, eml_path)
+-    if already_existed:
+-        print(f"[*] {eml_path} already ingested as {email_id} -- updating existing record")
+-    else:
+-        print(f"[*] Assigned {email_id} -> {eml_path}")
++        email_id, already_existed = get_or_create_email_id(conn, eml_path)
++        if already_existed:
++            print(f"[*] {eml_path} already ingested as {email_id} -- updating existing record")
++        else:
++            print(f"[*] Assigned {email_id} -> {eml_path}")
+ 
+-    header_data = build_email_data(eml_path) if build_email_data else None
+-    if header_data:
+-        print("[*] Person 2 header parsing: OK")
++        header_data = build_email_data(eml_path) if build_email_data else None
++        if header_data:
++            print("[*] Person 2 header parsing: OK")
+ 
+-    pipeline_data = run_pipeline(eml_path) if run_pipeline else None
+-    if pipeline_data:
+-        print("[*] Person 3 domain + infrastructure pipeline: OK")
++        pipeline_data = run_pipeline(eml_path) if run_pipeline else None
++        if pipeline_data:
++            print("[*] Person 3 domain + infrastructure pipeline: OK")
+ 
+-    classifier_data, classifier_source = run_classifier(eml_path)
+-    if classifier_data:
+-        print(f"[*] Classifier ({classifier_source}): OK "
+-              f"(verdict: {classifier_data['verdict']}, score: {classifier_data['phishing_score']})")
++        classifier_data, classifier_source = run_classifier(eml_path)
++        if classifier_data:
++            print(f"[*] Classifier ({classifier_source}): OK "
++                  f"(verdict: {classifier_data['verdict']}, score: {classifier_data['phishing_score']})")
+ 
+-    fingerprint_data = run_fingerprint(eml_path)
+-    if fingerprint_data:
+-        print(f"[*] Person 4 fingerprint: OK "
+-              f"(brands targeted: {fingerprint_data['typosquat']['targeted_brands']})")
++        fingerprint_data = run_fingerprint(eml_path)
++        if fingerprint_data:
++            print(f"[*] Person 4 fingerprint: OK "
++                  f"(brands targeted: {fingerprint_data['typosquat']['targeted_brands']})")
+ 
+-    insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
+-                         classifier_data, classifier_source, fingerprint_data, user_id)
++        insert_email_record(conn, email_id, eml_path, header_data, pipeline_data,
++                             classifier_data, classifier_source, fingerprint_data, user_id)
+ 
+-    try:
+-        with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
+-            raw_content = f.read()
+-        archive_raw_email(conn, email_id, user_id, raw_content, header_data)
+-        print("[*] Raw email archived (encrypted) for future training")
+-    except RuntimeError as e:
+-        print(f"[!] Skipping archive -- encryption not configured: {e}")
+-    except Exception as e:
+-        print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
+-
+-    if run_threat_correlation:
+         try:
+-            correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data)
+-            my_campaigns = [c for c in correlation_result["campaigns"] if email_id in c["emails"]]
+-            if my_campaigns:
+-                print(f"[*] Correlation: matched campaign(s) -- {[c['campaign_id'] for c in my_campaigns]}")
+-            else:
+-                print("[*] Correlation: no campaign matches against prior investigations")
++            with open(eml_path, "r", encoding="utf-8", errors="replace") as f:
++                raw_content = f.read()
++            archive_raw_email(conn, email_id, user_id, raw_content, header_data)
++            print("[*] Raw email archived (encrypted) for future training")
++        except RuntimeError as e:
++            print(f"[!] Skipping archive -- encryption not configured: {e}")
+         except Exception as e:
+-            print(f"[!] Correlation check failed (non-fatal): {e}")
+-
+-    conn.commit()
+-    print(f"[+] {email_id} stored.")
+-    conn.close()
+-    return email_id
++            print(f"[!] Archiving failed (non-fatal, analysis still saved): {e}")
++
++        if run_threat_correlation:
++            try:
++                correlation_result = run_correlation(conn, email_id, pipeline_data, fingerprint_data, header_data)
++                my_campaigns = [c for c in correlation_result["campaigns"] if email_id in c["emails"]]
++                if my_campaigns:
++                    print(f"[*] Correlation: matched campaign(s) -- {[c['campaign_id'] for c in my_campaigns]}")
++                else:
++                    print("[*] Correlation: no campaign matches against prior investigations")
++            except Exception as e:
++                print(f"[!] Correlation check failed (non-fatal): {e}")
++
++        conn.commit()
++        print(f"[+] {email_id} stored.")
++        return email_id
++    finally:
++        # Guarantees this connection is always released, even if
++        # something above raises an uncaught exception. Previously
++        # conn.close() only ran on the fully-successful path, so any
++        # error mid-pipeline leaked a live Postgres connection (and
++        # its client-side memory) for the rest of the worker
++        # process's lifetime -- across enough requests, this alone
++        # could accumulate toward the 512MB ceiling.
++        conn.close()
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/frontend/src/app.jsx b/frontend/src/app.jsx
+index 2fd54fb..3e1ea51 100644
+--- a/frontend/src/app.jsx
++++ b/frontend/src/app.jsx
+@@ -1,12 +1,12 @@
+ import LoginPage from "./pages/LoginPage";
+ import { useEffect, useState } from "react";
+ import InvestigationReportPage from "./pages/InvestigationReportPage";
+-import { analyzeEmail, getHistory, getInvestigation } from "./utils/api";
++import { analyzeEmail, getHistory, getInvestigation, getCurrentUser, logout } from "./utils/api";
+ 
+ const analysisSteps = ["Parsing email", "Extracting indicators", "Checking authentication", "Analyzing infrastructure", "Checking reputation", "Correlating campaigns", "Computing risk"];
+ const Mark = () => <div className="brand-mark" aria-hidden="true">⌁</div>;
+ 
+-function Topbar({ theme, setTheme, onHome, view, setView }) {
++function Topbar({ theme, setTheme, onHome, view, setView, user, onLogout }) {
+   return <header className="topbar"><button className="brand" onClick={onHome}><Mark /><span className="brand-name">Mail<span>Sentinel</span></span></button><nav className="top-nav"><button className={view === "report" ? "active" : ""} onClick={() => setView("report")}>Investigations</button><button className={view === "history" ? "active" : ""} onClick={() => setView("history")}>History</button></nav>
+     <button className="theme-toggle"
+       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+@@ -14,12 +14,11 @@ function Topbar({ theme, setTheme, onHome, view, setView }) {
+       <span>{theme === "dark" ? "☀" : "☾"}</span>
+       <span>{theme === "dark" ? "Light" : "Dark"}</span>
+     </button>
+-    <button 
+-      className="theme-toggle"
+-      onClick={() => setView("login")}
+-    > 
+-      LOGIN  
+-    </button> 
++    {user
++      ? <button className="theme-toggle" onClick={onLogout} title={user.email}>
++          {user.name || user.email} · Logout
++        </button>
++      : <button className="theme-toggle" onClick={() => setView("login")}>LOGIN</button>}
+     </header>;
+ }
+ const NetworkBackdrop = () => <div className="network-backdrop" aria-hidden="true"><i /><i /><i /><i /><b /><b /><b /><b /></div>;
+@@ -39,9 +38,23 @@ function Analyzing({ fileName }) {
+   return <main className="analysis-screen"><NetworkBackdrop /><div className="analysis-card"><div className="analysis-radar"><span /><span /><span /><b>⌁</b></div><div className="eyebrow"><span /> INVESTIGATION IN PROGRESS</div><h1>Reading the signals.</h1><p className="analysis-file">{fileName}</p><ol>{analysisSteps.map((item, index) => <li className={index < step ? "done" : index === step ? "current" : ""} key={item}><span>{index < step ? "✓" : index === step ? "◌" : "·"}</span>{item}<small>{index < step ? "complete" : index === step ? "running" : "queued"}</small></li>)}</ol></div></main>;
+ }
+ 
+-function History({ openReport, newInvestigation, userId }) {
++function History({ openReport, newInvestigation, onAuthRequired }) {
+   const [items, setItems] = useState([]), [error, setError] = useState(""), [loading, setLoading] = useState(true);
+-  useEffect(() => { let active = true; getHistory(userId).then((data) => active && setItems(data.emails || [])).catch((err) => active && setError(err.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [userId]);
++  // No userId dependency anymore -- getHistory() reads whoever the
++  // session cookie says is logged in, server-side. Each signed-in
++  // user only ever sees their own rows.
++  useEffect(() => {
++    let active = true;
++    getHistory()
++      .then((data) => active && setItems(data.emails || []))
++      .catch((err) => {
++        if (!active) return;
++        if (err.status === 401) { onAuthRequired(); return; }
++        setError(err.message);
++      })
++      .finally(() => active && setLoading(false));
++    return () => { active = false; };
++  }, []);
+   return <main className="workspace-page"><div className="workspace-heading"><div><div className="eyebrow"><span /> INVESTIGATION ARCHIVE</div><h1>Recent investigations</h1><p>Review historic email decisions and their connected infrastructure.</p></div><button className="analyze-button" onClick={newInvestigation}>+ New investigation</button></div><div className="archive-list">{loading && <p>Loading investigations…</p>}{error && <p className="upload-error">{error}</p>}{!loading && !error && !items.length && <p>No investigations have been created for this workspace yet.</p>}{items.map((item) => <button className="archive-row" key={item.email_id} onClick={() => openReport(item.email_id)}><span className={`risk-pill ${String(item.verdict || "safe").toLowerCase()}`}>{item.verdict || "safe"}</span><strong>{item.subject || item.email_id}</strong><span className="archive-time">{item.ingested_at || "Date unavailable"}</span><span className="archive-score">{item.overall_risk_score ?? "—"}<small>/100</small></span><span>→</span></button>)}</div></main>;
+ }
+ 
+@@ -67,10 +80,24 @@ function Settings() {
+ export default function App() {
+   const [theme, setTheme] = useState("dark"), [view, setView] = useState("landing"), [fileName, setFileName] = useState("");
+   const [investigationData, setInvestigationData] = useState(null), [analysisError, setAnalysisError] = useState("");
+-  const userId = import.meta.env.VITE_DEMO_USER_ID || "demo@gmail.com";
++  const [user, setUser] = useState(null);
+   useEffect(() => document.documentElement.setAttribute("data-theme", theme), [theme]);
+   const home = () => { setInvestigationData(null); setView("landing"); };
+ 
++  // Who's signed in, per the session cookie -- fetched once on load
++  // and re-fetched after returning from the Google OAuth redirect.
++  const refreshUser = () => getCurrentUser().then((data) => setUser(data.user)).catch(() => setUser(null));
++  useEffect(() => { refreshUser(); }, []);
++  useEffect(() => {
++    if (view === "login" && user) refreshUser();
++  }, [view]);
++
++  const handleLogout = async () => {
++    try { await logout(); } catch { /* best-effort */ }
++    setUser(null);
++    home();
++  };
++
+   useEffect(() => {
+     const params = new URLSearchParams(window.location.search);
+     const investigationId = params.get("investigation");
+@@ -86,39 +113,52 @@ export default function App() {
+         setView("report");
+       } catch (err) {
+         console.error("Failed to load investigation:", err);
+-        setView("landing");
++        setView(err.status === 401 ? "login" : "landing");
+       }
+     })();
+   }, []);
+ 
+   const start = async (file) => {
++    if (!user) { setView("login"); return; }
+     setAnalysisError("");
+     setInvestigationData(null);
+     setFileName(file?.name || "sample-phishing-email.eml");
+     setView("analyzing");
+     try {
++      // No user_id here -- the backend reads it from the session, so
++      // this always lands against whoever is actually logged in.
+       const body = file
+-        ? { raw_eml: await file.text(), user_id: "demo@gmail.com" }
+-        : { eml_path: "test_emails/example.eml", user_id: "demo@gmail.com" };
++        ? { raw_eml: await file.text() }
++        : { eml_path: "test_emails/example.eml" };
+       const result = await analyzeEmail(body);
+       setInvestigationData(result);
+       setView("report");
+     } catch (err) {
+       console.error("Analysis failed:", err);
++      if (err.status === 401) { setView("login"); return; }
+       setAnalysisError(err.message || "Unable to reach the analysis service. Check that the backend is running.");
+       setInvestigationData(null);
+       setView("landing");
+     }
+   };
+ 
++  const goHistory = () => setView(user ? "history" : "login");
++
+   return (
+     <div className="app-shell">
+-      <Topbar theme={theme} setTheme={setTheme} onHome={home} view={view} setView={setView} />
++      <Topbar theme={theme} setTheme={setTheme} onHome={home} view={view} setView={(v) => (v === "history" ? goHistory() : setView(v))} user={user} onLogout={handleLogout} />
+       {view === "login" && <LoginPage />}
+       {view === "landing" && <Landing onAnalyze={start} analysisError={analysisError} />}
+       {view === "analyzing" && <Analyzing fileName={fileName} />}
+       {view === "report" && <InvestigationReportPage apiResponse={investigationData} onNewInvestigation={home} />}
+-      {view === "history" && <History openReport={async (id) => { try { setInvestigationData(await getInvestigation(id)); setView("report"); } catch (err) { setAnalysisError(err.message); setView("landing"); } }} newInvestigation={home} userId={userId} />}
++      {view === "history" && <History
++        openReport={async (id) => {
++          try { setInvestigationData(await getInvestigation(id)); setView("report"); }
++          catch (err) { if (err.status === 401) { setView("login"); return; } setAnalysisError(err.message); setView("landing"); }
++        }}
++        newInvestigation={home}
++        onAuthRequired={() => setView("login")}
++      />}
+       {view === "settings" && <Settings />}
+     </div>
+   );
+diff --git a/frontend/src/pages/LoginPage.jsx b/frontend/src/pages/LoginPage.jsx
+index 49060a0..54764fb 100644
+--- a/frontend/src/pages/LoginPage.jsx
++++ b/frontend/src/pages/LoginPage.jsx
+@@ -1,6 +1,11 @@
++const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "/api" : "");
++
+ export default function LoginPage() {
+   const loginWithGoogle = () => {
+-    window.location.href = "http://127.0.0.1:5001/auth/google";
++    // Full page navigation (not fetch) -- this has to leave the SPA
++    // so Google's own login screen can take over, then redirect back
++    // to FRONTEND_URL once the backend sets the session cookie.
++    window.location.href = `${apiBase}/auth/google`;
+   };
+ 
+   return (
+diff --git a/frontend/src/utils/api.js b/frontend/src/utils/api.js
+index 0544b50..f81001a 100644
+--- a/frontend/src/utils/api.js
++++ b/frontend/src/utils/api.js
+@@ -4,6 +4,11 @@ const apiKey = import.meta.env.VITE_API_KEY;
+ async function request(path, options = {}) {
+   const response = await fetch(`${baseUrl}${path}`, {
+     ...options,
++    // Carries the Flask session cookie (set at /auth/google/callback)
++    // on every request -- this is how the backend knows who "you"
++    // are; without it every call is anonymous and login_required
++    // endpoints 401.
++    credentials: "include",
+     headers: {
+       "Content-Type": "application/json",
+       "ngrok-skip-browser-warning": "true",
+@@ -12,10 +17,19 @@ async function request(path, options = {}) {
+     },
+   });
+   const payload = await response.json().catch(() => ({}));
+-  if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
++  if (!response.ok) {
++    const err = new Error(payload.error || `Request failed (${response.status})`);
++    err.status = response.status;
++    throw err;
++  }
+   return payload;
+ }
+ 
++// user_id is never sent by the client anymore -- the backend derives
++// it from the signed-in session, so every call below is implicitly
++// scoped to whoever is logged in.
+ export const analyzeEmail = (body) => request("/analyze", { method: "POST", body: JSON.stringify(body) });
+ export const getInvestigation = (investigationId) => request(`/investigation/${encodeURIComponent(investigationId)}?full=true`);
+-export const getHistory = (userId) => request(`/history?user_id=${encodeURIComponent(userId)}`);
++export const getHistory = () => request("/history");
++export const getCurrentUser = () => request("/auth/me");
++export const logout = () => request("/auth/logout", { method: "POST" });
+diff --git a/requirements.txt b/requirements.txt
+index 830d228..a908eba 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -10,7 +10,7 @@ tldextract==5.3.2
+ networkx==3.7
+ cryptography==50.0.1
+ authlib==1.8.0
+-scikit-learn==1.9.1
++scikit-learn==1.6.1
+ scipy==1.18.1
+ pandas==3.0.6
+ joblib==1.5.3
+-- 
+2.43.0
+

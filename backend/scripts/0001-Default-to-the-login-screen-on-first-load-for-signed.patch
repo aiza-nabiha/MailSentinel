@@ -1,0 +1,51 @@
+From 16654820d46c2b071749a62ca6416edc679576bd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 16:16:13 +0000
+Subject: [PATCH] Default to the login screen on first load for signed-out
+ visitors
+
+Previously the app always opened on the marketing landing page, and
+LOGIN was just a button you had to click. Now a signed-out first
+load shows the login screen directly. Signed-in visitors still land
+on the normal landing page, and this doesn't interfere with the
+investigation-link or add-on magic-link flows -- both of those move
+the view away from "landing" before this check would touch it.
+---
+ frontend/src/app.jsx | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/frontend/src/app.jsx b/frontend/src/app.jsx
+index 6c9469e..3511b30 100644
+--- a/frontend/src/app.jsx
++++ b/frontend/src/app.jsx
+@@ -645,7 +645,26 @@ export default function App() {
+       .then((data) => setUser(data.authenticated && data.user ? data.user : null))
+       .catch(() => setUser(null));
+   };
+-  useEffect(() => { refreshUser(); }, []);
++
++  // First-load check: show the login screen by default for a signed-out
++  // visitor instead of the marketing landing page. The `v === "landing"`
++  // guard means this never clobbers a view the investigation-link effect
++  // below (or anything else) has already moved away from "landing" by
++  // the time this resolves.
++  useEffect(() => {
++    getCurrentUser()
++      .then((data) => {
++        const signedIn = data.authenticated && data.user ? data.user : null;
++        setUser(signedIn);
++        if (!signedIn) {
++          setView((v) => (v === "landing" ? "login" : v));
++        }
++      })
++      .catch(() => {
++        setUser(null);
++        setView((v) => (v === "landing" ? "login" : v));
++      });
++  }, []);
+   useEffect(() => {
+     if (view === "login" && user) refreshUser();
+   }, [view]);
+-- 
+2.43.0
+

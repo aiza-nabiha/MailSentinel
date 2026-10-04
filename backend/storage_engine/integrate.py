@@ -28,10 +28,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..threat_detection_engine.core.threat_contribution import (
-    calculate_threat_contributions,
-)
-
 from .db import (
     get_connection,
     get_or_create_email_id,
@@ -44,6 +40,28 @@ BACKEND_ROOT = THIS_DIR.parent
 
 sys.path.append(str(BACKEND_ROOT))
 sys.path.append(str(BACKEND_ROOT / "infrastructure_engine"))
+
+# NOTE: this used to be `from ..threat_detection_engine.core.threat_contribution
+# import calculate_threat_contributions` at the top of the file, before
+# BACKEND_ROOT was even on sys.path. Two dots from here is only one level
+# up from this file's own package ("storage_engine" is the top of ITS
+# package chain, the same way "threat_detection_engine" is content_analysis's),
+# so ".." already overshoots -- that raised
+# "ImportError: attempted relative import beyond top-level package" on
+# every single boot, which is fatal here (unlike the Person 1/3/4 imports
+# below, this one wasn't even wrapped in try/except), so it would have
+# taken the whole Flask app down on the next deploy. Fixed by importing
+# it the same way `pipeline` and `content_analysis` are imported just
+# below: as an absolute dotted path, after BACKEND_ROOT is on sys.path,
+# wrapped in try/except so a missing/broken contribution module degrades
+# instead of crashing the app.
+try:
+    from threat_detection_engine.core.threat_contribution import (
+        calculate_threat_contributions,
+    )
+except ImportError as e:
+    print(f"[!] threat_contribution not importable yet -- contribution breakdown will be skipped: {e}")
+    calculate_threat_contributions = None
 
 try:
     from header_auth_engine.header_parser import build_email_data
@@ -64,7 +82,14 @@ classify_email_real = None
 classify_email_fallback = None
 
 try:
-    from ..threat_detection_engine.core.content_analysis import (
+    # Same bug as the threat_contribution import above: ".." from this
+    # file overshoots ("storage_engine" is already the top of this
+    # file's own package chain), which raised
+    # "attempted relative import beyond top-level package" on every
+    # boot and masked whatever the real underlying import error was.
+    # Fixed the same way: absolute dotted path now that BACKEND_ROOT is
+    # on sys.path.
+    from threat_detection_engine.core.content_analysis import (
         analyze_email_file as classify_email_real,
     )
     print("[i] Person 1 REAL classifier module found")
@@ -541,6 +566,8 @@ def insert_email_record(
                 domain_result=domain_result,
                 email_structure=email_structure,
             )
+            if calculate_threat_contributions
+            else None
         )
 
     # ============================================================

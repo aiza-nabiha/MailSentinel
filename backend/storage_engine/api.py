@@ -26,6 +26,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 from auth.google_auth import init_google_oauth
+from authlib.integrations.base_client.errors import OAuthError
 import tempfile
 from functools import wraps
 from pathlib import Path
@@ -112,7 +113,26 @@ def google_login():
 @app.route("/auth/google/callback")
 def google_callback():
 
-    token = oauth.google.authorize_access_token()
+    try:
+        token = oauth.google.authorize_access_token()
+    except OAuthError as e:
+        # Covers MismatchingStateError and similar OAuth handshake
+        # failures. Two real causes, neither one a bug in the happy
+        # path:
+        #   1. Bot/scanner traffic hitting this callback URL directly
+        #      with made-up query params -- there's no real session
+        #      behind it, so it will always fail this check. Harmless,
+        #      just noisy in the logs.
+        #   2. A genuine user who started the Google login flow twice
+        #      (e.g. double-clicked "Login with Google", or went back
+        #      and retried) -- the second attempt overwrites the
+        #      `state` stored for the first one, so whichever tab
+        #      finishes first mismatches.
+        # Previously this raised uncaught and crashed with a bare 500.
+        # Now it just sends the user back to try logging in again
+        # instead of showing a broken error page.
+        print(f"[!] Google OAuth callback failed: {e}")
+        return redirect(f"{FRONTEND_URL}?login_error=1")
 
     userinfo = token.get("userinfo")
 

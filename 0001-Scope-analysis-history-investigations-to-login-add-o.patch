@@ -1,0 +1,623 @@
+From b4af23058b3665404c0aae2602da86a5d78d12cb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 13:20:44 +0000
+Subject: [PATCH 1/2] Scope analysis/history/investigations to login; add-on
+ magic-link handoff
+
+Rebuilt against the real current main (the earlier version of this
+work was built on a stale clone, 13 commits behind, and its patches
+didn't apply). The teammate auth-flow commit (d6b4fbb) built the
+login UI (profile menu, /auth/me, /auth/logout) but never actually
+scoped /analyze, /history, or /investigation/<id> to the session --
+they still trusted a client-supplied user_id, and the frontend still
+fell back to demo@gmail.com whenever no one was logged in.
+
+- login_required / identity_required (api.py): /history and
+  /investigation/<id> require the website session; /analyze accepts
+  either the session OR an X-API-Key + body user_id pair (the add-ins'
+  channel -- trusted only because the key is a secret only our own
+  add-ins hold, and that user_id comes from the mail platform's own
+  verified identity, never a browser user).
+- /investigation/<id> now checks row ownership, 404s (not 403) if a
+  valid id belongs to someone else.
+- CORS/redirects now use FRONTEND_URL instead of a hardcoded
+  http://127.0.0.1:5173; SESSION_COOKIE_SAMESITE/SECURE toggle by
+  FLASK_ENV=production for cross-origin cookies in deployment.
+- google_callback and the new /auth/addon-session both call
+  get_or_create_user so Neon's users table is populated at login time.
+- /auth/addon-session: verifies a short-lived signed token (minted by
+  /analyze for an add-in-sourced call) and sets the same session
+  cookie Google OAuth would -- lets "VIEW FULL INVESTIGATION" in the
+  Gmail add-on land already logged into that mailbox's account, with
+  History showing that account's real past investigations immediately.
+- Frontend: api.js sends credentials:"include" and exposes
+  getCurrentUser()/logoutUrl(); app.jsx now calls those instead of a
+  hardcoded 127.0.0.1:5001, drops every demo@gmail.com fallback, and
+  routes 401s to the login view. LoginPage.jsx's Google-login link
+  uses the configured API base URL instead of localhost.
+- GmailEmailAnalyzer.gs's "VIEW FULL INVESTIGATION" button uses
+  report_url when /analyze returns one.
+
+Note: outlook-addon/ was found deleted from main by an unrelated
+commit (5c545fc, "Updated ML model and feature selection") -- left
+untouched this pass per instruction; needs a decision on whether that
+deletion was intentional before any Outlook work resumes.
+---
+ backend/storage_engine/api.py     | 198 +++++++++++++++++++++++++-----
+ frontend/src/app.jsx              |  87 ++++++-------
+ frontend/src/pages/LoginPage.jsx  |   7 +-
+ frontend/src/utils/api.js         |  19 ++-
+ gmail-addon/GmailEmailAnalyzer.gs |  10 +-
+ 5 files changed, 236 insertions(+), 85 deletions(-)
+
+diff --git a/backend/storage_engine/api.py b/backend/storage_engine/api.py
+index 6fb3b06..cf9e8eb 100644
+--- a/backend/storage_engine/api.py
++++ b/backend/storage_engine/api.py
+@@ -27,7 +27,9 @@ from dotenv import load_dotenv
+ 
+ from auth.google_auth import init_google_oauth
+ import tempfile
++from functools import wraps
+ from pathlib import Path
++from itsdangerous import URLSafeTimedSerializer, BadData
+ 
+ from dotenv import load_dotenv
+ from flask import Flask, request, jsonify, send_from_directory
+@@ -37,6 +39,7 @@ from flask_limiter.util import get_remote_address
+ from .db import (
+     get_connection,
+     get_emails_for_user,
++    get_or_create_user,
+     log_access,
+     get_trigger_metadata,
+     get_raw_archive_for_email,
+@@ -46,18 +49,46 @@ from .integrate import run as run_integration
+ load_dotenv()
+ 
+ app = Flask(__name__)
++
++# FRONTEND_URL is where OAuth and add-on magic links redirect back to,
++# and the one origin CORS trusts with credentials (cookies). Was
++# hardcoded to http://127.0.0.1:5173 before, which only ever worked
++# for local dev -- a deployed frontend (Vercel, etc.) was silently
++# never going to get a session cookie.
++FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://127.0.0.1:5173")
++
+ CORS(
+     app,
+     supports_credentials=True,
+-    origins=["http://127.0.0.1:5173"]
++    origins=[FRONTEND_URL]
+ )
+ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
++
++# Cross-site cookies (frontend and backend on different origins, e.g.
++# Vercel + Render) need SameSite=None + Secure. Locally over http that
++# combination makes browsers drop the cookie entirely, so only turn it
++# on once FLASK_ENV=production is set.
++IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production"
+ app.config.update(
+-    SESSION_COOKIE_SAMESITE="Lax",
+-    SESSION_COOKIE_SECURE=False,
++    SESSION_COOKIE_SAMESITE="None" if IS_PRODUCTION else "Lax",
++    SESSION_COOKIE_SECURE=IS_PRODUCTION,
+ )
+ oauth = init_google_oauth(app)
+ 
++# Signs short-lived "addon session" tokens -- see mint_addon_session_token()
++# and /auth/addon-session below. These let the Gmail/Outlook add-ins hand
++# a browser tab straight into a logged-in website session, without the
++# user re-doing Google OAuth, by trusting the identity the mail platform
++# itself already verified (Session.getActiveUser() in Apps Script,
++# Office.context.mailbox.userProfile.emailAddress in Outlook).
++_addon_token_serializer = URLSafeTimedSerializer(app.secret_key)
++ADDON_TOKEN_SALT = "addon-magic-link"
++ADDON_TOKEN_MAX_AGE_SECONDS = 600  # 10 minutes -- just long enough to click through
++
++
++def mint_addon_session_token(email, email_id=None):
++    return _addon_token_serializer.dumps({"email": email, "email_id": email_id}, salt=ADDON_TOKEN_SALT)
++
+ # Load the ML content-classifier model once, at process startup,
+ # instead of on the first incoming request. Without this, the first
+ # /analyze call after a cold start/restart pays both the container
+@@ -93,14 +124,19 @@ def google_callback():
+         "name": userinfo.get("name"),
+         "picture": userinfo.get("picture")
+     }
+-    print("GOOGLE USER:", session.get("user"))
+-    print("SESSION:", dict(session))
+-    return redirect(
+-        os.getenv(
+-            "FRONTEND_URL",
+-            "http://127.0.0.1:5173/"
+-        )
+-    )
++    session.permanent = True
++
++    # Register/touch the user row now, at login time, rather than
++    # waiting for their first /analyze -- so /history works even
++    # before they've analyzed anything.
++    conn = get_connection()
++    get_or_create_user(conn, userinfo["email"])
++    conn.commit()
++    conn.close()
++
++    return redirect(FRONTEND_URL)
++
++
+ @app.route("/auth/me")
+ def auth_me():
+     user = session.get("user")
+@@ -117,13 +153,92 @@ def auth_me():
+ @app.route("/auth/logout")
+ def auth_logout():
+     session.clear()
+-
+-    return redirect(
+-        os.getenv(
+-            "FRONTEND_URL",
+-            "http://127.0.0.1:5173/"
++    return redirect(FRONTEND_URL)
++
++
++@app.route("/auth/addon-session", methods=["GET"])
++def auth_addon_session():
++    """
++    Landing point for the "VIEW FULL INVESTIGATION" / "Open full
++    report" link the add-ins put in their results -- the token was
++    minted by mint_addon_session_token() right after /analyze ran for
++    that same email address, so verifying it here is equivalent to a
++    login: it sets the same session cookie google_callback() would,
++    scoped to that one mailbox's identity, then hands the browser off
++    to the normal website (now logged in, History included).
++    """
++    token = request.args.get("token", "")
++    try:
++        data = _addon_token_serializer.loads(
++            token, salt=ADDON_TOKEN_SALT, max_age=ADDON_TOKEN_MAX_AGE_SECONDS
+         )
+-    )
++    except BadData:
++        return "This link has expired. Re-run the analysis from the add-in.", 401
++
++    email = data.get("email")
++    if not email:
++        return "Invalid link.", 400
++
++    session["user"] = {"email": email, "name": email, "picture": None}
++    session.permanent = True
++
++    conn = get_connection()
++    get_or_create_user(conn, email)
++    conn.commit()
++    conn.close()
++
++    email_id = data.get("email_id")
++    target = f"{FRONTEND_URL}?investigation={email_id}" if email_id else FRONTEND_URL
++    return redirect(target)
++
++
++def login_required(view_fn):
++    """
++    Pulls the signed-in user's email out of the Flask session (set by
++    google_callback, or by auth_addon_session on the add-in's behalf)
++    and passes it to the view as the first positional arg. This is
++    the ONLY source of truth for "who is this" for website-facing
++    reads -- a user_id in the request body/query is never trusted,
++    because that just lets anyone read/write any other user's data by
++    passing a different email.
++    """
++    @wraps(view_fn)
++    def wrapper(*args, **kwargs):
++        user = session.get("user")
++        if not user or not user.get("email"):
++            return jsonify({"error": "Not signed in"}), 401
++        return view_fn(user["email"], *args, **kwargs)
++    return wrapper
++
++
++def identity_required(view_fn):
++    """
++    Like login_required, but also accepts a second trust channel for
++    /analyze: a valid X-API-Key (a secret only our own Gmail/Outlook
++    add-ins hold) plus a user_id in the request body. That user_id is
++    trusted ONLY because it comes from the mail platform's own
++    already-authenticated identity (never typed in by a browser user)
++    -- see GmailEmailAnalyzer.gs and taskpane.js. Passes
++    (user_id, source) to the view, where source is "session" or
++    "addon", so /analyze knows whether to mint a magic-link token.
++    """
++    @wraps(view_fn)
++    def wrapper(*args, **kwargs):
++        user = session.get("user")
++        if user and user.get("email"):
++            return view_fn(user["email"], "session", *args, **kwargs)
++
++        provided_key = request.headers.get("X-API-Key", "")
++        if API_SECRET_KEY and hmac.compare_digest(provided_key, API_SECRET_KEY):
++            data = request.get_json(silent=True) or {}
++            addon_user_id = data.get("user_id")
++            if addon_user_id and isinstance(addon_user_id, str):
++                return view_fn(addon_user_id, "addon", *args, **kwargs)
++
++        return jsonify({"error": "Not signed in"}), 401
++    return wrapper
++
++
+ FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+ 
+ 
+@@ -349,18 +464,22 @@ def health():
+ 
+ @app.route("/analyze", methods=["POST"])
+ @limiter.limit("20 per minute")
+-def analyze():
++@identity_required
++def analyze(user_id, identity_source):
+     auth_error = _require_api_key()
+     if auth_error:
+         conn = get_connection()
+-        log_access(conn, "/analyze", None, get_remote_address(), 401, "auth failed")
++        log_access(conn, "/analyze", user_id, get_remote_address(), 401, "auth failed")
+         conn.close()
+         return auth_error
+ 
+     data = request.get_json(silent=True) or {}
+     eml_path_raw = data.get("eml_path")
+     raw_eml = data.get("raw_eml")
+-    user_id = data.get("user_id")
++    # user_id comes from identity_required -- the website session for
++    # a manual upload, or a user_id an add-in read from the mail
++    # platform's own verified identity. Never a value a browser user
++    # could just type into the request body themselves.
+ 
+     if not eml_path_raw and not raw_eml:
+         return jsonify({"error": "Provide either eml_path or raw_eml"}), 400
+@@ -405,11 +524,21 @@ def analyze():
+     result = _build_investigation_result(conn, email_id, include_raw_content=True)
+     conn.close()
+ 
++    if identity_source == "addon":
++        # The add-in has no browser session of its own to show this
++        # report in -- hand it a one-click link that logs the
++        # eventual browser tab into this same mailbox's account (see
++        # /auth/addon-session) and lands directly on this investigation,
++        # with that account's full history available right after.
++        token = mint_addon_session_token(user_id, email_id=email_id)
++        result["report_url"] = f"{request.url_root.rstrip('/')}/auth/addon-session?token={token}"
++
+     return jsonify(result), 200
+ 
+ 
+ @app.route("/investigation/<email_id>", methods=["GET"])
+-def get_investigation(email_id):
++@login_required
++def get_investigation(user_id, email_id):
+     auth_error = _require_api_key()
+     if auth_error:
+         return auth_error
+@@ -417,28 +546,39 @@ def get_investigation(email_id):
+     include_raw = request.args.get("full", "").lower() in ("true", "1", "yes")
+ 
+     conn = get_connection()
++    owner_row = conn.execute(
++        "SELECT user_id FROM emails WHERE email_id = %s", (email_id,)
++    ).fetchone()
++    if owner_row is None:
++        conn.close()
++        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
++    if owner_row[0] != user_id:
++        # Exists, but belongs to someone else -- 404 instead of 403 so
++        # this doesn't confirm to a guesser that the email_id is real.
++        log_access(conn, "/investigation", user_id, get_remote_address(), 404, "not owner", email_id=email_id)
++        conn.close()
++        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
++
+     result = _build_investigation_result(conn, email_id, include_raw_content=include_raw)
+     conn.close()
+ 
+-    if result is None:
+-        return jsonify({"error": f"No investigation found for email_id: {email_id}"}), 404
+-
+     return jsonify(result), 200
+ 
+ 
+ @app.route("/history", methods=["GET"])
+ @limiter.limit("30 per minute")
+-def history():
++@login_required
++def history(user_id):
+     auth_error = _require_api_key()
+     if auth_error:
+         conn = get_connection()
+-        log_access(conn, "/history", request.args.get("user_id"), get_remote_address(), 401, "auth failed")
++        log_access(conn, "/history", user_id, get_remote_address(), 401, "auth failed")
+         conn.close()
+         return auth_error
+ 
+-    user_id = request.args.get("user_id")
+-    if not user_id:
+-        return jsonify({"error": "Missing required query param: user_id"}), 400
++    # user_id comes from the session, not a query param -- otherwise
++    # anyone could pass ?user_id=someone-else@gmail.com and read their
++    # history.
+ 
+     conn = get_connection()
+     rows = get_emails_for_user(conn, user_id)
+diff --git a/frontend/src/app.jsx b/frontend/src/app.jsx
+index c08f7ce..6c9469e 100644
+--- a/frontend/src/app.jsx
++++ b/frontend/src/app.jsx
+@@ -1,7 +1,7 @@
+ import LoginPage from "./pages/LoginPage";
+ import { useEffect, useState } from "react";
+ import InvestigationReportPage from "./pages/InvestigationReportPage";
+-import { analyzeEmail, getHistory, getInvestigation } from "./utils/api";
++import { analyzeEmail, getHistory, getInvestigation, getCurrentUser, logoutUrl } from "./utils/api";
+ 
+ const analysisSteps = [
+   "Parsing email",
+@@ -96,8 +96,7 @@ function Topbar({ theme, setTheme, onHome, view, setView, user }) {
+               <button
+                 type="button"
+                 onClick={() => {
+-                  window.location.href =
+-                    "http://127.0.0.1:5001/auth/logout";
++                  window.location.href = logoutUrl();
+                 }}
+               >
+                 LOGOUT
+@@ -451,24 +450,27 @@ function Analyzing({ fileName }) {
+   );
+ }
+ 
+-function History({ openReport, newInvestigation, userId }) {
++function History({ openReport, newInvestigation, onAuthRequired }) {
+   const [items, setItems] = useState([]);
+   const [error, setError] = useState("");
+   const [loading, setLoading] = useState(true);
+ 
++  // No userId dependency anymore -- getHistory() reads whoever the
++  // session cookie says is logged in, server-side. Each signed-in
++  // user only ever sees their own rows.
+   useEffect(() => {
+     let active = true;
+ 
+-    getHistory(userId)
++    getHistory()
+       .then((data) => {
+         if (active) {
+           setItems(data.emails || []);
+         }
+       })
+       .catch((err) => {
+-        if (active) {
+-          setError(err.message);
+-        }
++        if (!active) return;
++        if (err.status === 401) { onAuthRequired(); return; }
++        setError(err.message);
+       })
+       .finally(() => {
+         if (active) {
+@@ -479,7 +481,7 @@ function History({ openReport, newInvestigation, userId }) {
+     return () => {
+       active = false;
+     };
+-  }, [userId]);
++  }, []);
+ 
+   return (
+     <main className="workspace-page">
+@@ -635,36 +637,18 @@ export default function App() {
+     useState(null);
+   const [analysisError, setAnalysisError] = useState("");
+ 
+-  const userId =
+-    import.meta.env.VITE_DEMO_USER_ID ||
+-    "demo@gmail.com";
+-
+-  // Check Google login session
++  // Who's signed in, per the session cookie -- fetched once on load
++  // and re-fetched after returning from Google OAuth or an add-in's
++  // magic link (both land back here with the cookie already set).
++  const refreshUser = () => {
++    getCurrentUser()
++      .then((data) => setUser(data.authenticated && data.user ? data.user : null))
++      .catch(() => setUser(null));
++  };
++  useEffect(() => { refreshUser(); }, []);
+   useEffect(() => {
+-    fetch("http://127.0.0.1:5001/auth/me", {
+-      credentials: "include",
+-    })
+-      .then((response) => {
+-        if (!response.ok) {
+-          throw new Error("Failed to get user session");
+-        }
+-
+-        return response.json();
+-      })
+-      .then((data) => {
+-        console.log("AUTH RESPONSE JSON:", JSON.stringify(data, null, 2));
+-
+-        if (data.authenticated && data.user) {
+-          setUser(data.user);
+-        } else {
+-          setUser(null);
+-        }
+-      })
+-      .catch((error) => {
+-        console.error("AUTH CHECK ERROR:", error);
+-        setUser(null);
+-      });
+-  }, []);
++    if (view === "login" && user) refreshUser();
++  }, [view]);
+ 
+   useEffect(() => {
+     document.documentElement.setAttribute(
+@@ -705,12 +689,14 @@ export default function App() {
+           err
+         );
+ 
+-        setView("landing");
++        setView(err.status === 401 ? "login" : "landing");
+       }
+     })();
+   }, []);
+ 
+   const start = async (file) => {
++    if (!user) { setView("login"); return; }
++
+     setAnalysisError("");
+     setInvestigationData(null);
+ 
+@@ -721,17 +707,11 @@ export default function App() {
+     setView("analyzing");
+ 
+     try {
++      // No user_id here -- the backend reads it from the session, so
++      // this always lands against whoever is actually logged in.
+       const body = file
+-        ? {
+-            raw_eml: await file.text(),
+-            user_id:
+-              user?.email || "demo@gmail.com",
+-          }
+-        : {
+-            eml_path: "test_emails/example.eml",
+-            user_id:
+-              user?.email || "demo@gmail.com",
+-          };
++        ? { raw_eml: await file.text() }
++        : { eml_path: "test_emails/example.eml" };
+ 
+       const result = await analyzeEmail(body);
+ 
+@@ -740,6 +720,8 @@ export default function App() {
+     } catch (err) {
+       console.error("Analysis failed:", err);
+ 
++      if (err.status === 401) { setView("login"); return; }
++
+       setAnalysisError(
+         err.message ||
+           "Unable to reach the analysis service. Check that the backend is running."
+@@ -750,6 +732,8 @@ export default function App() {
+     }
+   };
+ 
++  const goHistory = () => setView(user ? "history" : "login");
++
+   return (
+     <div className="app-shell">
+       <Topbar
+@@ -757,7 +741,7 @@ export default function App() {
+         setTheme={setTheme}
+         onHome={home}
+         view={view}
+-        setView={setView}
++        setView={(v) => (v === "history" ? goHistory() : setView(v))}
+         user={user}
+       />
+ 
+@@ -791,12 +775,13 @@ export default function App() {
+ 
+               setView("report");
+             } catch (err) {
++              if (err.status === 401) { setView("login"); return; }
+               setAnalysisError(err.message);
+               setView("landing");
+             }
+           }}
+           newInvestigation={home}
+-          userId={user?.email || userId}
++          onAuthRequired={() => setView("login")}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/LoginPage.jsx b/frontend/src/pages/LoginPage.jsx
+index 49060a0..780eb0b 100644
+--- a/frontend/src/pages/LoginPage.jsx
++++ b/frontend/src/pages/LoginPage.jsx
+@@ -1,6 +1,11 @@
++import { baseUrl } from "../utils/api";
++
+ export default function LoginPage() {
+   const loginWithGoogle = () => {
+-    window.location.href = "http://127.0.0.1:5001/auth/google";
++    // Full page navigation (not fetch) -- this has to leave the SPA
++    // so Google's own login screen can take over, then redirect back
++    // to FRONTEND_URL once the backend sets the session cookie.
++    window.location.href = `${baseUrl}/auth/google`;
+   };
+ 
+   return (
+diff --git a/frontend/src/utils/api.js b/frontend/src/utils/api.js
+index 0544b50..c135e68 100644
+--- a/frontend/src/utils/api.js
++++ b/frontend/src/utils/api.js
+@@ -1,9 +1,13 @@
+-const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "/api" : "");
++export const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "/api" : "");
+ const apiKey = import.meta.env.VITE_API_KEY;
+ 
+ async function request(path, options = {}) {
+   const response = await fetch(`${baseUrl}${path}`, {
+     ...options,
++    // Carries the Flask session cookie (set at /auth/google/callback
++    // or /auth/addon-session) on every request -- without this every
++    // call is anonymous and login_required endpoints 401.
++    credentials: "include",
+     headers: {
+       "Content-Type": "application/json",
+       "ngrok-skip-browser-warning": "true",
+@@ -12,10 +16,19 @@ async function request(path, options = {}) {
+     },
+   });
+   const payload = await response.json().catch(() => ({}));
+-  if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
++  if (!response.ok) {
++    const err = new Error(payload.error || `Request failed (${response.status})`);
++    err.status = response.status;
++    throw err;
++  }
+   return payload;
+ }
+ 
++// user_id is never sent by the client anymore -- the backend derives
++// it from the signed-in session, so every call below is implicitly
++// scoped to whoever is logged in.
+ export const analyzeEmail = (body) => request("/analyze", { method: "POST", body: JSON.stringify(body) });
+ export const getInvestigation = (investigationId) => request(`/investigation/${encodeURIComponent(investigationId)}?full=true`);
+-export const getHistory = (userId) => request(`/history?user_id=${encodeURIComponent(userId)}`);
++export const getHistory = () => request("/history");
++export const getCurrentUser = () => request("/auth/me");
++export const logoutUrl = () => `${baseUrl}/auth/logout`;
+diff --git a/gmail-addon/GmailEmailAnalyzer.gs b/gmail-addon/GmailEmailAnalyzer.gs
+index 861e20a..9466258 100644
+--- a/gmail-addon/GmailEmailAnalyzer.gs
++++ b/gmail-addon/GmailEmailAnalyzer.gs
+@@ -86,7 +86,15 @@ function buildResultCard(r) {
+       CardService.newTextButton()
+         .setText('VIEW FULL INVESTIGATION')
+         .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+-        .setOpenLink(CardService.newOpenLink().setUrl(getWebsiteUrl() + '?investigation=' + encodeURIComponent(r.email_id)))
++        // report_url (minted by /analyze for this Gmail account) logs
++        // the browser straight into this same account's session on
++        // click -- no separate website login, and History on the
++        // site will already show this account's past investigations.
++        // Falls back to a bare link (pre-login-wall behavior) if an
++        // older backend didn't send one.
++        .setOpenLink(CardService.newOpenLink().setUrl(
++          r.report_url || (getWebsiteUrl() + '?investigation=' + encodeURIComponent(r.email_id))
++        ))
+     ))
+     .build();
+ }
+-- 
+2.43.0
+

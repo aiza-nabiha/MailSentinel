@@ -1,6 +1,8 @@
 import os
+import sys
 import tempfile
 import threading
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -12,12 +14,53 @@ from .text_cleaner import clean_email_text
 from .email_features import extract_email_features
 from .explain_content import generate_analysis
 
-from ...infrastructure_engine.qr_ocr_extract import (
-    extract_ocr_text,
-    extract_qr_urls,
-)
+# qr_ocr_extract.py lives in infrastructure_engine/, a SIBLING top-level
+# engine directory -- it is not nested under threat_detection_engine, so
+# it can't be reached with package-relative dots ("...infrastructure_engine")
+# the way it was written. This module's own recognized top-level package
+# is "threat_detection_engine" (that's as far up as ".." goes), so "..."
+# overshoots by one level, and raised
+# "ImportError: attempted relative import beyond top-level package" on
+# every boot -- which took down this entire file's import (and therefore
+# the whole content classifier) every time. Fixed by reaching it the same
+# way the rest of the codebase crosses engine boundaries: add that
+# directory to sys.path and import it by its bare module name.
+_INFRA_ENGINE_DIR = str(Path(__file__).resolve().parents[2] / "infrastructure_engine")
+if _INFRA_ENGINE_DIR not in sys.path:
+    sys.path.append(_INFRA_ENGINE_DIR)
 
-from .shap_explainer import ContentSHAPExplainer
+try:
+    from qr_ocr_extract import (
+        extract_ocr_text,
+        extract_qr_urls,
+        extract_urls_from_text,
+    )
+    QR_OCR_AVAILABLE = True
+except ImportError as _qr_ocr_import_error:
+    # qr_ocr_extract.py needs opencv-python-headless and easyocr, which
+    # aren't installed (easyocr also pulls in torch -- a large,
+    # slow-to-build dependency). Rather than take down the whole content
+    # classifier over an optional feature, degrade: QR/OCR extraction is
+    # just skipped, same as every other optional engine in this codebase.
+    print(f"[!] QR/OCR extraction unavailable, skipping: {_qr_ocr_import_error}")
+    QR_OCR_AVAILABLE = False
+
+    def extract_ocr_text(image_path):
+        return ""
+
+    def extract_qr_urls(image_path):
+        return []
+
+    def extract_urls_from_text(text):
+        return []
+
+try:
+    from .shap_explainer import ContentSHAPExplainer
+except ImportError as _shap_import_error:
+    # `shap` isn't in requirements.txt yet. Degrade instead of crashing --
+    # the call site below already handles self.shap_explainer being None.
+    print(f"[!] SHAP explainability unavailable, skipping: {_shap_import_error}")
+    ContentSHAPExplainer = None
 
 
 # ==========================================================
@@ -120,12 +163,16 @@ class ContentAnalyzer:
                 bundle["feature_names"]
             )
 
-            self.shap_explainer = ContentSHAPExplainer(
-                vectorizer=self.vectorizer,
-                scaler=self.scaler,
-                classifier=self.classifier,
-                feature_names=self.ml_feature_names,
-                top_k=10,
+            self.shap_explainer = (
+                ContentSHAPExplainer(
+                    vectorizer=self.vectorizer,
+                    scaler=self.scaler,
+                    classifier=self.classifier,
+                    feature_names=self.ml_feature_names,
+                    top_k=10,
+                )
+                if ContentSHAPExplainer is not None
+                else None
             )
 
             self.metadata = bundle.get(
@@ -407,10 +454,10 @@ class ContentAnalyzer:
                     )
 
                     # Extract URLs reconstructed from OCR text.
-                    from ...infrastructure_engine.qr_ocr_extract import (
-                        extract_urls_from_text,
-                    )
-
+                    # (extract_urls_from_text is already imported at the
+                    # top of this file -- no need to re-import it here,
+                    # and the old re-import used the same broken
+                    # relative-import path as the top-level one.)
                     extracted_ocr_urls = extract_urls_from_text(
                         extracted_ocr
                     )
