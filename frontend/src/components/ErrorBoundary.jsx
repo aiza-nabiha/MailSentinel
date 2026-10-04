@@ -36,7 +36,10 @@ export default class ErrorBoundary extends Component {
     if (this.state.error) {
       return (
         <main className="report">
-          <div className="empty-state" style={{ maxWidth: 560, margin: "64px auto", textAlign: "center" }}>
+          <div
+            className="empty-state"
+            style={{ maxWidth: 560, margin: "64px auto", textAlign: "center" }}
+          >
             <p style={{ fontSize: 18, marginBottom: 8 }}>
               Something went wrong displaying this page.
             </p>

@@ -25,7 +25,7 @@ const nodeLabel = (node) => {
   if (node.value && typeof node.value === "object") {
     const parts = Object.entries(node.value).map(
       ([kind, count]) =>
-        `${count} ${kind.replace(/_/g, " ")}${count === 1 ? "" : "s"}`
+        `${count} ${kind.replace(/_/g, " ")}${count === 1 ? "" : "s"}`,
     );
     return parts.length ? parts.join(", ") : "Additional infrastructure";
   }
@@ -39,13 +39,35 @@ function graphLayout(graph) {
   const current =
     emailNodes.find((node) => !node.is_historical) || emailNodes[0];
   if (!current) return null;
-  const ordered = [
-    current,
-    ...graph.nodes.filter((node) => node.id !== current.id),
-  ];
-  // Keep every node's circle + label inside the 900x420 viewBox: cap the
-  // radius so center +/- radius + label margin (~45px for icon+text) never
-  // exceeds the canvas, on both axes, regardless of node count.
+  const rest = graph.nodes.filter((node) => node.id !== current.id);
+
+  // Cap how many nodes we actually draw -- beyond this the ring layout
+  // can't fit both circles and labels without overlapping, regardless
+  // of radius. Keep the highest-confidence edges' nodes, collapse the
+  // rest into one summary node.
+  const MAX_VISIBLE = 12;
+  const edgeConfidence = (nodeId) =>
+    Math.max(
+      0,
+      ...graph.edges
+        .filter((edge) => edge.source === nodeId || edge.target === nodeId)
+        .map((edge) => edge.confidence || 0),
+    );
+  const sorted = [...rest].sort(
+    (a, b) => edgeConfidence(b.id) - edgeConfidence(a.id),
+  );
+  const visible = sorted.slice(0, MAX_VISIBLE);
+  const overflow = sorted.slice(MAX_VISIBLE);
+
+  const ordered = [current, ...visible];
+  if (overflow.length) {
+    ordered.push({
+      id: "_overflow_",
+      node_type: "collapsed_infrastructure_summary",
+      value: { "related indicator": overflow.length },
+    });
+  }
+
   const labelMargin = 45;
   const maxRadiusX = center.x - 70 - labelMargin;
   const maxRadiusY = center.y - 70 - labelMargin;
@@ -72,19 +94,25 @@ function graphLayout(graph) {
       core: false,
     };
   });
-  const edges = graph.edges.map((edge) => ({
-    a: edge.source,
-    b: edge.target,
-    type:
-      edge.relationship === "correlated_email" ? "corroborated" : "verified",
-    confidence: edge.confidence || 1,
-    reason:
-      edge.relationship === "correlated_email"
-        ? edge.signals?.length
-          ? edge.signals.map(correlationSignalLabel).join(", ")
-          : "Correlated infrastructure"
-        : "Observed in this investigation",
-  }));
+  const edges = graph.edges
+    .filter(
+      (edge) =>
+        nodes.some((node) => node.id === edge.source) &&
+        nodes.some((node) => node.id === edge.target),
+    )
+    .map((edge) => ({
+      a: edge.source,
+      b: edge.target,
+      type:
+        edge.relationship === "correlated_email" ? "corroborated" : "verified",
+      confidence: edge.confidence || 1,
+      reason:
+        edge.relationship === "correlated_email"
+          ? edge.signals?.length
+            ? edge.signals.map(correlationSignalLabel).join(", ")
+            : "Correlated infrastructure"
+          : "Observed in this investigation",
+    }));
   return { nodes, edges };
 }
 
@@ -108,7 +136,8 @@ export default function CampaignGraph({ nodes, edges, graph }) {
     <div className="graph-wrap" style={{ position: "relative" }}>
       <svg viewBox="0 0 900 420" style={{ width: "100%", height: 420 }}>
         {displayEdges.map((e, i) => {
-          const a = node(e.a), b = node(e.b);
+          const a = node(e.a),
+            b = node(e.b);
           if (!a || !b) return null;
           return (
             <line

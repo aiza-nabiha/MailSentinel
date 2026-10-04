@@ -11,7 +11,12 @@ export default function LoginPage() {
   return (
     <main className="workspace-page email-test-page">
       <div className="email-test-card">
-        <div className="brand-mark">⌁</div>
+        <img
+          className="login-brand-logo"
+          src="/mail-sentinel-mark.png"
+          alt=""
+          aria-hidden="true"
+        />
 
         <div className="eyebrow">
           <span /> SECURE WORKSPACE

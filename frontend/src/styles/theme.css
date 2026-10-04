@@ -20,16 +20,16 @@
   --high: var(--alabaster);
   --text: var(--alabaster);
   --text2: color-mix(in srgb, var(--heather) 82%, var(--sapphire));
-  --report-bg: #142b29;
-  --report-surface: #193531;
-  --report-card: #1e403b;
-  --report-card-hover: #264c45;
-  --report-border: #35564f;
-  --report-primary: #56b69f;
-  --report-secondary: #398f80;
-  --report-text: #edf3ef;
-  --report-text2: #afc0b8;
-  --report-safe: #72c49e;
+  --report-bg: #063154;
+  --report-surface: #073958;
+  --report-card: #07505e;
+  --report-card-hover: #086874;
+  --report-border: color-mix(in srgb, #bcc5cc 27%, transparent);
+  --report-primary: #2f9d94;
+  --report-secondary: #025f67;
+  --report-text: #f7f6f2;
+  --report-text2: color-mix(in srgb, #bcc5cc 82%, #063154);
+  --report-safe: #2f9d94;
   --report-medium: #e6b45b;
   --report-high: #e87569;
   --radius-lg: 18px;
@@ -50,16 +50,16 @@ html[data-theme="light"] {
   --high: var(--sapphire);
   --text: var(--sapphire);
   --text2: color-mix(in srgb, var(--sapphire) 67%, var(--heather));
-  --report-bg: #f7f9f7;
+  --report-bg: #f5f8fa;
   --report-surface: #fff;
   --report-card: #fff;
-  --report-card-hover: #f0f6f3;
-  --report-border: #e1e8e5;
-  --report-primary: #137d72;
-  --report-secondary: #0e6b62;
-  --report-text: #172624;
-  --report-text2: #697774;
-  --report-safe: #348568;
+  --report-card-hover: #edf4f6;
+  --report-border: #d7e2e8;
+  --report-primary: #025f67;
+  --report-secondary: #2f9d94;
+  --report-text: #063154;
+  --report-text2: color-mix(in srgb, #063154 67%, #bcc5cc);
+  --report-safe: #2f9d94;
   --report-medium: #b8781c;
   --report-high: #c83b20;
 }
@@ -136,6 +136,16 @@ label:focus-within {
   font:
     700 16px "Space Grotesk",
     sans-serif;
+}
+
+.brand-logo {
+  display: block;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .brand-name {
@@ -1838,10 +1848,13 @@ body {
   box-shadow: 0 24px 60px color-mix(in srgb, var(--sapphire) 30%, transparent);
 }
 
-.email-test-card > .brand-mark {
+.login-brand-logo {
+  display: block;
   width: 38px;
   height: 38px;
-  font-size: 20px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 32%, transparent);
 }
 
 .email-test-card .eyebrow {
@@ -3059,30 +3072,30 @@ html[data-theme="light"] .graph-wrap {
 }
 
 :root {
-  --report-bg: #142b29;
-  --report-surface: #193531;
-  --report-card: #1e403b;
-  --report-card-hover: #264c45;
-  --report-border: #35564f;
-  --report-primary: #56b69f;
-  --report-secondary: #398f80;
-  --report-text: #edf3ef;
-  --report-text2: #afc0b8;
-  --report-safe: #72c49e;
+  --report-bg: #063154;
+  --report-surface: #073958;
+  --report-card: #07505e;
+  --report-card-hover: #086874;
+  --report-border: color-mix(in srgb, #bcc5cc 27%, transparent);
+  --report-primary: #2f9d94;
+  --report-secondary: #025f67;
+  --report-text: #f7f6f2;
+  --report-text2: color-mix(in srgb, #bcc5cc 82%, #063154);
+  --report-safe: #2f9d94;
   --report-medium: #e6b45b;
   --report-high: #e87569;
 }
 html[data-theme="light"] {
-  --report-bg: #f7f9f7;
+  --report-bg: #f5f8fa;
   --report-surface: #fff;
   --report-card: #fff;
-  --report-card-hover: #f0f6f3;
-  --report-border: #e1e8e5;
-  --report-primary: #137d72;
-  --report-secondary: #0e6b62;
-  --report-text: #172624;
-  --report-text2: #697774;
-  --report-safe: #348568;
+  --report-card-hover: #edf4f6;
+  --report-border: #d7e2e8;
+  --report-primary: #025f67;
+  --report-secondary: #2f9d94;
+  --report-text: #063154;
+  --report-text2: color-mix(in srgb, #063154 67%, #bcc5cc);
+  --report-safe: #2f9d94;
   --report-medium: #b8781c;
   --report-high: #c83b20;
 }
@@ -3324,4 +3337,553 @@ html[data-theme="light"] {
 }
 .shodan-vulnerabilities {
   border-left-color: var(--high) !important;
+}
+
+.report-empty {
+  padding-top: 52px;
+}
+
+.threat-contribution-list {
+  display: grid;
+  margin: 0;
+  border: 1px solid var(--report-border);
+  border-radius: 12px;
+  padding: 4px 18px;
+  background: var(--report-surface);
+  list-style: none;
+}
+
+.threat-contribution-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--report-border);
+  padding: 13px 2px;
+}
+
+.threat-contribution-list li:last-child {
+  border-bottom: 0;
+}
+
+.threat-contribution-list li span {
+  color: var(--report-text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.threat-contribution-list li strong {
+  color: var(--report-primary);
+  font:
+    600 14px "IBM Plex Mono",
+    monospace;
+  white-space: nowrap;
+}
+
+.jarm-status {
+  overflow-wrap: anywhere;
+}
+
+.jarm-status.neutral {
+  color: var(--report-text2);
+}
+
+.jarm-status.success {
+  color: var(--report-safe);
+}
+
+.jarm-status.error {
+  color: var(--report-high);
+}
+
+.shodan-findings {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  border: 1px solid var(--report-border);
+  border-radius: 14px;
+  padding: 18px;
+  background: var(--report-surface);
+}
+
+.shodan-finding > small {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--report-text2);
+  font:
+    600 10px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.1em;
+}
+
+.shodan-port-list,
+.shodan-vulnerability-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.shodan-port,
+.shodan-tag,
+.shodan-vulnerability {
+  border: 1px solid var(--report-border);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font:
+    500 11px "IBM Plex Mono",
+    monospace;
+  overflow-wrap: anywhere;
+}
+
+.shodan-port,
+.shodan-tag {
+  background: color-mix(
+    in srgb,
+    var(--report-primary) 10%,
+    var(--report-surface)
+  );
+  color: var(--report-text);
+}
+
+.shodan-vulnerability {
+  border-color: color-mix(
+    in srgb,
+    var(--report-high) 48%,
+    var(--report-border)
+  );
+  background: color-mix(in srgb, var(--report-high) 14%, var(--report-surface));
+  color: var(--report-high);
+}
+
+.shodan-notable-ports {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.shodan-notable-ports li {
+  display: grid;
+  gap: 4px;
+  border-left: 2px solid var(--report-medium);
+  padding: 4px 0 4px 10px;
+  color: var(--report-text2);
+  font-size: 12px;
+}
+
+.shodan-notable-ports strong {
+  color: var(--report-text);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.status-pill.clean {
+  background: color-mix(in srgb, var(--safe) 14%, var(--surface));
+  color: var(--safe);
+}
+
+.status-pill.suspicious {
+  background: color-mix(in srgb, var(--medium) 15%, var(--surface));
+  color: var(--medium);
+}
+
+.status-pill.listed {
+  background: color-mix(in srgb, var(--high) 15%, var(--surface));
+  color: var(--high);
+}
+
+.status-pill.unknown {
+  background: color-mix(in srgb, var(--text2) 12%, var(--surface));
+  color: var(--text2);
+}
+
+.observed-domains-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.observed-domains-list li {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.correlation-match-list {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.correlation-match-list > li {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface);
+}
+
+.correlation-match-list > li > strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.correlation-signal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0;
+  list-style: none;
+}
+
+.correlation-signal-list li {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  color: var(--text2);
+  font-size: 11px;
+}
+
+.app-shell:has(.landing) {
+  --bg: var(--report-bg);
+  --surface: var(--report-surface);
+  --card: var(--report-card);
+  --card-hover: var(--report-card-hover);
+  --border: var(--report-border);
+  --primary: var(--report-primary);
+  --secondary: var(--report-secondary);
+  --accent: var(--report-primary);
+  --safe: var(--report-safe);
+  --medium: var(--report-medium);
+  --high: var(--report-high);
+  --text: var(--report-text);
+  --text2: var(--report-text2);
+  --sapphire: var(--report-bg);
+  --blue-lagoon: var(--report-secondary);
+  --scooter: var(--report-primary);
+  --heather: var(--report-text2);
+  --alabaster: var(--report-text);
+  background: var(--report-bg);
+  color: var(--report-text);
+}
+
+.app-shell:has(.landing) .landing {
+  background:
+    radial-gradient(
+      circle at 75% 8%,
+      color-mix(in srgb, var(--primary) 24%, transparent),
+      transparent 32%
+    ),
+    var(--bg);
+}
+
+.app-shell:has(.landing) .network-backdrop {
+  opacity: 0.42;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--text2) 22%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--text2) 22%, transparent) 1px,
+      transparent 1px
+    );
+}
+
+.app-shell:has(.landing) .topbar {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-shell:has(.landing) .brand-name span {
+  color: var(--primary);
+}
+
+.app-shell:has(.landing) .command-hero {
+  padding-top: 72px;
+  padding-bottom: 72px;
+}
+
+.app-shell:has(.landing) .hero-copy h1 {
+  letter-spacing: -0.075em;
+}
+
+.app-shell:has(.landing) .hero-copy h1 em {
+  display: inline;
+  transform: none;
+}
+
+.app-shell:has(.landing) .hero-visual {
+  border-width: 1px;
+  border-radius: 28px 8px;
+  box-shadow: 0 25px 60px color-mix(in srgb, var(--sapphire) 38%, transparent);
+}
+
+.app-shell:has(.landing) .signal-band {
+  max-width: 1164px;
+  gap: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 22px 40px color-mix(in srgb, var(--sapphire) 20%, transparent);
+}
+
+.app-shell:has(.landing) .signal-band > div {
+  transform: none;
+  border: 0 !important;
+  border-right: 1px solid var(--border) !important;
+  border-radius: 0;
+  padding: 22px 28px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.app-shell:has(.landing) .signal-band > div:last-child {
+  border-right: 0 !important;
+}
+
+.app-shell:has(.landing) .upload-section {
+  margin: 120px auto;
+}
+
+.app-shell:has(.landing) .drop-zone {
+  border: 1px solid color-mix(in srgb, var(--primary) 58%, var(--border));
+  border-radius: 24px;
+  box-shadow: 0 26px 60px color-mix(in srgb, var(--sapphire) 24%, transparent);
+}
+
+.app-shell:has(.landing) .why-section {
+  background: linear-gradient(
+    105deg,
+    var(--bg),
+    color-mix(in srgb, var(--secondary) 32%, var(--bg))
+  );
+}
+
+.app-shell:has(.landing) .feature-grid {
+  gap: 1px;
+  border: 1px solid color-mix(in srgb, var(--heather) 22%, transparent);
+  border-radius: 18px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.app-shell:has(.landing) .feature-grid article {
+  transform: none;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.app-shell:has(.landing) .feature-grid article:nth-child(2),
+.app-shell:has(.landing) .feature-grid article:nth-child(3),
+.app-shell:has(.report) .evidence-card:nth-child(2n) {
+  transform: none;
+}
+
+.app-shell:has(.report) .evidence-grid {
+  gap: 2px;
+}
+
+.app-shell:has(.report) .evidence-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.app-shell:has(.report) .stat-grid {
+  gap: 1px;
+}
+
+.app-shell:has(.report) .campaign-section {
+  border: 1px solid var(--report-border);
+  border-radius: 20px;
+  box-shadow: 0 22px 54px color-mix(in srgb, var(--report-text) 9%, transparent);
+}
+
+.app-shell:has(.report) .report-nav {
+  border: 1px solid var(--report-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: none;
+}
+
+.app-shell:has(.report) .report .hero {
+  border-radius: 0;
+  box-shadow: 0 25px 70px color-mix(in srgb, var(--sapphire) 30%, transparent);
+}
+
+.app-shell:has(.workspace-page) .archive-list,
+.app-shell:has(.workspace-page) .settings-card {
+  border: 1px solid var(--report-border);
+  border-radius: 15px;
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .app-shell:has(.landing) .command-hero {
+    padding: 58px 22px 40px;
+  }
+
+  .app-shell:has(.landing) .signal-band {
+    margin: 0 20px;
+  }
+
+  .app-shell:has(.landing) .signal-band > div {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+
+  .app-shell:has(.landing) .signal-band > div:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .app-shell:has(.landing) .upload-section {
+    margin: 80px 20px;
+  }
+
+  .app-shell:has(.landing) .feature-grid {
+    gap: 1px;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    min-height: auto;
+    padding: 10px 14px;
+  }
+
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .brand-name {
+    font-size: 16px;
+  }
+
+  .top-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    gap: 4px;
+    margin: 0;
+  }
+
+  .top-nav button {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .topbar-actions {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 8px;
+  }
+
+  .topbar-actions > button:first-of-type span:last-child {
+    display: none;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .case-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 22px;
+  }
+
+  .case-actions {
+    grid-column: auto;
+    flex-direction: column;
+  }
+
+  .case-actions button {
+    width: 100%;
+  }
+
+  .mail-metadata strong {
+    overflow-wrap: anywhere;
+  }
+
+  .breadcrumb {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .breadcrumb span:last-child {
+    margin-left: 0;
+  }
+
+  .campaign-section {
+    margin-right: 0;
+    margin-left: 0;
+    padding: 20px 16px;
+  }
+
+  .report-empty {
+    padding-top: 36px;
+  }
+
+  .email-test-card {
+    padding: 24px 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .topbar {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .brand {
+    gap: 7px;
+  }
+
+  .brand-name {
+    font-size: 14px;
+  }
+
+  .top-nav {
+    gap: 0;
+  }
+
+  .top-nav button {
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+
+  .theme-toggle {
+    padding: 7px 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network-backdrop i,
+  .network-backdrop b {
+    animation: none;
+  }
 }

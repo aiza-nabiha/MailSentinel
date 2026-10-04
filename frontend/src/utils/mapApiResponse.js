@@ -115,6 +115,9 @@ export function mapApiResponseToReportShape(api) {
     risk_score: Math.round(
       api.overall_risk_score || api.infrastructure_risk?.risk_score || 0,
     ),
+    threat_contributions: api.threat_contributions
+      ? { items: array(api.threat_contributions.items) }
+      : null,
     risk_level: level(api.verdict || api.infrastructure_risk?.risk_level),
     threat_label:
       api.classifier?.verdict === "threat"
