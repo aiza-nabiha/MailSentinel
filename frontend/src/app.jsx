@@ -8,6 +8,7 @@ import {
   getCurrentUser,
   logoutUrl,
 } from "./utils/api";
+import { formatTimestamp } from "./utils/mapApiResponse";
 
 const analysisSteps = [
   "Parsing email",
@@ -514,7 +515,7 @@ function History({ openReport, newInvestigation, onAuthRequired }) {
             <strong>{item.subject || item.email_id}</strong>
 
             <span className="archive-time">
-              {item.ingested_at || "Date unavailable"}
+              {formatTimestamp(item.ingested_at) || "Date unavailable"}
             </span>
 
             <span className="archive-score">

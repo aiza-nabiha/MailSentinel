@@ -668,7 +668,7 @@ class ContentAnalyzer:
 
         prediction = (
             "phishing"
-            if threat_probability >= 0.50
+            if threat_probability >= 0.70
             else "legitimate"
         )
 

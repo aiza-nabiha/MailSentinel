@@ -5,6 +5,7 @@ import RelayPath from "../components/RelayPath";
 import CampaignGraph from "../components/CampaignGraph";
 import {
   correlationSignalLabel,
+  formatTimestamp,
   mapApiResponseToReportShape,
 } from "../utils/mapApiResponse";
 
@@ -151,7 +152,7 @@ export default function InvestigationReportPage({
         <span className="mono">
           CASE #{String(data.investigation_id).slice(-8).toUpperCase()}
         </span>
-        <span>{data.analyzed_at || "Date unavailable"}</span>
+        <span>{formatTimestamp(data.analyzed_at) || "Date unavailable"}</span>
         {triggeredBy && (
           <span className="mono">
             Triggered by {value(triggeredBy.user_id, "unknown user")} ·{" "}

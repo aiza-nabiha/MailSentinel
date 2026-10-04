@@ -34,7 +34,7 @@ MODEL_PATH = "ml_models/content_classifier.joblib"
 RANDOM_STATE = 42
 
 # Linear SVM configuration
-SVM_C = 1.0
+SVM_C = 0.5
 SVM_MAX_ITER = 10000
 
 # Calibration configuration
@@ -305,7 +305,7 @@ for column in train_features.columns:
 # SELECT NUMERIC FEATURES
 # ==================================================
 
-# Keep only numeric features that are meaningful for this experiment.
+# Keep only numeric features selected for the production model.
 # These four features were always zero in the original training data.
 
 EXCLUDED_FEATURES = {
@@ -322,11 +322,11 @@ numeric_feature_names = [
     and column not in EXCLUDED_FEATURES
 ]
 
-print("\nExcluded features from experimental model:")
+print("\nExcluded features from production model:")
 for column in sorted(EXCLUDED_FEATURES):
     print("-", column)
 
-print("\nExperimental numeric feature count:", len(numeric_feature_names))
+print("\nProduction numeric feature count:", len(numeric_feature_names))
 
 # Ensure train and test feature columns match.
 missing_test_features = [
@@ -416,7 +416,7 @@ print("=" * 70)
 
 base_svm = LinearSVC(
     C=SVM_C,
-    class_weight="balanced",
+    class_weight=None,
     max_iter=SVM_MAX_ITER,
     random_state=RANDOM_STATE
 )
@@ -581,16 +581,6 @@ print("\n" + "=" * 70)
 print("SAVING V5 MODEL")
 print("=" * 70)
 
-EXPERIMENT_MODEL_PATH = os.path.join(
-    os.path.dirname(MODEL_PATH),
-    "content_classifier_experiment_no_structural.joblib"
-)
-
-os.makedirs(
-    os.path.dirname(EXPERIMENT_MODEL_PATH),
-    exist_ok=True
-)
-
 model_bundle = {
 
     "vectorizer": vectorizer,
@@ -601,7 +591,7 @@ model_bundle = {
 
     "feature_names": numeric_feature_names,
 
-    "version": "v5_experiment_no_structural",
+    "version": "v5_calibrated_svm",
 
     "model_type": "Calibrated Linear SVM",
 
@@ -620,12 +610,12 @@ model_bundle = {
 
 joblib.dump(
     model_bundle,
-    EXPERIMENT_MODEL_PATH,
+    MODEL_PATH,
     compress=3
 )
 
 print(
-    f"\nExperimental model saved to: {EXPERIMENT_MODEL_PATH}"
+    f"\nProduction model saved to: {MODEL_PATH}"
 )
 
 print("\nModel bundle contents:")
