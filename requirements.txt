@@ -15,4 +15,3 @@ scipy==1.18.1
 pandas==3.0.6
 joblib==1.5.3
 pyjarm==0.0.5
-shap==0.51.0
