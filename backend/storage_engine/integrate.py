@@ -593,14 +593,8 @@ def insert_email_record(
                     "threat_probability": classifier_data.get(
                         "phishing_score"
                     ),
-                    "url_intelligence": url_intelligence,
-                    "email_structure": email_structure,
                 },
-                url_intelligence=url_intelligence,
-                authentication=authentication,
-                infrastructure_result=infrastructure_result,
-                domain_result=domain_result,
-                email_structure=email_structure,
+                domain_infra_risk=domain_infra_risk,
             )
             if calculate_threat_contributions
             else None

@@ -16,23 +16,13 @@ from typing import Any, Dict, List
 
 FACTOR_KEYS = [
     "content_ml",
-    "url_analysis",
-    "email_authentication",
-    "infrastructure_reputation",
-    "qr_ocr",
-    "attachments",
+    "domain_infrastructure",
 ]
-
 
 FACTOR_LABELS = {
     "content_ml": "Content / ML analysis",
-    "url_analysis": "URL analysis",
-    "email_authentication": "Email authentication",
-    "infrastructure_reputation": "Infrastructure / domain reputation",
-    "qr_ocr": "QR / OCR analysis",
-    "attachments": "Attachment analysis",
+    "domain_infrastructure": "Domain & infrastructure",
 }
-
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 100.0) -> float:
     """Keep a numeric value inside a safe range."""
@@ -193,172 +183,98 @@ def _attachment_strength(email_structure: Dict[str, Any]) -> float:
     return _clamp(min(attachment_count * 10.0, 40.0))
 
 
-def _content_ml_strength(content_result: Dict[str, Any]) -> float:
+def _classifier_risk_score(content_result: Dict[str, Any]) -> float:
     """
-    Convert the existing calibrated ML threat probability into
-    positive threat evidence strength.
+    Return the classifier's phishing risk as a 0-100 score.
 
-    0.50 is the current classifier decision threshold.
-    Below 0.50 contributes no positive phishing evidence.
-
-    SHAP remains internal explainability information and is not
-    directly converted into a percentage here.
+    This is the model risk signal only. No frontend-facing SHAP
+    values or separate contribution heuristics are calculated here.
     """
-
-    probability = float(
-        content_result.get("threat_probability", 0.0) or 0.0
-    )
-
-    probability = _clamp(probability, 0.0, 1.0)
-
-    if probability <= 0.50:
+    if not content_result:
         return 0.0
 
-    # Maps:
-    # 0.50 -> 0
-    # 0.75 -> 50
-    # 1.00 -> 100
-    return _clamp((probability - 0.50) * 200.0, 0.0, 100.0)
+    probability = content_result.get("threat_probability")
 
+    try:
+        probability = float(probability)
+    except (TypeError, ValueError):
+        return 0.0
 
-def _infrastructure_strength(
-    infrastructure_result: Dict[str, Any],
-    domain_result: Dict[str, Any] = None,
-) -> float:
-    """
-    Consume the existing infrastructure/domain risk scores.
-
-    No new infrastructure scoring is performed here.
-    """
-
-    infrastructure_result = infrastructure_result or {}
-    domain_result = domain_result or {}
-
-    infrastructure_score = float(
-        infrastructure_result.get("risk_score", 0.0) or 0.0
-    )
-
-    domain_score = float(
-        domain_result.get("risk_score", 0.0) or 0.0
-    )
-
-    # Use the strongest existing infrastructure/domain signal,
-    # matching the project's existing philosophy of not diluting
-    # a strong malicious-domain signal.
-    return _clamp(max(infrastructure_score, domain_score))
-
-
-def _normalize_contributions(raw_scores: Dict[str, float]) -> Dict[str, int]:
-    """
-    Normalize positive evidence strengths into integer percentages
-    whose total is exactly 100.
-
-    Uses largest-remainder rounding so the displayed values never
-    accidentally add up to 99 or 101.
-    """
-
-    positive = {
-        key: max(float(value), 0.0)
-        for key, value in raw_scores.items()
-    }
-
-    total = sum(positive.values())
-
-    if total <= 0:
-        return {key: 0 for key in FACTOR_KEYS}
-
-    exact = {
-        key: (value / total) * 100.0
-        for key, value in positive.items()
-    }
-
-    floors = {
-        key: int(value)
-        for key, value in exact.items()
-    }
-
-    remainder = 100 - sum(floors.values())
-
-    fractions = sorted(
-        FACTOR_KEYS,
-        key=lambda key: exact[key] - floors[key],
-        reverse=True,
-    )
-
-    for key in fractions[:remainder]:
-        floors[key] += 1
-
-    return floors
+    probability = max(0.0, min(probability, 1.0))
+    return probability * 100.0
 
 
 def calculate_threat_contributions(
     content_result: Dict[str, Any] = None,
-    url_intelligence: Dict[str, Any] = None,
-    authentication: Dict[str, Any] = None,
-    infrastructure_result: Dict[str, Any] = None,
-    domain_result: Dict[str, Any] = None,
-    email_structure: Dict[str, Any] = None,
+    domain_infra_risk: float = 0.0,
+    **_unused: Any,
 ) -> Dict[str, Any]:
     """
-    Calculate the presentation-level detection contribution breakdown.
+    Explain the final threat score using the same two primary
+    risk signals used by storage_engine.integrate.
 
-    Returns a backend-friendly structure that the frontend can render
-    directly without knowing anything about SHAP or engine internals.
+    Final score:
+        40% classifier risk
+        60% domain/infrastructure risk
+
+    The returned values are score points, not independent evidence
+    percentages. Their sum matches the final threat score.
     """
 
-    content_result = content_result or {}
+    classifier_risk_score = _classifier_risk_score(content_result)
 
-    if url_intelligence is None:
-        url_intelligence = content_result.get(
-            "url_intelligence",
-            {},
-        )
+    try:
+        domain_infra_risk = float(domain_infra_risk or 0.0)
+    except (TypeError, ValueError):
+        domain_infra_risk = 0.0
 
-    if email_structure is None:
-        email_structure = content_result.get(
-            "email_structure",
-            {},
-        )
+    domain_infra_risk = max(
+        0.0,
+        min(domain_infra_risk, 100.0),
+    )
 
-    raw_scores = {
-        "content_ml": _content_ml_strength(content_result),
+    ml_impact = classifier_risk_score * 0.40
+    domain_infra_impact = domain_infra_risk * 0.60
 
-        "url_analysis": _url_strength(
-            url_intelligence
-        ),
+    final_score = round(
+        ml_impact + domain_infra_impact
+    )
 
-        "email_authentication": _authentication_strength(
-            authentication or {}
-        ),
+    # Convert the two weighted values into integer display points
+    # while guaranteeing that they add up exactly to final_score.
+    ml_floor = int(ml_impact)
+    infra_floor = int(domain_infra_impact)
 
-        "infrastructure_reputation": _infrastructure_strength(
-            infrastructure_result or {},
-            domain_result or {},
-        ),
+    remainder = final_score - ml_floor - infra_floor
 
-        "qr_ocr": _qr_ocr_strength(
-            url_intelligence
-        ),
+    ml_contribution = ml_floor
+    infra_contribution = infra_floor
 
-        "attachments": _attachment_strength(
-            email_structure
-        ),
-    }
+    if remainder > 0:
+        ml_fraction = ml_impact - ml_floor
+        infra_fraction = domain_infra_impact - infra_floor
 
-    contributions = _normalize_contributions(raw_scores)
+        if ml_fraction >= infra_fraction:
+            ml_contribution += remainder
+        else:
+            infra_contribution += remainder
 
-    contribution_list: List[Dict[str, Any]] = [
+    items = [
         {
-            "key": key,
-            "label": FACTOR_LABELS[key],
-            "percentage": contributions[key],
-        }
-        for key in FACTOR_KEYS
+            "key": "content_ml",
+            "label": FACTOR_LABELS["content_ml"],
+            "percentage": ml_contribution,
+        },
+        {
+            "key": "domain_infrastructure",
+            "label": FACTOR_LABELS["domain_infrastructure"],
+            "percentage": infra_contribution,
+        },
     ]
 
     return {
-        "contributions": contributions,
-        "items": contribution_list,
-        "raw_evidence": raw_scores,
-        "total_percentage": sum(contributions.values()),
+        "items": items,
+        "total_percentage": sum(
+            item["percentage"] for item in items
+        ),
     }
