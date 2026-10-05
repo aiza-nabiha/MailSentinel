@@ -57,6 +57,7 @@ export function mapApiResponseToReportShape(api) {
   const reliableHop = api.infrastructure_risk?.reliable_hop || null;
   const reliableHopNode = reliableHop?.earliest_reliable_node || {};
   const ipinfo = reliableHop?.ip_intelligence?.ipinfo || {};
+  const shodan = api.shodan || null;
 
   const matches = array(api.campaign_correlation?.matches);
   const nodes = [{ id: "email", x: 450, y: 220, icon: "📧", label: "This email", core: true }, ...(primary.domain ? [{ id: "domain", x: 265, y: 135, icon: "🌐", label: primary.domain }] : []), ...matches.map((match, index) => ({ id: match.email_id, x: 700 + (index % 2) * 95, y: 130 + index * 105, icon: "📧", label: match.email_id }))];
