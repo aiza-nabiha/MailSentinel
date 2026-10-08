@@ -10,6 +10,16 @@ import {
 } from "../utils/mapApiResponse";
 
 const value = (item, fallback = "Not available") => item ?? fallback;
+const authenticationClass = (result) => {
+  const results =
+    typeof result === "string"
+      ? result.split(",").map((item) => item.trim().toLowerCase())
+      : [];
+  if (results.includes("fail")) return "fail";
+  return results.length && results.every((item) => item === "pass")
+    ? "pass"
+    : "unknown";
+};
 // classifier.reasons items can be a plain string OR an object shaped
 // {title, description, severity} (the SVM classifier's supporting_evidence
 // format) -- rendering one of those objects directly as a React child
@@ -44,17 +54,7 @@ const urlReputationStatus = (item) => {
 const Status = ({ label, result }) => (
   <div className="auth-row">
     <span>{label}</span>
-    <b
-      className={
-        String(result).toLowerCase() === "pass"
-          ? "pass"
-          : String(result).toLowerCase() === "fail"
-            ? "fail"
-            : "unknown"
-      }
-    >
-      {value(result)}
-    </b>
+    <b className={authenticationClass(result)}>{value(result)}</b>
   </div>
 );
 
@@ -72,6 +72,7 @@ export default function InvestigationReportPage({
   const data = mapApiResponseToReportShape(apiResponse);
   const domain = data.domain_info;
   const auth = apiResponse.header_auth || {};
+  const authentication = data.authentication;
   const triggeredBy = data.triggered_by;
   const correlationMatches = Array.isArray(
     apiResponse.campaign_correlation?.matches,
@@ -93,7 +94,7 @@ export default function InvestigationReportPage({
     [
       "DOMAIN",
       domain?.domain || "No domain observed",
-      domain ? "Observed" : null,
+      domain?.domain ? "Observed" : null,
     ],
     ["IP", domain?.ip || "No resolved IP", domain?.ip ? "Observed" : null],
     [
@@ -116,8 +117,10 @@ export default function InvestigationReportPage({
       : "No content score returned";
   const infraFinding = data.infrastructure_evidence.length
     ? `${data.infrastructure_evidence.length} infrastructure indicators`
-    : domain
+    : domain?.domain
       ? `Domain: ${domain.domain}`
+      : domain?.ip
+        ? `IP: ${domain.ip}`
       : "No infrastructure indicators returned";
   const jarm = domain?.jarm;
   const jarmStatusClass =
@@ -139,6 +142,33 @@ export default function InvestigationReportPage({
     ? apiResponse.domains
     : Object.values(apiResponse.domains || {});
   const threatContributionItems = data.threat_contributions?.items || [];
+  const threatContributionTotal = data.threat_contributions?.total_percentage;
+  const urlIntelligence =
+    apiResponse.url_intelligence ||
+    apiResponse.classifier?.url_intelligence ||
+    {};
+  const qrUrls = Array.isArray(urlIntelligence.qr_urls)
+    ? urlIntelligence.qr_urls
+    : Array.isArray(apiResponse.qr_urls)
+      ? apiResponse.qr_urls
+      : null;
+  const ocrUrls = Array.isArray(urlIntelligence.ocr_urls)
+    ? urlIntelligence.ocr_urls
+    : Array.isArray(apiResponse.ocr_urls)
+      ? apiResponse.ocr_urls
+      : null;
+  const imageUrlCount =
+    urlIntelligence.image_url_count ?? apiResponse.image_url_count ?? null;
+  const emailStructure =
+    apiResponse.email_structure ||
+    apiResponse.classifier?.email_structure ||
+    {};
+  const attachmentCount =
+    emailStructure.attachment_count ??
+    apiResponse.attachment_count ??
+    (Array.isArray(apiResponse.attachments)
+      ? apiResponse.attachments.length
+      : null);
   const hasShodanFindings =
     shodan?.status === "success" &&
     (shodan.ports.length > 0 ||
@@ -214,9 +244,9 @@ export default function InvestigationReportPage({
             </article>
             <article>
               <small>AUTHENTICATION</small>
-              <Status label="SPF" result={auth.spf} />
-              <Status label="DMARC" result={auth.dmarc} />
-              <p>DKIM status is not returned by this API.</p>
+              <Status label="SPF" result={authentication.spf} />
+              <Status label="DKIM" result={authentication.dkim} />
+              <Status label="DMARC" result={authentication.dmarc} />
             </article>
             <article>
               <small>INFRASTRUCTURE</small>
@@ -270,35 +300,219 @@ export default function InvestigationReportPage({
               ))}
             </div>
           </section>
-          {threatContributionItems.length > 0 && (
-            <section className="section threat-analysis-section">
-              <div className="section-head">
-                <div>
-                  <div className="section-kicker">THREAT ANALYSIS</div>
-                  <div className="section-title">🛡️ Threat Analysis</div>
+          <section className="section threat-analysis-section">
+            <div className="section-head">
+              <div>
+                <div className="section-kicker">THREAT SCORE CONTRIBUTION</div>
+                <div className="section-title">
+                  🛡️ Threat Score Contribution
                 </div>
-                <div className="final-risk">
-                  <small>OVERALL THREAT SCORE</small>
-                  <b>
-                    {data.risk_score}
-                    <em>%</em>
-                  </b>
-                </div>
+                <p className="threat-contribution-explanation">
+                  The contribution breakdown shows how the primary risk signals
+                  contribute to the overall threat score.
+                </p>
               </div>
+              <div className="final-risk">
+                <small>OVERALL THREAT SCORE</small>
+                <b>
+                  {data.risk_score}
+                  <em>/ 100</em>
+                </b>
+              </div>
+            </div>
+            {threatContributionItems.length > 0 ? (
               <ul className="threat-contribution-list">
                 {threatContributionItems.map((item, index) => (
-                  <li key={item.key || `${item.label || "factor"}-${index}`}>
-                    <span>{item.label || "Threat factor"}</span>
-                    <strong>
-                      {item.percentage == null
-                        ? "Not available"
-                        : `${item.percentage}%`}
-                    </strong>
+                  <li
+                    className="threat-contribution-item"
+                    key={item.key || `${item.label || "factor"}-${index}`}
+                  >
+                    <div className="threat-contribution-row">
+                      <span>
+                        {item.key === "content_ml"
+                          ? "🧠 "
+                          : item.key === "domain_infrastructure"
+                            ? "🌐 "
+                            : ""}
+                        {item.label || "Threat factor"}
+                      </span>
+                      <strong>
+                        {item.percentage == null
+                          ? "Not available"
+                          : item.percentage}
+                      </strong>
+                    </div>
+                    <div
+                      className="threat-contribution-track"
+                      role="img"
+                      aria-label={`${item.label || "Threat factor"} contribution`}
+                    >
+                      <div
+                        className="threat-contribution-bar"
+                        style={{
+                          width:
+                            typeof item.percentage === "number" &&
+                            Number.isFinite(item.percentage)
+                              ? `${item.percentage}%`
+                              : "0%",
+                        }}
+                      />
+                    </div>
                   </li>
                 ))}
+                <li className="threat-contribution-total">
+                  <span>Total</span>
+                  <strong>
+                    {threatContributionTotal == null
+                      ? "Not available"
+                      : threatContributionTotal}
+                  </strong>
+                </li>
               </ul>
-            </section>
-          )}
+            ) : (
+              <p className="empty-state">
+                Threat contribution data unavailable.
+              </p>
+            )}
+          </section>
+          <section className="section forensic-evidence-section">
+            <div className="section-head">
+              <div>
+                <div className="section-kicker">FORENSIC EVIDENCE</div>
+                <div className="section-title">
+                  Supporting investigation evidence
+                </div>
+              </div>
+            </div>
+            <div className="summary-grid forensic-evidence-grid">
+              <article>
+                <small>🔗 URL INTELLIGENCE</small>
+                {data.url_reputation.length > 0 ? (
+                  <ul>
+                    {data.url_reputation.map((item, index) => (
+                      <li key={`${item.url || "url"}-${index}`}>
+                        {item.url || "URL unavailable"}
+                        {item.found_on_lists.length > 0 &&
+                          ` — listed on ${item.found_on_lists.join(", ")}`}
+                      </li>
+                    ))}
+                  </ul>
+                ) : Array.isArray(apiResponse.urls) &&
+                  apiResponse.urls.length > 0 ? (
+                  <ul>
+                    {apiResponse.urls.map((url, index) => (
+                      <li key={`${url}-${index}`}>{url}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No URL intelligence returned.</p>
+                )}
+              </article>
+              <article>
+                <small>🔐 EMAIL AUTHENTICATION</small>
+                <Status label="SPF" result={authentication.spf} />
+                <Status label="DKIM" result={authentication.dkim} />
+                <Status label="DMARC" result={authentication.dmarc} />
+              </article>
+              <article>
+                <small>🌐 DOMAIN INTELLIGENCE</small>
+                {domain?.domain ? (
+                  <>
+                    <strong>{domain.domain}</strong>
+                    <p>
+                      {[
+                        domain.reputation?.reputation,
+                        domain.age_days != null
+                          ? `${domain.age_days} days old`
+                          : null,
+                        domain.tls_status ? `TLS ${domain.tls_status}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") ||
+                        "Additional domain details unavailable."}
+                    </p>
+                  </>
+                ) : (
+                  <p>No domain intelligence returned.</p>
+                )}
+              </article>
+              <article>
+                <small>🖥️ IP / INFRASTRUCTURE INTELLIGENCE</small>
+                {domain?.ip ||
+                domain?.asn ||
+                domain?.hosting ||
+                domain?.country ||
+                data.infrastructure_evidence.length ? (
+                  <>
+                    <div className="infra-summary">
+                      <div>
+                        <small>IP ADDRESS</small>
+                        <strong className="mono">{value(domain?.ip)}</strong>
+                      </div>
+                      <div>
+                        <small>ASN</small>
+                        <strong className="mono">{value(domain?.asn)}</strong>
+                      </div>
+                      <div>
+                        <small>HOSTING / ORGANIZATION</small>
+                        <strong>{value(domain?.hosting)}</strong>
+                      </div>
+                      <div>
+                        <small>COUNTRY</small>
+                        <strong>{value(domain?.country)}</strong>
+                      </div>
+                    </div>
+                    {data.infrastructure_evidence.length > 0 ? (
+                      <ul>
+                        {data.infrastructure_evidence.map((item, index) => (
+                          <li key={`${item}-${index}`}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>Infrastructure evidence details unavailable.</p>
+                    )}
+                  </>
+                ) : (
+                  <p>No IP / infrastructure intelligence returned.</p>
+                )}
+              </article>
+              <article>
+                <small>📷 QR / OCR</small>
+                {qrUrls || ocrUrls || imageUrlCount != null ? (
+                  <>
+                    {qrUrls && <p>QR URLs: {qrUrls.length}</p>}
+                    {ocrUrls && <p>OCR URLs: {ocrUrls.length}</p>}
+                    {imageUrlCount != null && (
+                      <p>QR / OCR image URLs: {imageUrlCount}</p>
+                    )}
+                    {[...(qrUrls || []), ...(ocrUrls || [])].length > 0 && (
+                      <ul>
+                        {[...(qrUrls || []), ...(ocrUrls || [])].map(
+                          (url, index) => (
+                            <li key={`${url}-${index}`}>{url}</li>
+                          ),
+                        )}
+                      </ul>
+                    )}
+                  </>
+                ) : (
+                  <p>QR / OCR results not returned.</p>
+                )}
+              </article>
+              <article>
+                <small>📎 ATTACHMENTS</small>
+                {attachmentCount != null ? (
+                  <strong>
+                    {attachmentCount === 0
+                      ? "No attachments detected"
+                      : `${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"} detected`}
+                  </strong>
+                ) : (
+                  <p>Attachment details not returned.</p>
+                )}
+              </article>
+            </div>
+          </section>
           <section className="section">
             <div className="section-head">
               <div>
@@ -326,7 +540,9 @@ export default function InvestigationReportPage({
                 <div>
                   <small>AUTHENTICATION</small>
                   <strong>
-                    SPF {value(auth.spf)} · DMARC {value(auth.dmarc)}
+                    SPF {value(authentication.spf)} · DKIM{" "}
+                    {value(authentication.dkim)} · DMARC{" "}
+                    {value(authentication.dmarc)}
                   </strong>
                 </div>
                 <div>
@@ -398,7 +614,7 @@ export default function InvestigationReportPage({
                 </div>
               </div>
             </div>
-            {domain ? (
+            {domain?.domain ? (
               <>
                 <div className="score-categories">
                   <div>

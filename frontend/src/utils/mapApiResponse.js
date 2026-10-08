@@ -1,4 +1,26 @@
 const array = (value) => Array.isArray(value) ? value : [];
+const object = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const text = (value) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
+const firstText = (...values) => values.map(text).find(Boolean) || null;
+
+const authenticationStatus = (value) => {
+  const values = Array.isArray(value) ? value : [value];
+  const results = values
+    .map((item) => {
+      const result = typeof item === "object" && item !== null
+        ? item.result
+        : item;
+      if (typeof result !== "string" || !result.trim()) return null;
+      const normalized = result.trim();
+      return /^(pass|fail|none|unknown)$/i.test(normalized)
+        ? normalized.toUpperCase()
+        : normalized;
+    })
+    .filter(Boolean);
+  return results.length ? results.join(", ") : null;
+};
 
 const signalLabels = {
   same_ip: "Same Sending IP",
@@ -55,8 +77,32 @@ export function mapApiResponseToReportShape(api) {
   }));
 
   const reliableHop = api.infrastructure_risk?.reliable_hop || null;
-  const reliableHopNode = reliableHop?.earliest_reliable_node || {};
-  const ipinfo = reliableHop?.ip_intelligence?.ipinfo || {};
+  const reliableHopNode = object(reliableHop?.earliest_reliable_node);
+  const ipIntelligence = object(reliableHop?.ip_intelligence);
+  const ipinfo = object(ipIntelligence.ipinfo);
+  const ipapiIs = object(ipIntelligence.ipapi_is);
+  const ipapiCompany = object(ipapiIs.company);
+  const ipapiAsn = object(ipapiIs.asn);
+  const iplocate = object(ipIntelligence.iplocate);
+  const reverseDns = object(ipIntelligence.reverse_dns);
+  const shodan = ipIntelligence.shodan || null;
+  const ip = firstText(
+    reliableHopNode.ip,
+    ipIntelligence.ip,
+    primary.dns?.records?.A?.[0],
+    primary.ip,
+  );
+  const asn = firstText(ipinfo.asn, ipapiAsn.org, ipapiAsn.descr);
+  const hosting =
+    firstText(ipinfo.as_name, ipapiCompany.name) ||
+    (ipapiIs.is_hosting === true || ipapiIs.is_datacenter === true
+      ? "Hosting / datacenter"
+      : iplocate.is_hosting === true
+        ? "Hosting provider"
+        : null);
+  const country = firstText(ipinfo.country, ipapiIs.country);
+  const reverseHostname = firstText(reverseDns.hostname);
+  const hasInfrastructure = Boolean(ip || asn || hosting || country);
 
   const matches = array(api.campaign_correlation?.matches);
   const nodes = [{ id: "email", x: 450, y: 220, icon: "📧", label: "This email", core: true }, ...(primary.domain ? [{ id: "domain", x: 265, y: 135, icon: "🌐", label: primary.domain }] : []), ...matches.map((match, index) => ({ id: match.email_id, x: 700 + (index % 2) * 95, y: 130 + index * 105, icon: "📧", label: match.email_id }))];
@@ -66,36 +112,47 @@ export function mapApiResponseToReportShape(api) {
   // garbage text rather than crashing. Route through correlationSignalLabel
   // (defined above) the same way CampaignGraph.jsx already does.
   const edges = [...(primary.domain ? [{ a: "email", b: "domain", type: "verified", confidence: 1, reason: "Domain observed in this investigation" }] : []), ...matches.map((match) => ({ a: "email", b: match.email_id, type: "corroborated", confidence: match.confidence ?? 0.8, reason: array(match.signals).map(correlationSignalLabel).join(", ") || "Shared campaign infrastructure" }))];
-  const received = array(api.header_auth?.received_chain || api.infrastructure_risk?.received_chain);
+  const headerChain = array(api.header_auth?.received_chain).filter(
+    (hop) => hop && typeof hop === "object" && !Array.isArray(hop),
+  );
+  const received = headerChain.length
+    ? headerChain
+    : array(api.infrastructure_risk?.received_chain).filter(
+        (hop) => hop && typeof hop === "object" && !Array.isArray(hop),
+      );
 
   return {
     investigation_id: api.email_id || "pending",
     analyzed_at: api.analyzed_at || api.observed_at || null,
     risk_score: Math.round(
-      api.overall_risk_score || api.infrastructure_risk?.risk_score || 0,
+      api.overall_risk_score ?? api.infrastructure_risk?.risk_score ?? 0,
     ),
     threat_contributions: api.threat_contributions
-      ? { items: array(api.threat_contributions.items) }
+      ? {
+          items: array(api.threat_contributions.items),
+          total_percentage: api.threat_contributions.total_percentage ?? null,
+        }
       : null,
     risk_level: level(api.verdict || api.infrastructure_risk?.risk_level),
     threat_label:
       api.classifier?.verdict === "threat"
         ? "Credential phishing"
         : "Email investigation",
+    authentication: {
+      spf: authenticationStatus(api.header_auth?.spf),
+      dkim: authenticationStatus(api.header_auth?.dkim),
+      dmarc: authenticationStatus(api.header_auth?.dmarc),
+    },
     url: array(api.urls)[0] || array(api.url_reputation)[0]?.url || null,
     reasons,
     infrastructure_evidence: array(api.infrastructure_risk?.evidence),
-    domain_info: primary.domain
+    domain_info: (primary.domain || hasInfrastructure)
       ? {
-          domain: primary.domain,
-          ip:
-            reliableHopNode.ip ||
-            primary.dns?.records?.A?.[0] ||
-            primary.ip ||
-            null,
-          asn: ipinfo.asn || null,
-          hosting: ipinfo.as_name || null,
-          country: ipinfo.country || null,
+          domain: primary.domain || null,
+          ip,
+          asn,
+          hosting,
+          country,
           registrar: primary.whois?.registrar || null,
           created:
             primary.whois?.domain_age?.creation_date ||
@@ -137,17 +194,37 @@ export function mapApiResponseToReportShape(api) {
         }
       : null,
     relay_path: received.map((hop, index) => {
-      const isReliableHop = reliableHopNode.ip && hop.from_ip && hop.from_ip === reliableHopNode.ip;
-      const abuseScore = reliableHop?.ip_intelligence?.reputation?.abuse_score;
+      const reliableIp = text(reliableHopNode.ip);
+      const reliableHostname = text(reliableHopNode.hostname);
+      const isReliableHop = Boolean(
+        (reliableIp && hop.from_ip === reliableIp) ||
+        (reliableHostname &&
+          text(hop.from_host)?.toLowerCase() === reliableHostname.toLowerCase()),
+      );
+      const abuseScore = ipIntelligence.reputation?.abuse_score;
       return {
-        label: `Hop ${index + 1}`,
-        sub: hop.from_host || hop.hostname || hop.from_ip || "Unknown host",
+        label: `Hop ${hop.hop ?? index + 1}`,
+        sub:
+          hop.from_host ||
+          hop.hostname ||
+          (isReliableHop && reverseHostname) ||
+          hop.from_ip ||
+          "Unknown host",
         verified: Boolean(hop.verified),
         trusted: Boolean(hop.trusted),
-        ip: hop.from_ip || "—",
-        location: isReliableHop ? (ipinfo.country || "Unknown") : (hop.location || "Unknown"),
-        hosting: isReliableHop ? (ipinfo.as_name || "Unknown") : (hop.hosting || "Unknown"),
-        note: isReliableHop ? `Reliable hop (${reliableHopNode.reliability || "assessed"})${abuseScore != null ? ` · AbuseIPDB score ${abuseScore}` : ""}` : (hop.note || "Received header observation"),
+        reliable: isReliableHop,
+        ip: hop.from_ip || (isReliableHop && reliableIp) || "Not available",
+        location: isReliableHop
+          ? [firstText(ipapiIs.city), country].filter(Boolean).join(", ") ||
+            "Not available"
+          : firstText(hop.location) || "Not available",
+        reverseDns: isReliableHop ? reverseHostname : null,
+        hosting: isReliableHop
+          ? hosting || "Not available"
+          : firstText(hop.hosting) || "Not available",
+        note: isReliableHop
+          ? `Reliable hop (${text(reliableHopNode.reliability) || "assessed"})${abuseScore != null ? ` · AbuseIPDB score ${abuseScore}` : ""}`
+          : text(hop.note) || "Received header observation",
       };
     }),
     campaign_correlation: api.campaign_correlation ? {

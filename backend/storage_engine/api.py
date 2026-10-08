@@ -339,7 +339,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False, reque
         (email_id,),
     ).fetchall()
     header_row = conn.execute(
-        "SELECT spf_result, dmarc_result, dmarc_policy, received_chain_json FROM header_results WHERE email_id = %s",
+        "SELECT spf_result, dmarc_result, dmarc_policy, received_chain_json, dkim_json FROM header_results WHERE email_id = %s",
         (email_id,),
     ).fetchone()
     classifier_row = conn.execute(
@@ -460,6 +460,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False, reque
             "dmarc": header_row[1] if header_row else None,
             "dmarc_policy": header_row[2] if header_row else None,
             "received_chain": _json.loads(header_row[3]) if header_row and header_row[3] else [],
+            "dkim": _json.loads(header_row[4]) if header_row and header_row[4] else [],
         },
         "classifier": {
             "phishing_score": classifier_row[0] if classifier_row else None,
