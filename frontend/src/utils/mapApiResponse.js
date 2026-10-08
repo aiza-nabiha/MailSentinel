@@ -85,7 +85,7 @@ export function mapApiResponseToReportShape(api) {
   const ipapiAsn = object(ipapiIs.asn);
   const iplocate = object(ipIntelligence.iplocate);
   const reverseDns = object(ipIntelligence.reverse_dns);
-  const shodan = ipIntelligence.shodan || null;
+  const shodan = ipIntelligence.shodan || api.shodan || null;
   const ip = firstText(
     reliableHopNode.ip,
     ipIntelligence.ip,

@@ -95,14 +95,18 @@ def mint_addon_session_token(email, email_id=None):
 # /analyze call after a cold start/restart pays both the container
 # boot cost and the ~7MB model deserialization cost back-to-back,
 # which is exactly when latency (and memory headroom) matters most.
-try:
-    from threat_detection_engine.core.content_analysis import (
-        get_content_analyzer,
-    )
+# Skipped when the classifier runs in the separate ML service
+# (ML_SERVICE_URL set) -- loading it here too would defeat the point of
+# splitting it out.
+if not os.environ.get("ML_SERVICE_URL"):
+    try:
+        from threat_detection_engine.core.content_analysis import (
+            get_content_analyzer,
+        )
 
-    get_content_analyzer()
-except Exception as _preload_error:  # pragma: no cover
-    print(f"[!] Content classifier preload failed: {_preload_error}")
+        get_content_analyzer()
+    except Exception as _preload_error:  # pragma: no cover
+        print(f"[!] Content classifier preload failed: {_preload_error}")
 
 @app.route("/auth/google")
 def google_login():

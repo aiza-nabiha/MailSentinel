@@ -24,9 +24,12 @@ POSTGRES VERSION. Two things changed from the original:
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+import requests
 
 from .db import (
     get_connection,
@@ -81,20 +84,53 @@ except ImportError as e:
 classify_email_real = None
 classify_email_fallback = None
 
-try:
-    # Same bug as the threat_contribution import above: ".." from this
-    # file overshoots ("storage_engine" is already the top of this
-    # file's own package chain), which raised
-    # "attempted relative import beyond top-level package" on every
-    # boot and masked whatever the real underlying import error was.
-    # Fixed the same way: absolute dotted path now that BACKEND_ROOT is
-    # on sys.path.
-    from threat_detection_engine.core.content_analysis import (
-        analyze_email_file as classify_email_real,
+# --- Content classifier: remote ML service OR in-process ----------------
+# If ML_SERVICE_URL is set (production on Render), the model lives in a
+# separate service (backend/ml_service/app.py) and this process never
+# imports scikit-learn/pandas, keeping its RAM small. If it is NOT set
+# (local development), the model loads in-process exactly as before.
+ML_SERVICE_URL = os.environ.get("ML_SERVICE_URL", "").rstrip("/")
+ML_SERVICE_TOKEN = os.environ.get("ML_SERVICE_TOKEN", "")
+
+
+def _classify_email_remote(eml_path):
+    """Same signature/return value as analyze_email_file(), but runs on
+    the ML service. Any failure raises, and run_classifier() below
+    already catches that and falls back to the rule-based stub."""
+    with open(eml_path, "rb") as f:
+        eml_bytes = f.read()
+
+    response = requests.post(
+        f"{ML_SERVICE_URL}/classify",
+        data=eml_bytes,
+        headers={
+            "X-ML-Token": ML_SERVICE_TOKEN,
+            "Content-Type": "message/rfc822",
+        },
+        timeout=(5, 30),  # (connect, read) -- keep under gunicorn's 60s
     )
-    print("[i] Person 1 REAL classifier module found")
-except ImportError as e:
-    print(f"[!] Person 1 real classifier not importable yet: {e}")
+    response.raise_for_status()
+    return response.json()
+
+
+if ML_SERVICE_URL:
+    classify_email_real = _classify_email_remote
+    print(f"[i] Person 1 classifier: using remote ML service at {ML_SERVICE_URL}")
+else:
+    try:
+        # Same bug as the threat_contribution import above: ".." from this
+        # file overshoots ("storage_engine" is already the top of this
+        # file's own package chain), which raised
+        # "attempted relative import beyond top-level package" on every
+        # boot and masked whatever the real underlying import error was.
+        # Fixed the same way: absolute dotted path now that BACKEND_ROOT is
+        # on sys.path.
+        from threat_detection_engine.core.content_analysis import (
+            analyze_email_file as classify_email_real,
+        )
+        print("[i] Person 1 REAL classifier module found")
+    except ImportError as e:
+        print(f"[!] Person 1 real classifier not importable yet: {e}")
 
 try:
     sys.path.append(str(BACKEND_ROOT / "threat_detection_engine"))
@@ -557,14 +593,8 @@ def insert_email_record(
                     "threat_probability": classifier_data.get(
                         "phishing_score"
                     ),
-                    "url_intelligence": url_intelligence,
-                    "email_structure": email_structure,
                 },
-                url_intelligence=url_intelligence,
-                authentication=authentication,
-                infrastructure_result=infrastructure_result,
-                domain_result=domain_result,
-                email_structure=email_structure,
+                domain_infra_risk=domain_infra_risk,
             )
             if calculate_threat_contributions
             else None
