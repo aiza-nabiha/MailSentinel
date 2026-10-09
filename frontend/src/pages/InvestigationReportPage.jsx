@@ -141,7 +141,13 @@ export default function InvestigationReportPage({
   const domainRecords = Array.isArray(apiResponse.domains)
     ? apiResponse.domains
     : Object.values(apiResponse.domains || {});
-  const threatContributionItems = data.threat_contributions?.items || [];
+  const primaryThreatContributionKeys = new Set([
+    "content_ml",
+    "domain_infrastructure",
+  ]);
+  const threatContributionItems = (
+    data.threat_contributions?.items || []
+  ).filter((item) => primaryThreatContributionKeys.has(item.key));
   const threatContributionTotal = data.threat_contributions?.total_percentage;
   const urlIntelligence =
     apiResponse.url_intelligence ||
