@@ -2,6 +2,7 @@
 
 /* MailSentinel palette: Scooter, Alabaster, Heather, Blue Lagoon, Sapphire. */
 :root {
+  color-scheme: dark;
   --scooter: #2f9d94;
   --alabaster: #f7f6f2;
   --heather: #bcc5cc;
@@ -37,31 +38,20 @@
 }
 
 html[data-theme="light"] {
-  --bg: var(--heather);
-  --surface: var(--alabaster);
-  --card: #fffefa;
-  --card-hover: #f0f4f2;
-  --border: color-mix(in srgb, var(--sapphire) 18%, transparent);
-  --primary: var(--blue-lagoon);
-  --secondary: var(--scooter);
-  --accent: var(--blue-lagoon);
-  --safe: var(--scooter);
-  --medium: var(--blue-lagoon);
-  --high: var(--sapphire);
-  --text: var(--sapphire);
-  --text2: color-mix(in srgb, var(--sapphire) 67%, var(--heather));
-  --report-bg: #f5f8fa;
-  --report-surface: #fff;
-  --report-card: #fff;
-  --report-card-hover: #edf4f6;
-  --report-border: #d7e2e8;
-  --report-primary: #025f67;
-  --report-secondary: #2f9d94;
-  --report-text: #063154;
-  --report-text2: color-mix(in srgb, #063154 67%, #bcc5cc);
-  --report-safe: #2f9d94;
-  --report-medium: #b8781c;
-  --report-high: #c83b20;
+  color-scheme: light;
+  --bg: #eff6f2;
+  --surface: #f8fcf9;
+  --card: #ffffff;
+  --card-hover: #eaf5ef;
+  --border: color-mix(in srgb, #173b31 17%, transparent);
+  --primary: #087f70;
+  --secondary: #2f9d77;
+  --accent: #087f70;
+  --safe: #16825d;
+  --medium: #90600c;
+  --high: #b74338;
+  --text: #173b31;
+  --text2: #526e64;
 }
 
 * {
@@ -2048,20 +2038,20 @@ html[data-theme="light"] body {
   background:
     radial-gradient(
       circle at 0% 0%,
-      color-mix(in srgb, var(--alabaster) 92%, transparent),
+      color-mix(in srgb, #ffffff 88%, transparent),
       transparent 34%
     ),
     radial-gradient(
       circle at 100% 18%,
-      color-mix(in srgb, var(--scooter) 20%, transparent),
+      color-mix(in srgb, var(--primary) 14%, transparent),
       transparent 28%
     ),
-    var(--heather);
+    var(--bg);
 }
 
 html[data-theme="light"] .topbar {
-  background: color-mix(in srgb, var(--alabaster) 72%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--sapphire) 14%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-bottom-color: var(--border);
 }
 
 html[data-theme="light"] .landing,
@@ -2069,27 +2059,27 @@ html[data-theme="light"] .analysis-screen {
   background:
     radial-gradient(
       circle at 83% 4%,
-      color-mix(in srgb, var(--scooter) 28%, transparent),
+      color-mix(in srgb, var(--primary) 22%, transparent),
       transparent 32%
     ),
     radial-gradient(
       circle at 15% 42%,
-      color-mix(in srgb, var(--alabaster) 75%, transparent),
+      color-mix(in srgb, #ffffff 76%, transparent),
       transparent 31%
     ),
-    var(--heather);
+    var(--bg);
 }
 
 html[data-theme="light"] .network-backdrop {
   opacity: 0.28;
   background-image:
     linear-gradient(
-      color-mix(in srgb, var(--sapphire) 22%, transparent) 1px,
+      color-mix(in srgb, var(--primary) 16%, transparent) 1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--sapphire) 22%, transparent) 1px,
+      color-mix(in srgb, var(--primary) 16%, transparent) 1px,
       transparent 1px
     );
 }
@@ -2105,7 +2095,7 @@ html[data-theme="light"] .hero-copy h1 {
 
 html[data-theme="light"] .hero-copy h1 em {
   display: inline-block;
-  color: var(--blue-lagoon);
+  color: var(--primary);
   transform: rotate(-2deg);
 }
 
@@ -2129,7 +2119,7 @@ html[data-theme="light"] .signal-band > div {
   border: 0 !important;
   border-radius: 22px;
   padding: 24px 26px;
-  background: color-mix(in srgb, var(--alabaster) 90%, transparent);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: 0 12px 25px color-mix(in srgb, var(--sapphire) 12%, transparent);
 }
 
@@ -2151,8 +2141,8 @@ html[data-theme="light"] .drop-zone {
   border-radius: 30px;
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--alabaster) 92%, transparent),
-    color-mix(in srgb, var(--scooter) 18%, var(--alabaster))
+    color-mix(in srgb, #ffffff 94%, transparent),
+    color-mix(in srgb, var(--primary) 12%, var(--surface))
   );
   box-shadow:
     16px 18px 0 color-mix(in srgb, var(--sapphire) 13%, transparent),
@@ -2168,8 +2158,8 @@ html[data-theme="light"] .drop-zone:hover {
 html[data-theme="light"] .why-section {
   background: linear-gradient(
     135deg,
-    var(--alabaster),
-    color-mix(in srgb, var(--scooter) 20%, var(--heather))
+    var(--surface),
+    color-mix(in srgb, var(--primary) 13%, var(--bg))
   );
 }
 
@@ -2182,7 +2172,7 @@ html[data-theme="light"] .feature-grid {
 
 html[data-theme="light"] .feature-grid article {
   border-radius: 24px;
-  background: var(--alabaster);
+  background: var(--surface);
   box-shadow: 0 14px 28px color-mix(in srgb, var(--sapphire) 12%, transparent);
 }
 
@@ -2214,7 +2204,7 @@ html[data-theme="light"] .report-nav {
   border: 0;
   border-radius: 999px;
   padding: 7px 10px;
-  background: color-mix(in srgb, var(--alabaster) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
   box-shadow: 0 10px 25px color-mix(in srgb, var(--sapphire) 13%, transparent);
 }
 
@@ -2231,8 +2221,8 @@ html[data-theme="light"] .report .hero {
 html[data-theme="light"] .threat-brief {
   background: linear-gradient(
     150deg,
-    color-mix(in srgb, var(--scooter) 20%, var(--alabaster)),
-    var(--alabaster)
+    color-mix(in srgb, var(--primary) 12%, var(--surface)),
+    var(--surface)
   );
 }
 
@@ -2249,7 +2239,7 @@ html[data-theme="light"] .evidence-card,
 html[data-theme="light"] .age-callout,
 html[data-theme="light"] .stat-card {
   border-radius: 20px;
-  background: var(--alabaster);
+  background: var(--surface);
   box-shadow: 0 12px 26px color-mix(in srgb, var(--sapphire) 12%, transparent);
 }
 
@@ -2266,8 +2256,8 @@ html[data-theme="light"] .campaign-section {
   border-radius: 28px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--alabaster) 90%, transparent),
-    color-mix(in srgb, var(--scooter) 23%, var(--heather))
+    color-mix(in srgb, var(--surface) 94%, transparent),
+    color-mix(in srgb, var(--primary) 13%, var(--bg))
   );
   box-shadow: 0 20px 42px color-mix(in srgb, var(--sapphire) 14%, transparent);
 }
@@ -2275,7 +2265,7 @@ html[data-theme="light"] .campaign-section {
 html[data-theme="light"] .corr-banner,
 html[data-theme="light"] .graph-wrap {
   border: 0;
-  background: color-mix(in srgb, var(--alabaster) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
 }
 
 /* Investigation-led security workspace */
@@ -3095,18 +3085,18 @@ html[data-theme="light"] .why-section .capability-lines span {
   --report-high: #e87569;
 }
 html[data-theme="light"] {
-  --report-bg: #f5f8fa;
-  --report-surface: #fff;
-  --report-card: #fff;
-  --report-card-hover: #edf4f6;
-  --report-border: #d7e2e8;
-  --report-primary: #025f67;
-  --report-secondary: #2f9d94;
-  --report-text: #063154;
-  --report-text2: color-mix(in srgb, #063154 67%, #bcc5cc);
-  --report-safe: #2f9d94;
-  --report-medium: #b8781c;
-  --report-high: #c83b20;
+  --report-bg: #eff6f2;
+  --report-surface: #f8fcf9;
+  --report-card: #ffffff;
+  --report-card-hover: #eaf5ef;
+  --report-border: #d2e4da;
+  --report-primary: #087f70;
+  --report-secondary: #2f9d77;
+  --report-text: #173b31;
+  --report-text2: #526e64;
+  --report-safe: #16825d;
+  --report-medium: #90600c;
+  --report-high: #b74338;
 }
 .app-shell:has(.report),
 .app-shell:has(.workspace-page) {

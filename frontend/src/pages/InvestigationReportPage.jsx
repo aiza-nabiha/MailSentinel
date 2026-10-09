@@ -336,7 +336,13 @@ export default function InvestigationReportPage({
                             : ""}
                         {item.label || "Threat factor"}
                       </span>
-                      <strong>
+                      <strong
+                        aria-label={
+                          item.percentage == null
+                            ? "Contribution unavailable"
+                            : `${item.percentage} score points`
+                        }
+                      >
                         {item.percentage == null
                           ? "Not available"
                           : item.percentage}
@@ -362,7 +368,13 @@ export default function InvestigationReportPage({
                 ))}
                 <li className="threat-contribution-total">
                   <span>Total</span>
-                  <strong>
+                  <strong
+                    aria-label={
+                      threatContributionTotal == null
+                        ? "Total contribution unavailable"
+                        : `${threatContributionTotal} score points`
+                    }
+                  >
                     {threatContributionTotal == null
                       ? "Not available"
                       : threatContributionTotal}
