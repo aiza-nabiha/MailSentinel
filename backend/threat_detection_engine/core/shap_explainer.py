@@ -1,5 +1,14 @@
 import numpy as np
-import shap
+from scipy.sparse import csr_matrix, issparse
+
+# NOTE: the `shap` package is deliberately NOT imported here any more.
+# Importing it pulls in numba/llvmlite and costs ~120 MB of RAM at
+# startup, which pushed the 512 MB Render free instance over its limit
+# (three "Ran out of memory" restarts during /analyze on 2026-10-05).
+# For a LINEAR model with a zero baseline, SHAP values have an exact
+# closed form -- coef * (x - baseline) = coef * x -- so we compute that
+# directly. Output is identical to shap.LinearExplainer (verified:
+# max abs difference 0.0).
 
 
 class ContentSHAPExplainer:
@@ -60,20 +69,14 @@ class ContentSHAPExplainer:
     def _build_explainer(self):
         estimator = self._get_base_estimator()
 
-        # Use a sparse zero baseline.
-        # This keeps the 150,023-feature representation sparse
-        # instead of creating a huge dense background matrix.
-        from scipy.sparse import csr_matrix
-
-        background = csr_matrix(
-            (1, len(self.all_feature_names)),
+        # Linear SHAP with a zero baseline: shap_i = coef_i * x_i.
+        self.coef_ = np.asarray(
+            estimator.coef_,
             dtype=np.float64,
-        )
+        ).ravel()
 
-        self.explainer = shap.LinearExplainer(
-            estimator,
-            background,
-        )
+        # Kept so any `if explainer is not None` style check still works.
+        self.explainer = True
 
     def explain(
         self,
@@ -83,16 +86,18 @@ class ContentSHAPExplainer:
         Generate top positive and negative SHAP features.
         """
 
-        shap_values = self.explainer(
-            model_input
-        )
-
-        values = np.asarray(
-            shap_values.values
-        )
-
-        if values.ndim == 2:
-            values = values[0]
+        if issparse(model_input):
+            row = csr_matrix(model_input)[0]
+            values = np.asarray(
+                row.multiply(self.coef_).todense()
+            ).ravel()
+        else:
+            values = (
+                np.atleast_2d(
+                    np.asarray(model_input, dtype=np.float64)
+                )[0]
+                * self.coef_
+            )
 
         if values.ndim != 1:
             raise ValueError(

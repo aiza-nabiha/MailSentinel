@@ -7,8 +7,23 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 
-from .hop_analyzer import find_earliest_reliable_node
-from .shodan_lookup import lookup_shodan_internetdb
+# infrastructure_engine/ has no __init__.py, and pipeline.py imports its
+# sibling modules by bare name (`from ip_intelligence import ...`) after
+# adding this folder to sys.path. That means this file is loaded as a
+# TOP-LEVEL module, where relative imports (`from .hop_analyzer ...`)
+# fail with "attempted relative import with no known parent package".
+# That error made `pipeline` un-importable in storage_engine/integrate.py,
+# which silently skipped the whole domain/infrastructure analysis (every
+# investigation came back with infrastructure_risk = null and a 0
+# domain/infrastructure contribution). Bare-name imports work in that
+# context; the relative form is kept as a fallback in case this file is
+# ever imported as part of a package instead.
+try:
+    from hop_analyzer import find_earliest_reliable_node
+    from shodan_lookup import lookup_shodan_internetdb
+except ImportError:
+    from .hop_analyzer import find_earliest_reliable_node
+    from .shodan_lookup import lookup_shodan_internetdb
 
 
 load_dotenv()

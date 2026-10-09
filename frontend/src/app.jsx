@@ -1,7 +1,13 @@
 import LoginPage from "./pages/LoginPage";
 import { useEffect, useState } from "react";
 import InvestigationReportPage from "./pages/InvestigationReportPage";
-import { analyzeEmail, getHistory, getInvestigation, getCurrentUser, logoutUrl } from "./utils/api";
+import {
+  analyzeEmail,
+  getHistory,
+  getInvestigation,
+  getCurrentUser,
+  logoutUrl,
+} from "./utils/api";
 import { formatTimestamp } from "./utils/mapApiResponse";
 
 const analysisSteps = [
@@ -15,9 +21,12 @@ const analysisSteps = [
 ];
 
 const Mark = () => (
-  <div className="brand-mark" aria-hidden="true">
-    ⌁
-  </div>
+  <img
+    className="brand-logo"
+    src="/mail-sentinel-mark.png"
+    alt=""
+    aria-hidden="true"
+  />
 );
 
 function Topbar({ theme, setTheme, onHome, view, setView, user }) {
@@ -32,6 +41,10 @@ function Topbar({ theme, setTheme, onHome, view, setView, user }) {
       </button>
 
       <nav className="top-nav">
+        <button className={view === "landing" ? "active" : ""} onClick={onHome}>
+          Home
+        </button>
+
         <button
           className={view === "report" ? "active" : ""}
           onClick={() => setView("report")}
@@ -50,15 +63,11 @@ function Topbar({ theme, setTheme, onHome, view, setView, user }) {
       <div className="topbar-actions">
         <button
           className="theme-toggle"
-          onClick={() =>
-            setTheme(theme === "dark" ? "light" : "dark")
-          }
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
           <span>{theme === "dark" ? "☀" : "☾"}</span>
 
-          <span>
-            {theme === "dark" ? "Light" : "Dark"}
-          </span>
+          <span>{theme === "dark" ? "Light" : "Dark"}</span>
         </button>
 
         {user ? (
@@ -105,10 +114,7 @@ function Topbar({ theme, setTheme, onHome, view, setView, user }) {
             </div>
           </div>
         ) : (
-          <button
-            className="theme-toggle"
-            onClick={() => setView("login")}
-          >
+          <button className="theme-toggle" onClick={() => setView("login")}>
             LOGIN
           </button>
         )}
@@ -141,7 +147,7 @@ function Landing({ onAnalyze, analysisError }) {
 
     if (!file.name.toLowerCase().endsWith(".eml")) {
       setError(
-        "MailSentinel needs the original .eml message to retain forensic headers."
+        "MailSentinel needs the original .eml message to retain forensic headers.",
       );
       return;
     }
@@ -169,8 +175,8 @@ function Landing({ onAnalyze, analysisError }) {
 
           <p>
             Analyze suspicious emails using content intelligence,
-            authentication, infrastructure analysis and campaign
-            correlation — all from one investigation.
+            authentication, infrastructure analysis and campaign correlation —
+            all from one investigation.
           </p>
 
           <div className="hero-actions">
@@ -185,10 +191,7 @@ function Landing({ onAnalyze, analysisError }) {
               Upload .EML <b>→</b>
             </button>
 
-            <button
-              className="hero-secondary"
-              onClick={() => onAnalyze(null)}
-            >
+            <button className="hero-secondary" onClick={() => onAnalyze(null)}>
               Analyze with Gmail
             </button>
           </div>
@@ -196,9 +199,7 @@ function Landing({ onAnalyze, analysisError }) {
 
         <div className="product-preview">
           <div className="preview-top">
-            <span className="mono">
-              MAILSENTINEL / LIVE ANALYSIS
-            </span>
+            <span className="mono">MAILSENTINEL / LIVE ANALYSIS</span>
             <span className="preview-dot">●</span>
           </div>
 
@@ -210,8 +211,7 @@ function Landing({ onAnalyze, analysisError }) {
             </div>
 
             <div className="preview-score">
-              —
-              <small>/ 100</small>
+              —<small>/ 100</small>
             </div>
           </div>
 
@@ -228,8 +228,8 @@ function Landing({ onAnalyze, analysisError }) {
           </div>
 
           <div className="preview-related">
-            <span>◌</span> Related investigations are shown when
-            matching infrastructure is found.
+            <span>◌</span> Related investigations are shown when matching
+            infrastructure is found.
           </div>
         </div>
       </section>
@@ -267,8 +267,8 @@ function Landing({ onAnalyze, analysisError }) {
           </h2>
 
           <p>
-            Upload an exported email to retain the headers that
-            explain where it actually came from.
+            Upload an exported email to retain the headers that explain where it
+            actually came from.
           </p>
         </div>
 
@@ -293,9 +293,7 @@ function Landing({ onAnalyze, analysisError }) {
 
           <div className="upload-orb">↑</div>
 
-          <strong>
-            {fileName || "Drop a .eml file here"}
-          </strong>
+          <strong>{fileName || "Drop a .eml file here"}</strong>
 
           <span>
             {fileName
@@ -304,9 +302,7 @@ function Landing({ onAnalyze, analysisError }) {
           </span>
 
           {(error || analysisError) && (
-            <small className="upload-error">
-              {error || analysisError}
-            </small>
+            <small className="upload-error">{error || analysisError}</small>
           )}
 
           <button
@@ -323,9 +319,7 @@ function Landing({ onAnalyze, analysisError }) {
       </section>
 
       <section className="why-section">
-        <div className="section-kicker">
-          INTELLIGENCE YOU CAN DEFEND
-        </div>
+        <div className="section-kicker">INTELLIGENCE YOU CAN DEFEND</div>
 
         <h2>
           One message.
@@ -353,8 +347,8 @@ function Landing({ onAnalyze, analysisError }) {
             <h3>Forensic relay trace</h3>
 
             <p>
-              Map received hops and distinguish the trusted boundary
-              from claimed routing data.
+              Map received hops and distinguish the trusted boundary from
+              claimed routing data.
             </p>
 
             <a href="#upload">Trace route →</a>
@@ -365,8 +359,8 @@ function Landing({ onAnalyze, analysisError }) {
             <h3>Campaign intelligence</h3>
 
             <p>
-              Connect investigations only when the analysis finds
-              shared infrastructure.
+              Connect investigations only when the analysis finds shared
+              infrastructure.
             </p>
 
             <a href="#upload">Explore connections →</a>
@@ -384,11 +378,9 @@ function Analyzing({ fileName }) {
     const id = setInterval(
       () =>
         setStep((value) =>
-          value < analysisSteps.length - 1
-            ? value + 1
-            : value
+          value < analysisSteps.length - 1 ? value + 1 : value,
         ),
-      420
+      420,
     );
 
     return () => clearInterval(id);
@@ -418,21 +410,11 @@ function Analyzing({ fileName }) {
           {analysisSteps.map((item, index) => (
             <li
               className={
-                index < step
-                  ? "done"
-                  : index === step
-                  ? "current"
-                  : ""
+                index < step ? "done" : index === step ? "current" : ""
               }
               key={item}
             >
-              <span>
-                {index < step
-                  ? "✓"
-                  : index === step
-                  ? "◌"
-                  : "·"}
-              </span>
+              <span>{index < step ? "✓" : index === step ? "◌" : "·"}</span>
 
               {item}
 
@@ -440,8 +422,8 @@ function Analyzing({ fileName }) {
                 {index < step
                   ? "complete"
                   : index === step
-                  ? "running"
-                  : "queued"}
+                    ? "running"
+                    : "queued"}
               </small>
             </li>
           ))}
@@ -470,7 +452,10 @@ function History({ openReport, newInvestigation, onAuthRequired }) {
       })
       .catch((err) => {
         if (!active) return;
-        if (err.status === 401) { onAuthRequired(); return; }
+        if (err.status === 401) {
+          onAuthRequired();
+          return;
+        }
         setError(err.message);
       })
       .finally(() => {
@@ -495,15 +480,11 @@ function History({ openReport, newInvestigation, onAuthRequired }) {
           <h1>Recent investigations</h1>
 
           <p>
-            Review historic email decisions and their connected
-            infrastructure.
+            Review historic email decisions and their connected infrastructure.
           </p>
         </div>
 
-        <button
-          className="analyze-button"
-          onClick={newInvestigation}
-        >
+        <button className="analyze-button" onClick={newInvestigation}>
           + New investigation
         </button>
       </div>
@@ -511,20 +492,11 @@ function History({ openReport, newInvestigation, onAuthRequired }) {
       <div className="archive-list">
         {loading && <p>Loading investigations…</p>}
 
-        {error && (
-          <p className="upload-error">
-            {error}
-          </p>
-        )}
+        {error && <p className="upload-error">{error}</p>}
 
-        {!loading &&
-          !error &&
-          !items.length && (
-            <p>
-              No investigations have been created for this
-              workspace yet.
-            </p>
-          )}
+        {!loading && !error && !items.length && (
+          <p>No investigations have been created for this workspace yet.</p>
+        )}
 
         {items.map((item) => (
           <button
@@ -534,15 +506,13 @@ function History({ openReport, newInvestigation, onAuthRequired }) {
           >
             <span
               className={`risk-pill ${String(
-                item.verdict || "safe"
+                item.verdict || "safe",
               ).toLowerCase()}`}
             >
               {item.verdict || "safe"}
             </span>
 
-            <strong>
-              {item.subject || item.email_id}
-            </strong>
+            <strong>{item.subject || item.email_id}</strong>
 
             <span className="archive-time">
               {formatTimestamp(item.ingested_at) || "Date unavailable"}
@@ -578,9 +548,7 @@ function Settings() {
             <span /> SECURE WORKSPACE
           </div>
 
-          <h1 id="email-test-title">
-            Sign in to MailSentinel
-          </h1>
+          <h1 id="email-test-title">Sign in to MailSentinel</h1>
         </div>
 
         <div
@@ -588,40 +556,27 @@ function Settings() {
           role="radiogroup"
           aria-label="Email provider"
         >
-          {["Gmail", "Rediffmail", "Yahoo Mail"].map(
-            (name) => (
-              <label
-                className="provider-option"
-                key={name}
-              >
-                <input
-                  type="radio"
-                  name="provider"
-                  value={name}
-                  checked={provider === name}
-                  onChange={() => setProvider(name)}
-                />
+          {["Gmail", "Rediffmail", "Yahoo Mail"].map((name) => (
+            <label className="provider-option" key={name}>
+              <input
+                type="radio"
+                name="provider"
+                value={name}
+                checked={provider === name}
+                onChange={() => setProvider(name)}
+              />
 
-                {name}
-              </label>
-            )
-          )}
+              {name}
+            </label>
+          ))}
         </div>
 
         <label className="email-field">
           Email address
-
-          <input
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
+          <input type="email" placeholder="you@example.com" required />
         </label>
 
-        <button
-          className="analyze-button"
-          type="submit"
-        >
+        <button className="analyze-button" type="submit">
           Login / Continue
         </button>
       </form>
@@ -634,8 +589,7 @@ export default function App() {
   const [view, setView] = useState("landing");
   const [fileName, setFileName] = useState("");
   const [user, setUser] = useState(null);
-  const [investigationData, setInvestigationData] =
-    useState(null);
+  const [investigationData, setInvestigationData] = useState(null);
   const [analysisError, setAnalysisError] = useState("");
 
   // Who's signed in, per the session cookie -- fetched once on load
@@ -643,7 +597,9 @@ export default function App() {
   // magic link (both land back here with the cookie already set).
   const refreshUser = () => {
     getCurrentUser()
-      .then((data) => setUser(data.authenticated && data.user ? data.user : null))
+      .then((data) =>
+        setUser(data.authenticated && data.user ? data.user : null),
+      )
       .catch(() => setUser(null));
   };
 
@@ -671,10 +627,7 @@ export default function App() {
   }, [view]);
 
   useEffect(() => {
-    document.documentElement.setAttribute(
-      "data-theme",
-      theme
-    );
+    document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
   const home = () => {
@@ -683,12 +636,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(
-      window.location.search
-    );
+    const params = new URLSearchParams(window.location.search);
 
-    const investigationId =
-      params.get("investigation");
+    const investigationId = params.get("investigation");
 
     if (!investigationId) return;
 
@@ -698,16 +648,12 @@ export default function App() {
       setFileName(investigationId);
 
       try {
-        const result =
-          await getInvestigation(investigationId);
+        const result = await getInvestigation(investigationId);
 
         setInvestigationData(result);
         setView("report");
       } catch (err) {
-        console.error(
-          "Failed to load investigation:",
-          err
-        );
+        console.error("Failed to load investigation:", err);
 
         setView(err.status === 401 ? "login" : "landing");
       }
@@ -715,14 +661,15 @@ export default function App() {
   }, []);
 
   const start = async (file) => {
-    if (!user) { setView("login"); return; }
+    if (!user) {
+      setView("login");
+      return;
+    }
 
     setAnalysisError("");
     setInvestigationData(null);
 
-    setFileName(
-      file?.name || "sample-phishing-email.eml"
-    );
+    setFileName(file?.name || "sample-phishing-email.eml");
 
     setView("analyzing");
 
@@ -740,11 +687,14 @@ export default function App() {
     } catch (err) {
       console.error("Analysis failed:", err);
 
-      if (err.status === 401) { setView("login"); return; }
+      if (err.status === 401) {
+        setView("login");
+        return;
+      }
 
       setAnalysisError(
         err.message ||
-          "Unable to reach the analysis service. Check that the backend is running."
+          "Unable to reach the analysis service. Check that the backend is running.",
       );
 
       setInvestigationData(null);
@@ -768,15 +718,10 @@ export default function App() {
       {view === "login" && <LoginPage />}
 
       {view === "landing" && (
-        <Landing
-          onAnalyze={start}
-          analysisError={analysisError}
-        />
+        <Landing onAnalyze={start} analysisError={analysisError} />
       )}
 
-      {view === "analyzing" && (
-        <Analyzing fileName={fileName} />
-      )}
+      {view === "analyzing" && <Analyzing fileName={fileName} />}
 
       {view === "report" && (
         <InvestigationReportPage
@@ -789,13 +734,14 @@ export default function App() {
         <History
           openReport={async (id) => {
             try {
-              setInvestigationData(
-                await getInvestigation(id)
-              );
+              setInvestigationData(await getInvestigation(id));
 
               setView("report");
             } catch (err) {
-              if (err.status === 401) { setView("login"); return; }
+              if (err.status === 401) {
+                setView("login");
+                return;
+              }
               setAnalysisError(err.message);
               setView("landing");
             }

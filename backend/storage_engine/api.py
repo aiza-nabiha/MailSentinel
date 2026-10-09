@@ -95,14 +95,18 @@ def mint_addon_session_token(email, email_id=None):
 # /analyze call after a cold start/restart pays both the container
 # boot cost and the ~7MB model deserialization cost back-to-back,
 # which is exactly when latency (and memory headroom) matters most.
-try:
-    from threat_detection_engine.core.content_analysis import (
-        get_content_analyzer,
-    )
+# Skipped when the classifier runs in the separate ML service
+# (ML_SERVICE_URL set) -- loading it here too would defeat the point of
+# splitting it out.
+if not os.environ.get("ML_SERVICE_URL"):
+    try:
+        from threat_detection_engine.core.content_analysis import (
+            get_content_analyzer,
+        )
 
-    get_content_analyzer()
-except Exception as _preload_error:  # pragma: no cover
-    print(f"[!] Content classifier preload failed: {_preload_error}")
+        get_content_analyzer()
+    except Exception as _preload_error:  # pragma: no cover
+        print(f"[!] Content classifier preload failed: {_preload_error}")
 
 @app.route("/auth/google")
 def google_login():
@@ -339,7 +343,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False, reque
         (email_id,),
     ).fetchall()
     header_row = conn.execute(
-        "SELECT spf_result, dmarc_result, dmarc_policy, received_chain_json FROM header_results WHERE email_id = %s",
+        "SELECT spf_result, dmarc_result, dmarc_policy, received_chain_json, dkim_json FROM header_results WHERE email_id = %s",
         (email_id,),
     ).fetchone()
     classifier_row = conn.execute(
@@ -460,6 +464,7 @@ def _build_investigation_result(conn, email_id, include_raw_content=False, reque
             "dmarc": header_row[1] if header_row else None,
             "dmarc_policy": header_row[2] if header_row else None,
             "received_chain": _json.loads(header_row[3]) if header_row and header_row[3] else [],
+            "dkim": _json.loads(header_row[4]) if header_row and header_row[4] else [],
         },
         "classifier": {
             "phishing_score": classifier_row[0] if classifier_row else None,
