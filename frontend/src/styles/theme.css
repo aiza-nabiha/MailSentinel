@@ -39,19 +39,19 @@
 
 html[data-theme="light"] {
   color-scheme: light;
-  --bg: #eff6f2;
-  --surface: #f8fcf9;
+  --bg: #f1f6f8;
+  --surface: #f8fbfc;
   --card: #ffffff;
-  --card-hover: #eaf5ef;
-  --border: color-mix(in srgb, #173b31 17%, transparent);
-  --primary: #087f70;
-  --secondary: #2f9d77;
-  --accent: #087f70;
+  --card-hover: #eaf2f5;
+  --border: color-mix(in srgb, #063154 17%, transparent);
+  --primary: #167c78;
+  --secondary: #2f9d94;
+  --accent: #167c78;
   --safe: #16825d;
   --medium: #90600c;
   --high: #b74338;
-  --text: #173b31;
-  --text2: #526e64;
+  --text: #063154;
+  --text2: #536b7b;
 }
 
 * {
@@ -2038,12 +2038,12 @@ html[data-theme="light"] body {
   background:
     radial-gradient(
       circle at 0% 0%,
-      color-mix(in srgb, #ffffff 88%, transparent),
+      color-mix(in srgb, #ffffff 92%, transparent),
       transparent 34%
     ),
     radial-gradient(
       circle at 100% 18%,
-      color-mix(in srgb, var(--primary) 14%, transparent),
+      color-mix(in srgb, var(--secondary) 12%, transparent),
       transparent 28%
     ),
     var(--bg);
@@ -2059,7 +2059,7 @@ html[data-theme="light"] .analysis-screen {
   background:
     radial-gradient(
       circle at 83% 4%,
-      color-mix(in srgb, var(--primary) 22%, transparent),
+      color-mix(in srgb, var(--secondary) 17%, transparent),
       transparent 32%
     ),
     radial-gradient(
@@ -2071,15 +2071,15 @@ html[data-theme="light"] .analysis-screen {
 }
 
 html[data-theme="light"] .network-backdrop {
-  opacity: 0.28;
+  opacity: 0.22;
   background-image:
     linear-gradient(
-      color-mix(in srgb, var(--primary) 16%, transparent) 1px,
+      color-mix(in srgb, var(--sapphire) 15%, transparent) 1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--primary) 16%, transparent) 1px,
+      color-mix(in srgb, var(--sapphire) 15%, transparent) 1px,
       transparent 1px
     );
 }
@@ -2158,8 +2158,8 @@ html[data-theme="light"] .drop-zone:hover {
 html[data-theme="light"] .why-section {
   background: linear-gradient(
     135deg,
-    var(--surface),
-    color-mix(in srgb, var(--primary) 13%, var(--bg))
+    #f8fbfc,
+    color-mix(in srgb, var(--secondary) 10%, #eaf2f5)
   );
 }
 
@@ -2171,9 +2171,10 @@ html[data-theme="light"] .feature-grid {
 }
 
 html[data-theme="light"] .feature-grid article {
-  border-radius: 24px;
-  background: var(--surface);
-  box-shadow: 0 14px 28px color-mix(in srgb, var(--sapphire) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sapphire) 13%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, #ffffff 94%, var(--surface));
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--sapphire) 9%, transparent);
 }
 
 html[data-theme="light"] .feature-grid article:nth-child(2) {
@@ -2221,7 +2222,7 @@ html[data-theme="light"] .report .hero {
 html[data-theme="light"] .threat-brief {
   background: linear-gradient(
     150deg,
-    color-mix(in srgb, var(--primary) 12%, var(--surface)),
+    color-mix(in srgb, var(--secondary) 10%, var(--surface)),
     var(--surface)
   );
 }
@@ -2257,7 +2258,7 @@ html[data-theme="light"] .campaign-section {
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--surface) 94%, transparent),
-    color-mix(in srgb, var(--primary) 13%, var(--bg))
+    color-mix(in srgb, var(--secondary) 11%, var(--bg))
   );
   box-shadow: 0 20px 42px color-mix(in srgb, var(--sapphire) 14%, transparent);
 }
@@ -2265,7 +2266,7 @@ html[data-theme="light"] .campaign-section {
 html[data-theme="light"] .corr-banner,
 html[data-theme="light"] .graph-wrap {
   border: 0;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 /* Investigation-led security workspace */
@@ -2395,11 +2396,17 @@ html[data-theme="light"] .graph-wrap {
 
 html[data-theme="light"] .why-section .capability-grid article,
 html[data-theme="light"] .why-section .capability-grid h3,
+html[data-theme="light"] .why-section .capability-grid .capability-icon {
+  color: var(--text);
+}
+
 html[data-theme="light"] .why-section .capability-grid p,
-html[data-theme="light"] .why-section .capability-grid a,
-html[data-theme="light"] .why-section .capability-grid .capability-icon,
 html[data-theme="light"] .why-section .capability-lines span {
-  color: #fff;
+  color: var(--text2);
+}
+
+html[data-theme="light"] .why-section .capability-grid a {
+  color: var(--primary);
 }
 
 .investigation-report {
@@ -3085,15 +3092,15 @@ html[data-theme="light"] .why-section .capability-lines span {
   --report-high: #e87569;
 }
 html[data-theme="light"] {
-  --report-bg: #eff6f2;
-  --report-surface: #f8fcf9;
+  --report-bg: #f1f6f8;
+  --report-surface: #f8fbfc;
   --report-card: #ffffff;
-  --report-card-hover: #eaf5ef;
-  --report-border: #d2e4da;
-  --report-primary: #087f70;
-  --report-secondary: #2f9d77;
-  --report-text: #173b31;
-  --report-text2: #526e64;
+  --report-card-hover: #eaf2f5;
+  --report-border: #d3e0e6;
+  --report-primary: #167c78;
+  --report-secondary: #2f9d94;
+  --report-text: #063154;
+  --report-text2: #536b7b;
   --report-safe: #16825d;
   --report-medium: #90600c;
   --report-high: #b74338;
@@ -3888,6 +3895,52 @@ html[data-theme="light"] {
   border: 1px solid var(--report-border);
   border-radius: 15px;
   box-shadow: none;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .why-section {
+  border-top-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  background:
+    radial-gradient(
+      circle at 88% 0%,
+      color-mix(in srgb, var(--secondary) 11%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #f8fbfc, #eaf2f5);
+  color: #063154;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .why-section .section-kicker {
+  color: #167c78;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .why-section h2,
+html[data-theme="light"] .app-shell:has(.landing) .why-section h2 em {
+  color: #063154;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .capability-grid article {
+  border: 1px solid #d3e0e6;
+  background: #ffffff;
+  box-shadow: 0 16px 34px color-mix(in srgb, #063154 9%, transparent);
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .capability-grid h3 {
+  color: #063154;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .capability-grid p,
+html[data-theme="light"] .app-shell:has(.landing) .capability-lines span {
+  color: #536b7b;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .capability-lines span {
+  border-color: #d3e0e6;
+  background: #f5f9fa;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .capability-icon,
+html[data-theme="light"] .app-shell:has(.landing) .capability-grid a {
+  color: #167c78;
 }
 
 @media (max-width: 760px) {
