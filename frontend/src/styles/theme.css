@@ -3922,6 +3922,22 @@ html[data-theme="light"] .app-shell:has(.landing) .capability-grid article {
   border: 1px solid #d3e0e6;
   background: #ffffff;
   box-shadow: 0 16px 34px color-mix(in srgb, #063154 9%, transparent);
+  transition:
+    transform 0.25s,
+    background 0.25s,
+    border-color 0.25s,
+    box-shadow 0.25s;
+}
+
+html[data-theme="light"] .app-shell:has(.landing) .capability-grid article:hover,
+html[data-theme="light"]
+  .app-shell:has(.landing)
+  .capability-grid article:focus-within {
+  border-color: var(--primary);
+  border-left-width: 5px;
+  background: #dcefeb;
+  box-shadow: 0 24px 48px color-mix(in srgb, #063154 18%, transparent);
+  transform: translateY(-7px);
 }
 
 html[data-theme="light"] .app-shell:has(.landing) .capability-grid h3 {
