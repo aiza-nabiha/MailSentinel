@@ -41,7 +41,7 @@ if GRAPH_ENGINE_PATH not in sys.path:
 
 from header_auth_engine.received_parser import parse_received_chain
 
-from ip_intelligence import investigate_reliable_hop
+from infrastructure_engine.ip_intelligence import investigate_reliable_hop
 
 
 
