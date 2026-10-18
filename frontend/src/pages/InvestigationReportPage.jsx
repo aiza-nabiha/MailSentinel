@@ -180,25 +180,21 @@ export default function InvestigationReportPage({
     (shodan.ports.length > 0 ||
       shodan.vulns.length > 0 ||
       shodan.notable_ports.length > 0);
+  const ipRiskFlags = data.ip_risk_flags;
+  const hasIpRiskFlags = Boolean(
+    ipRiskFlags &&
+      (ipRiskFlags.is_vpn === true ||
+        ipRiskFlags.is_proxy === true ||
+        ipRiskFlags.is_tor === true ||
+        ipRiskFlags.is_datacenter === true ||
+        ipRiskFlags.is_abuser === true ||
+        ipRiskFlags.company_name ||
+        ipRiskFlags.company_type ||
+        ipRiskFlags.abuser_score != null ||
+        ipRiskFlags.asn_descr ||
+        ipRiskFlags.asn_org),
+  );
 
-
-  return <main className="report investigation-report">
-    <div className="breadcrumb"><button onClick={onNewInvestigation}>← Investigations</button><span className="mono">CASE #{String(data.investigation_id).slice(-8).toUpperCase()}</span><span>{formatTimestamp(data.analyzed_at) || "Date unavailable"}</span>{triggeredBy && <span className="mono">Triggered by {value(triggeredBy.user_id, "unknown user")} · {value(triggeredBy.ip_address, "unknown IP")} · {value(triggeredBy.triggered_at, "unknown time")}</span>}</div>
-    <section className="case-header"><div className="case-gauge"><RiskGauge score={data.risk_score} level={data.risk_level} /></div><div className="case-copy"><div className={`risk-label ${data.risk_level.toLowerCase()}`}>{data.risk_level.toUpperCase()} RISK</div><h1>{data.threat_label}</h1><div className="mail-metadata"><div><small>SUBJECT</small><strong>{value(apiResponse.subject)}</strong></div><div><small>FROM</small><strong className="mono">{value(apiResponse.from_header)}</strong></div></div></div><div className="case-actions"><button className="export-button" onClick={() => window.print()}>Export report</button><button className="new-report-button" onClick={() => setTab("Email")}>View raw email</button></div></section>
-    <nav className="investigation-tabs">{tabs.map((name) => <button className={tab === name ? "active" : ""} onClick={() => setTab(name)} key={name}>{name}</button>)}</nav>
-    {tab === "Overview" && <>
-      <section className="summary-grid"><article><small>CONTENT</small><strong>{contentFinding}</strong><p>{reasonText(apiResponse.classifier?.reasons?.[0]) || "No content finding available."}</p></article><article><small>AUTHENTICATION</small><Status label="SPF" result={data.authentication.spf} /><Status label="DMARC" result={auth.dmarc} /><p>DKIM status is not returned by this API.</p></article><article><small>INFRASTRUCTURE</small><strong className="mono">{domain?.domain || "No domain observed"}</strong><p>{infraFinding}</p></article><article><small>CORRELATION</small><strong>{data.campaign_correlation ? `${data.campaign_correlation.matched_investigations} related investigations` : "No related cases"}</strong><p>{data.campaign_correlation ? `Confidence ${value(data.campaign_correlation.confidence, "n/a")} · Cohesion ${value(data.campaign_correlation.cohesion, "n/a")}` : "No campaign correlation returned."}</p></article></section>
-      <section className="section attack-section"><div className="section-head"><div><div className="section-kicker">INVESTIGATION CHAIN</div><div className="section-title">Attack path</div></div><div className="section-sub">Connections reflect observed analysis data.</div></div><div className="attack-path">{attackNodes.map(([title, detail, status], index) => <div className="attack-step" key={title}><article><small>{title}</small><strong className="mono">{detail}</strong>{status && <span>{status}</span>}</article>{index < attackNodes.length - 1 && <i>↓</i>}</div>)}</div></section>
-      <section className="section"><div className="section-head"><div><div className="section-kicker">EVIDENCE-BASED VERDICT</div><div className="section-title">Why this score?</div></div><div className="final-risk"><small>FINAL RISK</small><b>{data.risk_score}<em>/100</em></b></div></div><div className="score-layout"><div className="score-categories"><div><small>CONTENT ANALYSIS</small><strong>{contentFinding}</strong></div><div><small>URL INTELLIGENCE</small><strong>{data.url || "No URL intelligence returned"}</strong></div><div><small>AUTHENTICATION</small><strong>SPF {value(auth.spf)} · DMARC {value(auth.dmarc)}</strong></div><div><small>INFRASTRUCTURE</small><strong>{infraFinding}</strong></div></div><div className="evidence-grid">{data.reasons.length ? data.reasons.map((reason) => <EvidenceCard reason={reason} key={reason.id} />) : <p className="empty-state">No discrete evidence items were returned for this analysis.</p>}</div></div></section>
-      <section className="section"><div className="section-head"><div><div className="section-kicker">MAIL ROUTING FORENSICS</div><div className="section-title">Forensic relay trace</div></div><div className="section-sub">Received headers only — click a hop for details.</div></div>{data.relay_path.length ? <><RelayPath hops={data.relay_path} /><div className="hop-table"><div className="hop-table-header"><span>HOP</span><span>HOST</span><span>IP</span><span>STATUS</span></div>{data.relay_path.map((hop) => <div key={hop.label}><span>{hop.label}</span><span className="mono">{hop.sub}</span><span className="mono">{hop.ip}</span><span>{hop.trusted ? "Trusted boundary" : hop.verified ? "Verified" : "Observed"}</span></div>)}</div></> : <div className="empty-state">No parsed Received-hop chain was returned.</div>}</section>
-      <section className="section"><div className="section-head"><div><div className="section-kicker">DOMAIN INTELLIGENCE</div><div className="section-title">Registration, TLS & reputation</div></div></div>{domain ? <div className="score-categories"><div><small>REGISTRAR</small><strong>{value(domain.registrar)}</strong></div><div><small>DOMAIN AGE</small><strong>{domain.age_days != null ? `${domain.age_days} days` : "Not available"}</strong></div><div><small>TLS ISSUER / STATUS</small><strong>{value(domain.tls_issuer)} · {value(domain.tls_status)}</strong></div><div><small>ASN / HOSTING</small><strong>{domain.asn || domain.hosting ? `${value(domain.asn, "")} ${value(domain.hosting, "")}`.trim() : "Not available"}</strong></div><div><small>COUNTRY</small><strong>{value(domain.country)}</strong></div><div><small>BLOCKLIST HITS</small><strong>{domain.found_on_lists?.length ? domain.found_on_lists.join(", ") : "None"}</strong></div></div> : <div className="empty-state">No domain intelligence was returned for this investigation.</div>}</section>
-      <section className="section campaign-section"><div className="section-head"><div><div className="section-kicker">CAMPAIGN INTELLIGENCE</div><div className="section-title">Infrastructure correlation</div></div></div>{data.campaign_correlation ? <><div className="corr-banner">Matched <strong>{data.campaign_correlation.matched_investigations} related investigations</strong> from real stored correlation data. Confidence {value(data.campaign_correlation.confidence, "n/a")} · Cohesion {value(data.campaign_correlation.cohesion, "n/a")}{data.campaign_correlation.cohesion_warning ? ` · ⚠ ${data.campaign_correlation.cohesion_warning}` : ""}</div>{data.campaign_correlation.other_accounts_affected > 0 && <div className="corr-banner corr-banner-cross-account">⚠ This same campaign infrastructure was also seen on <strong>{data.campaign_correlation.other_accounts_affected} other MailSentinel account{data.campaign_correlation.other_accounts_affected === 1 ? "" : "s"}</strong> — details are not shown to protect those accounts' privacy, but the shared infrastructure strengthens this verdict.</div>}<CampaignGraph nodes={data.campaign_correlation.nodes} edges={data.campaign_correlation.edges} graph={data.campaign_correlation.graph} /></> : <div className="empty-state">No campaign matches were returned for this investigation.</div>}</section>
-    </>}
-    {tab === "Fingerprint" && <section className="section detail-tab"><div className="section-kicker">FINGERPRINT</div><div className="section-title">Content fingerprint & brand targeting</div>{data.fingerprint ? <div className="score-categories"><div><small>STRUCTURAL HASH</small><strong className="mono">{value(data.fingerprint.structural_hash)}</strong></div><div><small>SKELETON TYPE</small><strong>{value(data.fingerprint.skeleton_type)}</strong></div><div><small>TARGETED BRANDS</small><strong>{data.fingerprint.targeted_brands.length ? data.fingerprint.targeted_brands.join(", ") : "None detected"}</strong></div><div><small>TYPOSQUAT MATCHES</small>{data.fingerprint.typosquat_matches.length ? <ul>{data.fingerprint.typosquat_matches.map((m, i) => <li key={i} className="mono">{typeof m === "string" ? m : `${m.domain || "?"} → mimics "${m.matched_brand || "?"}" (matched "${m.matched_chunk || "?"}", edit distance ${m.edit_distance ?? "?"})`}</li>)}</ul> : <strong>None detected</strong>}</div></div> : <div className="empty-state">No fingerprint data was returned for this investigation.</div>}</section>}
-    {tab === "Email" && <section className="section detail-tab"><div className="section-kicker">EMAIL</div><div className="section-title">Raw email</div>{apiResponse.raw_email ? <pre>{typeof apiResponse.raw_email === "string" ? apiResponse.raw_email : (apiResponse.raw_email.raw_content || JSON.stringify(apiResponse.raw_email, null, 2))}</pre> : <div className="empty-state">Raw email content was not returned for this investigation (fetch with ?full=true, or it may not be archived).</div>}</section>}
-    {tab !== "Overview" && tab !== "Fingerprint" && tab !== "Email" && <section className="section detail-tab"><div className="section-kicker">{tab.toUpperCase()}</div><div className="section-title">Detailed {tab.toLowerCase()}</div><pre>{JSON.stringify(tab === "Headers" ? auth : tab === "Correlation" ? apiResponse.campaign_correlation : tab === "Infrastructure" ? apiResponse.infrastructure_risk : tab === "URLs & Domains" ? apiResponse.domains : { subject: apiResponse.subject, from: apiResponse.from_header }, null, 2)}</pre></section>}
-  </main>;
-}
 
   return (
     <main className="report investigation-report">
@@ -821,6 +817,34 @@ export default function InvestigationReportPage({
                   </div>
                 )}
               </div>
+            </section>
+          )}
+          {data.ip_risk_flags && hasIpRiskFlags && (
+            <section className="section ip-risk-flags">
+              <div className="section-head">
+                <div>
+                  <div className="section-kicker">IP INTELLIGENCE</div>
+                  <div className="section-title">Sender IP Risk Flags</div>
+                </div>
+              </div>
+              <div className="risk-flag-badges">
+                {data.ip_risk_flags.is_vpn === true && <span className="flag-badge warn">VPN</span>}
+                {data.ip_risk_flags.is_proxy === true && <span className="flag-badge warn">Proxy</span>}
+                {data.ip_risk_flags.is_tor === true && <span className="flag-badge danger">Tor</span>}
+                {data.ip_risk_flags.is_datacenter === true && <span className="flag-badge">Datacenter</span>}
+                {data.ip_risk_flags.is_abuser === true && <span className="flag-badge danger">Known Abuser</span>}
+              </div>
+              {data.ip_risk_flags.company_name && (
+                <div>Company: {data.ip_risk_flags.company_name}
+                  {data.ip_risk_flags.company_type ? ` (${data.ip_risk_flags.company_type})` : ""}
+                </div>
+              )}
+              {data.ip_risk_flags.abuser_score != null && (
+                <div>Abuser score: {data.ip_risk_flags.abuser_score}</div>
+              )}
+              {(data.ip_risk_flags.asn_descr || data.ip_risk_flags.asn_org) && (
+                <div>ASN: {data.ip_risk_flags.asn_descr || data.ip_risk_flags.asn_org}</div>
+              )}
             </section>
           )}
           <section className="section campaign-section">

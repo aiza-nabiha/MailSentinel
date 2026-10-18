@@ -103,6 +103,32 @@ export function mapApiResponseToReportShape(api) {
   const country = firstText(ipinfo.country, ipapiIs.country);
   const reverseHostname = firstText(reverseDns.hostname);
   const hasInfrastructure = Boolean(ip || asn || hosting || country);
+    const ipRiskFlags = {
+    is_vpn: ipapiIs.is_vpn ?? iplocate.is_vpn ?? null,
+    is_proxy: ipapiIs.is_proxy ?? iplocate.is_proxy ?? null,
+    is_tor: ipapiIs.is_tor ?? iplocate.is_tor ?? null,
+    is_hosting: ipapiIs.is_hosting ?? iplocate.is_hosting ?? null,
+    is_datacenter: ipapiIs.is_datacenter ?? null,
+    is_abuser: ipapiIs.is_abuser ?? null,
+    abuser_score: ipapiIs.abuser_score ?? null,
+    company_name: ipapiCompany.name ?? null,
+    company_domain: ipapiCompany.domain ?? null,
+    company_type: ipapiCompany.type ?? null,
+    asn_descr: ipapiAsn.descr ?? null,
+    asn_org: ipapiAsn.org ?? null,
+    latitude: ipapiIs.latitude ?? null,
+    longitude: ipapiIs.longitude ?? null,
+    timezone: iplocate.timezone ?? null,
+    calling_code: iplocate.calling_code ?? null,
+    currency_code: iplocate.currency_code ?? null,
+  };
+
+  const hasIpRiskFlags =
+    ipRiskFlags.is_vpn === true ||
+    ipRiskFlags.is_proxy === true ||
+    ipRiskFlags.is_tor === true ||
+    ipRiskFlags.is_abuser === true ||
+    Boolean(ipRiskFlags.company_name);
 
   const matches = array(api.campaign_correlation?.matches);
   const nodes = [{ id: "email", x: 450, y: 220, icon: "📧", label: "This email", core: true }, ...(primary.domain ? [{ id: "domain", x: 265, y: 135, icon: "🌐", label: primary.domain }] : []), ...matches.map((match, index) => ({ id: match.email_id, x: 700 + (index % 2) * 95, y: 130 + index * 105, icon: "📧", label: match.email_id }))];
@@ -133,6 +159,7 @@ export function mapApiResponseToReportShape(api) {
           total_percentage: api.threat_contributions.total_percentage ?? null,
         }
       : null,
+    ip_risk_flags: ipRiskFlags,
     risk_level: level(api.verdict || api.infrastructure_risk?.risk_level),
     threat_label:
       api.classifier?.verdict === "threat"
