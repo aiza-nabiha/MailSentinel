@@ -104,6 +104,8 @@ export function mapApiResponseToReportShape(api) {
   const reverseHostname = firstText(reverseDns.hostname);
   const hasInfrastructure = Boolean(ip || asn || hosting || country);
     const ipRiskFlags = {
+    country: ipapiIs.country ?? iplocate.country ?? ipinfo.country ?? null,
+    city: ipapiIs.city ?? iplocate.city ?? ipinfo.city ?? null,
     is_vpn: ipapiIs.is_vpn ?? iplocate.is_vpn ?? null,
     is_proxy: ipapiIs.is_proxy ?? iplocate.is_proxy ?? null,
     is_tor: ipapiIs.is_tor ?? iplocate.is_tor ?? null,
