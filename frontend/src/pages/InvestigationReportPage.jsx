@@ -10,6 +10,43 @@ import {
 } from "../utils/mapApiResponse";
 
 const value = (item, fallback = "Not available") => item ?? fallback;
+const displayEntry = (entry) => {
+  if (!entry || typeof entry !== "object") return String(entry);
+  const label = entry.port ?? entry.name ?? entry.cve ?? entry.id;
+  return label == null
+    ? JSON.stringify(entry)
+    : `${label}${entry.note ? ` — ${entry.note}` : ""}`;
+};
+const displayValue = (item, fallback = "Not available") => {
+  if (item == null || item === "") return fallback;
+  if (typeof item === "boolean") return item ? "Yes" : "No";
+  if (Array.isArray(item)) {
+    return item.length ? item.map(displayEntry).join(", ") : "No data available";
+  }
+  if (typeof item === "object") return JSON.stringify(item);
+  return String(item);
+};
+const hasProviderData = (fields) =>
+  fields.some(
+    ([, fieldValue]) =>
+      fieldValue != null &&
+      fieldValue !== "" &&
+      (!Array.isArray(fieldValue) || fieldValue.length > 0),
+  );
+const providerStatus = (provider) => {
+  if (!provider) return "No data available";
+  if (provider.status === "error") return "Request failed";
+  if (provider.status === "skipped") return "Skipped";
+  if (provider.status === "not_found") return "No record found";
+  if (provider.status === "success") return "Success";
+  return "Status unavailable";
+};
+const IntelligenceField = ({ label, value: fieldValue }) => (
+  <div>
+    <small>{label}</small>
+    <strong>{displayValue(fieldValue)}</strong>
+  </div>
+);
 const authenticationClass = (result) => {
   const results =
     typeof result === "string"
@@ -137,7 +174,84 @@ export default function InvestigationReportPage({
         : jarm?.status === "success"
           ? jarm.jarm_hash || "JARM check completed"
           : "Not available";
-  const shodan = data.shodan;
+  const reliableHop = apiResponse.infrastructure_risk?.reliable_hop;
+  const reliableNode = reliableHop?.earliest_reliable_node;
+  const ipIntelligence = reliableHop?.ip_intelligence;
+  const ipinfo = ipIntelligence?.ipinfo;
+  const ipapiIs = ipIntelligence?.ipapi_is;
+  const ipapiCompany =
+    ipapiIs?.company && typeof ipapiIs.company === "object"
+      ? ipapiIs.company
+      : {};
+  const ipapiAsn =
+    ipapiIs?.asn && typeof ipapiIs.asn === "object" ? ipapiIs.asn : {};
+  const iplocate = ipIntelligence?.iplocate;
+  const reverseDns = ipIntelligence?.reverse_dns;
+  const abuseIpdb = ipIntelligence?.reputation;
+  const shodan = ipIntelligence?.shodan;
+  const providerResults = [
+    {
+      name: "IPinfo",
+      result: ipinfo,
+      fields: [
+        ["ASN", ipinfo?.asn],
+        ["Organization / provider", ipinfo?.as_name],
+        ["Country", ipinfo?.country],
+        ["Country code", ipinfo?.country_code],
+      ],
+    },
+    {
+      name: "ipapi.is",
+      result: ipapiIs,
+      fields: [
+        ["VPN", ipapiIs?.is_vpn],
+        ["Proxy", ipapiIs?.is_proxy],
+        ["Tor", ipapiIs?.is_tor],
+        ["Hosting / datacenter", ipapiIs?.is_hosting ?? ipapiIs?.is_datacenter],
+        ["Company", ipapiCompany.name],
+        ["Country", ipapiIs?.country],
+        ["Abuser", ipapiIs?.is_abuser],
+        ["Abuser score", ipapiIs?.abuser_score],
+        ["ASN organization", ipapiAsn.org],
+      ],
+    },
+    {
+      name: "IPLocate",
+      result: iplocate,
+      fields: [
+        ["VPN", iplocate?.is_vpn],
+        ["Proxy", iplocate?.is_proxy],
+        ["Tor", iplocate?.is_tor],
+        ["Hosting", iplocate?.is_hosting],
+        ["Timezone", iplocate?.timezone],
+        ["Calling code", iplocate?.calling_code],
+        ["Currency", iplocate?.currency_code],
+      ],
+    },
+    {
+      name: "Reverse DNS",
+      result: reverseDns,
+      fields: [["Resolved hostname", reverseDns?.hostname]],
+    },
+    {
+      name: "AbuseIPDB",
+      result: abuseIpdb,
+      fields: [
+        ["Abuse score", abuseIpdb?.abuse_score],
+        ["Report count", abuseIpdb?.total_reports],
+        ["Risk flag", abuseIpdb?.risk_flag],
+      ],
+    },
+  ];
+  const shodanFindings = [
+    ["Open ports", shodan?.ports],
+    ["Notable ports", shodan?.notable_ports],
+    ["Hostnames", shodan?.hostnames],
+    ["CPEs", shodan?.cpes],
+    ["Tags", shodan?.tags],
+    ["Vulnerabilities", shodan?.vulns],
+  ].filter(([, items]) => Array.isArray(items) && items.length);
+  const hasShodanFindings = shodanFindings.length > 0;
   const domainRecords = Array.isArray(apiResponse.domains)
     ? apiResponse.domains
     : Object.values(apiResponse.domains || {});
@@ -175,12 +289,6 @@ export default function InvestigationReportPage({
     (Array.isArray(apiResponse.attachments)
       ? apiResponse.attachments.length
       : null);
-  const hasShodanFindings =
-    shodan?.status === "success" &&
-    (shodan.ports.length > 0 ||
-      shodan.vulns.length > 0 ||
-      shodan.notable_ports.length > 0);
-
   return (
     <main className="report investigation-report">
       <div className="breadcrumb">
@@ -734,76 +842,6 @@ export default function InvestigationReportPage({
               </div>
             )}
           </section>
-          {hasShodanFindings && (
-            <section className="section exposed-infrastructure">
-              <div className="section-head">
-                <div>
-                  <div className="section-kicker">HOST EXPOSURE</div>
-                  <div className="section-title">Exposed Infrastructure</div>
-                </div>
-              </div>
-              <div className="shodan-findings">
-                {shodan.ports.length > 0 && (
-                  <div className="shodan-finding">
-                    <small>OPEN PORTS</small>
-                    <div className="shodan-port-list">
-                      {shodan.ports.map((port, index) => (
-                        <span className="shodan-port" key={`${port}-${index}`}>
-                          {typeof port === "object"
-                            ? (port.port ?? JSON.stringify(port))
-                            : port}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {shodan.notable_ports.length > 0 && (
-                  <div className="shodan-finding">
-                    <small>NOTABLE PORTS</small>
-                    <ul className="shodan-notable-ports">
-                      {shodan.notable_ports.map((item, index) => (
-                        <li key={`${item.port}-${index}`}>
-                          <strong>{item.port ?? "Port"}</strong>
-                          <span>{item.note || "Notable exposed service"}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {shodan.vulns.length > 0 && (
-                  <div className="shodan-finding">
-                    <small>KNOWN VULNERABILITIES</small>
-                    <div className="shodan-vulnerability-list">
-                      {shodan.vulns.map((vulnerability, index) => (
-                        <span
-                          className="shodan-vulnerability"
-                          key={`${vulnerability}-${index}`}
-                        >
-                          {typeof vulnerability === "string"
-                            ? vulnerability
-                            : vulnerability.cve ||
-                              vulnerability.id ||
-                              JSON.stringify(vulnerability)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {shodan.tags.length > 0 && (
-                  <div className="shodan-finding">
-                    <small>HOST TAGS</small>
-                    <div className="shodan-port-list">
-                      {shodan.tags.map((tag, index) => (
-                        <span className="shodan-tag" key={`${tag}-${index}`}>
-                          {typeof tag === "string" ? tag : JSON.stringify(tag)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
           <section className="section campaign-section">
             <div className="section-head">
               <div>
@@ -1008,27 +1046,176 @@ export default function InvestigationReportPage({
           )}
         </section>
       )}
-      {tab !== "Overview" &&
-        tab !== "Fingerprint" &&
-        tab !== "Email" &&
-        tab !== "URLs & Domains" &&
-        tab !== "Correlation" && (
+      {tab === "Infrastructure" && (
+        <>
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="section-kicker">IP INTELLIGENCE</div>
+                <div className="section-title">Investigated IP</div>
+              </div>
+            </div>
+            {ipIntelligence ? (
+              <div className="score-categories">
+                <IntelligenceField
+                  label="IP ADDRESS"
+                  value={ipIntelligence.ip || reliableNode?.ip}
+                />
+                <IntelligenceField
+                  label="INVESTIGATION STATUS"
+                  value={providerStatus(ipIntelligence)}
+                />
+                <IntelligenceField
+                  label="CACHE STATUS"
+                  value={
+                    ipIntelligence.cached == null
+                      ? "Not available"
+                      : ipIntelligence.cached
+                        ? "Cached"
+                        : "Fresh lookup"
+                  }
+                />
+              </div>
+            ) : (
+              <div className="empty-state">
+                No IP intelligence data is available for this investigation.
+              </div>
+            )}
+          </section>
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="section-kicker">PROVIDER RESULTS</div>
+                <div className="section-title">IP and reputation providers</div>
+              </div>
+            </div>
+            {ipIntelligence ? (
+              <div className="score-categories">
+                {providerResults.map(({ name, result, fields }) => (
+                  <div key={name}>
+                    <small>{name.toUpperCase()}</small>
+                    <strong>{providerStatus(result)}</strong>
+                    {result?.status === "error" && (
+                      <p>The provider request failed.</p>
+                    )}
+                    {result?.status === "skipped" && (
+                      <p>This provider was skipped and returned no result.</p>
+                    )}
+                    {result?.status === "not_found" && (
+                      <p>No record was found for this IP.</p>
+                    )}
+                    {!result && <p>No data available.</p>}
+                    {result?.status === "success" &&
+                      hasProviderData(fields) &&
+                      fields.map(([label, fieldValue]) => (
+                        <IntelligenceField
+                          key={label}
+                          label={label}
+                          value={fieldValue}
+                        />
+                      ))}
+                    {result?.status === "success" &&
+                      !hasProviderData(fields) && <p>No data available.</p>}
+                  </div>
+                ))}
+                <div>
+                  <small>SHODAN INTERNETDB</small>
+                  <strong>{providerStatus(shodan)}</strong>
+                  {shodan?.status === "error" && (
+                    <p>The provider request failed.</p>
+                  )}
+                  {shodan?.status === "skipped" && (
+                    <p>This provider was skipped and returned no result.</p>
+                  )}
+                  {shodan?.status === "not_found" && (
+                    <p>No record was found for this IP.</p>
+                  )}
+                  {!shodan && <p>No data available.</p>}
+                  {shodan?.status === "success" &&
+                    (hasShodanFindings ? (
+                      <>
+                        {shodanFindings.map(([label, items]) => (
+                          <IntelligenceField
+                            key={label}
+                            label={label}
+                            value={items}
+                          />
+                        ))}
+                        <IntelligenceField
+                          label="RISK FLAG"
+                          value={shodan.risk_flag}
+                        />
+                      </>
+                    ) : (
+                      <p>No data available.</p>
+                    ))}
+                </div>
+              </div>
+            ) : (
+              <div className="empty-state">
+                Provider results are unavailable because no IP intelligence
+                response was returned.
+              </div>
+            )}
+          </section>
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="section-kicker">RELIABLE HOP ANALYSIS</div>
+                <div className="section-title">Earliest reliable node</div>
+              </div>
+            </div>
+            {reliableHop ? (
+              reliableNode ? (
+                <div className="score-categories">
+                  <IntelligenceField
+                    label="IP ADDRESS"
+                    value={reliableNode.ip}
+                  />
+                  <IntelligenceField
+                    label="HOSTNAME"
+                    value={reliableNode.hostname}
+                  />
+                  <IntelligenceField
+                    label="CONFIDENCE"
+                    value={
+                      typeof reliableNode.confidence === "number"
+                        ? `${Math.round(reliableNode.confidence * 100)}%`
+                        : reliableNode.confidence
+                    }
+                  />
+                  <IntelligenceField
+                    label="RELIABILITY CLASSIFICATION"
+                    value={reliableNode.reliability}
+                  />
+                  <IntelligenceField
+                    label="REASONS"
+                    value={reliableNode.reasons}
+                  />
+                </div>
+              ) : (
+                <div className="empty-state">
+                  {reliableHop.status === "not_found"
+                    ? "No reliable observable hop was found."
+                    : reliableHop.status === "unavailable"
+                      ? "Reliable hop analysis is unavailable."
+                      : "No reliable-hop details are available."}
+                </div>
+              )
+            ) : (
+              <div className="empty-state">
+                Reliable hop analysis was not returned.
+              </div>
+            )}
+          </section>
+        </>
+      )}
+      {tab === "Headers" && (
           <section className="section detail-tab">
-            <div className="section-kicker">{tab.toUpperCase()}</div>
-            <div className="section-title">Detailed {tab.toLowerCase()}</div>
+            <div className="section-kicker">HEADERS</div>
+            <div className="section-title">Detailed headers</div>
             <pre>
-              {JSON.stringify(
-                tab === "Headers"
-                  ? auth
-                  : tab === "Infrastructure"
-                    ? apiResponse.infrastructure_risk
-                    : {
-                        subject: apiResponse.subject,
-                        from: apiResponse.from_header,
-                      },
-                null,
-                2,
-              )}
+              {JSON.stringify(auth, null, 2)}
             </pre>
           </section>
         )}
