@@ -264,7 +264,10 @@ def identity_required(view_fn):
             f"[auth] {request.path} rejected: "
             f"server_key_set={bool(API_SECRET_KEY)}, "
             f"key_header_present={bool(provided_key)}, key_matches={key_ok}, "
-            f"user_id_present={bool(addon_user_id)}"
+            f"user_id_present={bool(addon_user_id)}, "
+            f"cookie_present={bool(request.cookies)}, "
+            f"ua={request.headers.get('User-Agent', '')[:60]!r}, "
+            f"origin={request.headers.get('Origin', '')!r}"
         )
         return jsonify({"error": "Not signed in"}), 401
     return wrapper
