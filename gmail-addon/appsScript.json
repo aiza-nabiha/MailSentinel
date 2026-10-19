@@ -6,17 +6,16 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/gmail.addons.execute",
     "https://www.googleapis.com/auth/gmail.addons.current.message.readonly",
-    "https://www.googleapis.com/auth/script.external_request"
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/userinfo.email"
   ],
   "addOns": {
     "common": {
       "name": "MailSentinel",
-
       "logoUrl": "https://raw.githubusercontent.com/aiza-nabiha/MailSentinel/main/gmail-addon/logo.png",
-
       "layoutProperties": {
-        "primaryColor": "#151B3D",
-        "secondaryColor": "#2563EB"
+        "primaryColor": "#0f172a",
+        "secondaryColor": "#0d9488"
       },
       "homepageTrigger": {
         "runFunction": "onHomepage"
