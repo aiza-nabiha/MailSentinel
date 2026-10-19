@@ -253,12 +253,19 @@ def identity_required(view_fn):
             return view_fn(user["email"], "session", *args, **kwargs)
 
         provided_key = request.headers.get("X-API-Key", "")
-        if API_SECRET_KEY and hmac.compare_digest(provided_key, API_SECRET_KEY):
-            data = request.get_json(silent=True) or {}
-            addon_user_id = data.get("user_id")
-            if addon_user_id and isinstance(addon_user_id, str):
-                return view_fn(addon_user_id, "addon", *args, **kwargs)
+        key_ok = bool(API_SECRET_KEY) and hmac.compare_digest(provided_key, API_SECRET_KEY)
+        data = request.get_json(silent=True) or {}
+        addon_user_id = data.get("user_id")
+        if key_ok and addon_user_id and isinstance(addon_user_id, str):
+            return view_fn(addon_user_id, "addon", *args, **kwargs)
 
+        # Logs WHY (never the key itself) so Render shows which check failed.
+        print(
+            f"[auth] {request.path} rejected: "
+            f"server_key_set={bool(API_SECRET_KEY)}, "
+            f"key_header_present={bool(provided_key)}, key_matches={key_ok}, "
+            f"user_id_present={bool(addon_user_id)}"
+        )
         return jsonify({"error": "Not signed in"}), 401
     return wrapper
 
