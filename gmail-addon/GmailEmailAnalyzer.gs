@@ -16,6 +16,19 @@ function analyzeCurrentEmail(e) {
 
     var message = GmailApp.getMessageById(messageId);
 
+    // CHANGED: getActiveUser() is often empty inside Gmail add-ons;
+    // getEffectiveUser() is the reliable one here. Still Google's own
+    // verified identity -- never something the user typed.
+    var userEmail = Session.getActiveUser().getEmail() ||
+                    Session.getEffectiveUser().getEmail();
+
+    // NEW: fail early with a clear message instead of a 401.
+    if (!userEmail) {
+      return buildErrorCard(
+        'Could not read your Gmail address. Re-authorize the add-on and try again.'
+      );
+    }
+
     var response = UrlFetchApp.fetch(getApiUrl() + '/analyze', {
       method: 'post',
       contentType: 'application/json',
@@ -24,7 +37,7 @@ function analyzeCurrentEmail(e) {
       },
       payload: JSON.stringify({
         raw_eml: message.getRawContent(),
-        user_id: Session.getActiveUser().getEmail()
+        user_id: userEmail   // CHANGED
       }),
       muteHttpExceptions: true
     });
