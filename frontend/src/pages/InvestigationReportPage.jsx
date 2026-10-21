@@ -814,6 +814,7 @@ export default function InvestigationReportPage({
               </div>
             </section>
           )}
+          
           {data.ip_risk_flags && hasIpRiskFlags && (
             <section className="section ip-risk-flags">
               <div className="section-head">
@@ -822,74 +823,99 @@ export default function InvestigationReportPage({
                   <div className="section-title">Sender IP Risk Flags</div>
                 </div>
               </div>
-              <div className="risk-flag-badges">
-                {data.ip_risk_flags.is_hosting === true && (
-                  <span className="flag-badge">Hosting</span>
-                )}
-                {data.ip_risk_flags.is_vpn === true && <span className="flag-badge warn">VPN</span>}
-                {data.ip_risk_flags.is_proxy === true && <span className="flag-badge warn">Proxy</span>}
-                {data.ip_risk_flags.is_tor === true && <span className="flag-badge danger">Tor</span>}
-                {data.ip_risk_flags.is_datacenter === true && <span className="flag-badge">Datacenter</span>}
-                {data.ip_risk_flags.is_abuser === true && <span className="flag-badge danger">Known Abuser</span>}
-              </div>
-              
-              <div className="ip-risk-details">
-                {[
-                  ["VPN", ipRiskFlags.is_vpn],
-                  ["Proxy", ipRiskFlags.is_proxy],
-                  ["Tor", ipRiskFlags.is_tor],
-                  ["Hosting", ipRiskFlags.is_hosting],
-                  ["Datacenter", ipRiskFlags.is_datacenter],
-                  ["Known Abuser", ipRiskFlags.is_abuser],
-                ].map(([label, flag]) => (
-                  <div key={label}>
-                    {label}: {flag == null ? "Not available" : flag ? "Yes" : "No"}
-                  </div>
-                ))}
-              </div>
 
-              {(data.ip_risk_flags.company_name ||
-              data.ip_risk_flags.company_domain ||
-              data.ip_risk_flags.company_type) && (
-              <div>
-                Company: {data.ip_risk_flags.company_name || "Not available"}
-                {data.ip_risk_flags.company_domain
-                  ? ` · ${data.ip_risk_flags.company_domain}`
-                  : ""}
-                {data.ip_risk_flags.company_type
-                  ? ` (${data.ip_risk_flags.company_type})`
-                  : ""}
+              <div className="ip-risk-grid">
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">VPN</span>
+                  <strong className={ipRiskFlags.is_vpn === true ? "risk-bad" : "risk-good"}>
+                    {ipRiskFlags.is_vpn == null ? "Not available" : ipRiskFlags.is_vpn ? "Detected" : "No"}
+                  </strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Proxy</span>
+                  <strong className={ipRiskFlags.is_proxy === true ? "risk-bad" : "risk-good"}>
+                    {ipRiskFlags.is_proxy == null ? "Not available" : ipRiskFlags.is_proxy ? "Detected" : "No"}
+                  </strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Tor</span>
+                  <strong className={ipRiskFlags.is_tor === true ? "risk-bad" : "risk-good"}>
+                    {ipRiskFlags.is_tor == null ? "Not available" : ipRiskFlags.is_tor ? "Detected" : "No"}
+                  </strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Hosting</span>
+                  <strong>{ipRiskFlags.is_hosting == null ? "Not available" : ipRiskFlags.is_hosting ? "Yes" : "No"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Datacenter</span>
+                  <strong>{ipRiskFlags.is_datacenter == null ? "Not available" : ipRiskFlags.is_datacenter ? "Yes" : "No"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Known Abuser</span>
+                  <strong className={ipRiskFlags.is_abuser === true ? "risk-bad" : ""}>
+                    {ipRiskFlags.is_abuser == null ? "Not available" : ipRiskFlags.is_abuser ? "Yes" : "No"}
+                  </strong>
+                </div>
+
+                <div className="ip-risk-card ip-risk-wide">
+                  <span className="ip-risk-label">Company</span>
+                  <strong>{ipRiskFlags.company_name || "Not available"}</strong>
+                  {ipRiskFlags.company_type && <span>{ipRiskFlags.company_type}</span>}
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Abuser Score</span>
+                  <strong>{ipRiskFlags.abuser_score ?? "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card ip-risk-wide">
+                  <span className="ip-risk-label">ASN</span>
+                  <strong>{ipRiskFlags.asn_descr || ipRiskFlags.asn_org || "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Country</span>
+                  <strong>{ipRiskFlags.country || "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">City</span>
+                  <strong>{ipRiskFlags.city || "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Timezone</span>
+                  <strong>{ipRiskFlags.timezone || "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Calling Code</span>
+                  <strong>{ipRiskFlags.calling_code || "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card">
+                  <span className="ip-risk-label">Currency</span>
+                  <strong>{ipRiskFlags.currency_code || "Not available"}</strong>
+                </div>
+
+                <div className="ip-risk-card ip-risk-wide">
+                  <span className="ip-risk-label">Coordinates</span>
+                  <strong>
+                    {ipRiskFlags.latitude != null && ipRiskFlags.longitude != null
+                      ? `${ipRiskFlags.latitude}, ${ipRiskFlags.longitude}`
+                      : "Not available"}
+                  </strong>
+                </div>
               </div>
-            )}
-            {(data.ip_risk_flags.country ||
-              data.ip_risk_flags.city ||
-              data.ip_risk_flags.latitude != null ||
-              data.ip_risk_flags.longitude != null) && (
-              <div>
-                Location: {[
-                  data.ip_risk_flags.city,
-                  data.ip_risk_flags.country,
-                ].filter(Boolean).join(", ") || "Not available"}
-                {data.ip_risk_flags.latitude != null &&
-                data.ip_risk_flags.longitude != null
-                  ? ` (${data.ip_risk_flags.latitude}, ${data.ip_risk_flags.longitude})`
-                  : ""}
-              </div>
-            )}
-
-            {data.ip_risk_flags.timezone && (
-              <div>Timezone: {data.ip_risk_flags.timezone}</div>
-            )}
-
-            {data.ip_risk_flags.calling_code && (
-              <div>Calling code: {data.ip_risk_flags.calling_code}</div>
-            )}
-
-            {data.ip_risk_flags.currency_code && (
-              <div>Currency: {data.ip_risk_flags.currency_code}</div>
-            )}
             </section>
           )}
+
           <section className="section campaign-section">
             <div className="section-head">
               <div>

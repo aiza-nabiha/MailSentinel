@@ -4137,3 +4137,90 @@ html[data-theme="light"] .app-shell:has(.landing) .capability-grid a {
     animation: none;
   }
 }
+
+.ip-risk-flags {
+  padding: 28px;
+  border: 1px solid rgba(125, 180, 205, 0.28);
+  border-radius: 16px;
+  background: linear-gradient(
+    145deg,
+    rgba(14, 65, 91, 0.58),
+    rgba(7, 42, 66, 0.82)
+  );
+  margin-bottom: 24px;
+}
+
+.ip-risk-flags .section-head {
+  margin-bottom: 22px;
+}
+
+.ip-risk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ip-risk-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 17px 18px;
+  border: 1px solid rgba(125, 180, 205, 0.22);
+  border-radius: 12px;
+  background: rgba(6, 37, 59, 0.58);
+  overflow-wrap: anywhere;
+}
+
+.ip-risk-label {
+  color: #8fb7cc;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+.ip-risk-card strong {
+  color: #f1f7fb;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.ip-risk-card > span:not(.ip-risk-label) {
+  color: #a9c5d4;
+  font-size: 12px;
+}
+
+.ip-risk-card .risk-good {
+  color: #75dfb0;
+}
+
+.ip-risk-card .risk-bad {
+  color: #ff929b;
+}
+
+.ip-risk-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+  .ip-risk-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .ip-risk-flags {
+    padding: 18px;
+  }
+
+  .ip-risk-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-risk-wide {
+    grid-column: span 1;
+  }
+}
