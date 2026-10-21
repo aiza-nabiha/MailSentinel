@@ -32,6 +32,8 @@ IPINFO_TOKEN = os.getenv("IPINFO_TOKEN")
 ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY")
 IPAPI_IS_API_KEY = os.getenv("IPAPI_IS_API_KEY")
 IPLOCATE_API_KEY = os.getenv("IPLOCATE_API_KEY")
+print("IPINFO_TOKEN loaded:", bool(IPINFO_TOKEN))
+print("ABUSEIPDB_API_KEY loaded:", bool(ABUSEIPDB_API_KEY))
 
 IPINFO_API = "https://api.ipinfo.io/lite"
 ABUSEIPDB_API = "https://api.abuseipdb.com/api/v2/check"
