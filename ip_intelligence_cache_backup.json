@@ -1,0 +1,138 @@
+{
+    "8.8.8.30": {
+        "ip": "8.8.8.30",
+        "status": "success",
+        "cached": false,
+        "ipinfo": {
+            "status": "success",
+            "source": "IPinfo",
+            "asn": "AS15169",
+            "as_name": "Google LLC",
+            "as_domain": "google.com",
+            "country_code": "US",
+            "country": "United States",
+            "continent_code": "NA",
+            "continent": "North America"
+        },
+        "ipapi_is": {
+            "status": "success",
+            "source": "ipapi.is",
+            "is_vpn": false,
+            "is_proxy": false,
+            "is_tor": false,
+            "is_hosting": true,
+            "is_datacenter": true,
+            "is_abuser": false,
+            "company": {
+                "name": "Google LLC",
+                "domain": "google.com",
+                "type": "hosting"
+            },
+            "country": "United States",
+            "city": "Mountain View",
+            "latitude": 37.38605,
+            "longitude": -122.08385,
+            "abuser_score": "0 (Very Low)",
+            "asn": {
+                "descr": "GOOGLE - Google LLC, US",
+                "org": "Google LLC"
+            }
+        },
+        "iplocate": {
+            "status": "success",
+            "source": "IPLocate",
+            "is_vpn": false,
+            "is_proxy": false,
+            "is_tor": false,
+            "is_hosting": true,
+            "timezone": "America/Los_Angeles",
+            "calling_code": "1",
+            "currency_code": "USD"
+        },
+        "reverse_dns": {
+            "status": "not_found",
+            "hostname": null,
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "success",
+            "source": "AbuseIPDB",
+            "abuse_score": 0,
+            "total_reports": 0,
+            "risk_flag": false
+        },
+        "shodan": {
+            "status": "not_found",
+            "source": "Shodan InternetDB",
+            "error": "No Shodan data for this IP"
+        }
+    },
+    "198.2.190.38": {
+        "ip": "198.2.190.38",
+        "status": "success",
+        "cached": true,
+        "ipinfo": {
+            "status": "success",
+            "source": "IPinfo",
+            "asn": "AS14782",
+            "as_name": "MailChimp",
+            "as_domain": "intuit.com",
+            "country_code": "US",
+            "country": "United States",
+            "continent_code": "NA",
+            "continent": "North America"
+        },
+        "ipapi_is": {
+            "status": "success",
+            "source": "ipapi.is",
+            "is_vpn": false,
+            "is_proxy": false,
+            "is_tor": false,
+            "is_hosting": false,
+            "is_datacenter": false,
+            "is_abuser": false,
+            "company": {
+                "name": "MailChimp",
+                "domain": "mailchimp.com",
+                "type": "business"
+            },
+            "country": "United States",
+            "city": "Mountain View",
+            "latitude": 37.38605,
+            "longitude": -122.08385,
+            "abuser_score": "0.0309 (High)",
+            "asn": {
+                "descr": "THEROCKETSCIENCEGROUP - MailChimp, US",
+                "org": "MailChimp"
+            }
+        },
+        "iplocate": {
+            "status": "success",
+            "source": "IPLocate",
+            "is_vpn": false,
+            "is_proxy": false,
+            "is_tor": false,
+            "is_hosting": false,
+            "timezone": "America/Los_Angeles",
+            "calling_code": "1",
+            "currency_code": "USD"
+        },
+        "reverse_dns": {
+            "status": "success",
+            "hostname": "mail38.suw11.mcdlv.net",
+            "source": "DNS"
+        },
+        "reputation": {
+            "status": "success",
+            "source": "AbuseIPDB",
+            "abuse_score": 0,
+            "total_reports": 0,
+            "risk_flag": false
+        },
+        "shodan": {
+            "status": "not_found",
+            "source": "Shodan InternetDB",
+            "error": "No Shodan data for this IP"
+        }
+    }
+}

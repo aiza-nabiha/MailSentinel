@@ -450,10 +450,10 @@ def investigate_ip(
             "error": "IP is not publicly routable",
         }
 
-    if ip_address in cache:
-        cached = cache[ip_address]
-        cached["cached"] = True
-        return cached
+    #if ip_address in cache:
+    #    cached = cache[ip_address]
+    #    cached["cached"] = True
+    #    return cached
 
     ipinfo_result = lookup_ipinfo(
         ip_address,
