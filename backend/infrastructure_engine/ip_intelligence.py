@@ -500,6 +500,10 @@ def investigate_ip(
 
         "shodan": shodan_result,
     }
+    print("IPINFO:", json.dumps(ipinfo_result, indent=2))
+    print("IPAPI_IS:", json.dumps(ipapi_is_result, indent=2))
+    print("IPLOCATE:", json.dumps(iplocate_result, indent=2))
+    print("REPUTATION:", json.dumps(reputation_result, indent=2))
 
     cache[ip_address] = result
 
