@@ -104,9 +104,11 @@ export function mapApiResponseToReportShape(api) {
   const country = firstText(ipinfo.country, ipapiIs.country);
   const reverseHostname = firstText(reverseDns.hostname);
   const hasInfrastructure = Boolean(ip || asn || hosting || country);
-    const ipRiskFlags = {
-    country: ipapiIs.country ?? iplocate.country ?? ipinfo.country ?? null,
-    city: ipapiIs.city ?? iplocate.city ?? ipinfo.city ?? null,
+  const ipRiskFlags = {
+    country:
+      firstText(ipapiIs.country, iplocate.country, ipinfo.country) ?? null,
+    city:
+      firstText(ipapiIs.city, iplocate.city, ipinfo.city) ?? null,
     is_vpn: ipapiIs.is_vpn ?? iplocate.is_vpn ?? null,
     is_proxy: ipapiIs.is_proxy ?? iplocate.is_proxy ?? null,
     is_tor: ipapiIs.is_tor ?? iplocate.is_tor ?? null,
@@ -120,8 +122,8 @@ export function mapApiResponseToReportShape(api) {
     company_name: ipapiCompany.name ?? null,
     company_domain: ipapiCompany.domain ?? null,
     company_type: ipapiCompany.type ?? null,
-    asn_descr: ipapiAsn.descr ?? null,
-    asn_org: ipapiAsn.org ?? null,
+    asn_descr: firstText(ipapiAsn.descr, ipinfo.asn) ?? null,
+    asn_org: firstText(ipapiAsn.org, ipinfo.as_name) ?? null,
     latitude: ipapiIs.latitude ?? null,
     longitude: ipapiIs.longitude ?? null,
     timezone: iplocate.timezone ?? null,
