@@ -84,6 +84,7 @@ export function mapApiResponseToReportShape(api) {
   const ipapiCompany = object(ipapiIs.company);
   const ipapiAsn = object(ipapiIs.asn);
   const iplocate = object(ipIntelligence.iplocate);
+  const reputation = object(ipIntelligence.reputation);
   const reverseDns = object(ipIntelligence.reverse_dns);
   const shodan = ipIntelligence.shodan || api.shodan || null;
   const ip = firstText(
@@ -112,7 +113,10 @@ export function mapApiResponseToReportShape(api) {
     is_hosting: ipapiIs.is_hosting ?? iplocate.is_hosting ?? null,
     is_datacenter: ipapiIs.is_datacenter ?? null,
     is_abuser: ipapiIs.is_abuser ?? null,
-    abuser_score: ipapiIs.abuser_score ?? null,
+    abuser_score:
+      ipapiIs.abuser_score ??
+      reputation.abuse_score ??
+      null,
     company_name: ipapiCompany.name ?? null,
     company_domain: ipapiCompany.domain ?? null,
     company_type: ipapiCompany.type ?? null,
@@ -125,12 +129,18 @@ export function mapApiResponseToReportShape(api) {
     currency_code: iplocate.currency_code ?? null,
   };
 
-  const hasIpRiskFlags =
-    ipRiskFlags.is_vpn === true ||
-    ipRiskFlags.is_proxy === true ||
-    ipRiskFlags.is_tor === true ||
-    ipRiskFlags.is_abuser === true ||
-    Boolean(ipRiskFlags.company_name);
+  const hasIpRiskFlags = Boolean(
+    ip ||
+    ipRiskFlags.country ||
+    ipRiskFlags.city ||
+    ipRiskFlags.asn_descr ||
+    ipRiskFlags.asn_org ||
+    ipRiskFlags.company_name ||
+    ipRiskFlags.abuser_score != null ||
+    ipRiskFlags.is_vpn != null ||
+    ipRiskFlags.is_proxy != null ||
+    ipRiskFlags.is_tor != null
+  );
 
   const matches = array(api.campaign_correlation?.matches);
   const nodes = [{ id: "email", x: 450, y: 220, icon: "📧", label: "This email", core: true }, ...(primary.domain ? [{ id: "domain", x: 265, y: 135, icon: "🌐", label: primary.domain }] : []), ...matches.map((match, index) => ({ id: match.email_id, x: 700 + (index % 2) * 95, y: 130 + index * 105, icon: "📧", label: match.email_id }))];

@@ -70,6 +70,7 @@ export default function InvestigationReportPage({
       </main>
     );
   const data = mapApiResponseToReportShape(apiResponse);
+  const ipRiskFlags = data.ip_risk_flags;
   const domain = data.domain_info;
   const auth = apiResponse.header_auth || {};
   const authentication = data.authentication;
@@ -180,8 +181,6 @@ export default function InvestigationReportPage({
     (shodan.ports.length > 0 ||
       shodan.vulns.length > 0 ||
       shodan.notable_ports.length > 0);
-  
-    const ipRiskFlags = data.ip_risk_flags;
 
     const hasIpRiskFlags = Boolean(
       ipRiskFlags &&
@@ -814,7 +813,7 @@ export default function InvestigationReportPage({
               </div>
             </section>
           )}
-          {data.ip_risk_flags && hasIpRiskFlags && (
+          {data.ip_risk_flags &&  (
             <section className="section ip-risk-flags">
               <div className="section-head">
                 <div>
